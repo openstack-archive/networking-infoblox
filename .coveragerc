@@ -1,0 +1,7 @@
+[run]
+branch = True
+source = networking_infoblox
+omit = networking_infoblox/openstack/*
+
+[report]
+ignore-errors = True
