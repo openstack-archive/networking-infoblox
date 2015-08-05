@@ -1,0 +1,36 @@
+# Copyright (c) 2015 Infoblox Inc.
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
+import mock
+
+from networking_infoblox.neutron.ipam import driver as drv
+from networking_infoblox.tests import base
+
+
+class TestDriver(base.TestCase):
+
+    def test_driver_initialized(self):
+        self.assertIsInstance(drv.InfobloxPool(mock.Mock(), mock.Mock()),
+                              drv.InfobloxPool)
+
+    def test_get_subnet(self):
+        driver = drv.InfobloxPool(mock.Mock(), mock.Mock())
+        ipam_subnet = driver.get_subnet(mock.Mock())
+        self.assertIsInstance(ipam_subnet, drv.InfobloxSubnet)
+
+    def test_allocate_subnet(self):
+        driver = drv.InfobloxPool(mock.Mock(), mock.Mock())
+        ipam_subnet = driver.allocate_subnet(mock.Mock())
+        self.assertIsInstance(ipam_subnet, drv.InfobloxSubnet)
