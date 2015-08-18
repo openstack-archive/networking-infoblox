@@ -1,7 +1,8 @@
 # plugin.sh - DevStack plugin.sh dispatch script networking_infoblox
 
 function install_networking_infoblox {
-    echo
+    cd $DIR_INFOBLOX
+    sudo python setup.py install
 }
 
 function init_networking_infoblox {
@@ -11,6 +12,8 @@ function init_networking_infoblox {
 function configure_networking_infoblox {
     echo
 }
+
+DIR_INFOBLOX=$DEST/networking-infoblox
 
 # check for service enabled
 if is_service_enabled networking-infoblox; then
