@@ -48,6 +48,36 @@ class InfobloxFuncException(InfobloxException):
                 "ref %(ref)s: %(content)s [code %(code)s]")
 
 
+class InfobloxHostRecordIpAddrNotCreated(exceptions.NeutronException):
+    message = _("Infoblox host record ipv4addr/ipv6addr has not been "
+                "created for IP %(ip)s, mac %(mac)s")
+
+
+class InfobloxCannotAllocateIp(exceptions.NeutronException):
+    message = _("Cannot allocate IP %(ip_data)s")
+
+
+class InfobloxDidNotReturnCreatedIPBack(exceptions.NeutronException):
+    message = _("Infoblox did not return created IP back")
+
+
+class InfobloxNetworkNotAvailable(exceptions.NeutronException):
+    message = _("No network view %(network_view)s for %(cidr)s")
+
+
+class InfobloxObjectParsingError(exceptions.NeutronException):
+    message = _("Infoblox object cannot be parsed from dict: %(data)s")
+
+
+class HostRecordNotPresent(InfobloxObjectParsingError):
+    message = _("Cannot parse Host Record object from dict because "
+                "'ipv4addrs'/'ipv6addrs' is absent.")
+
+
+class InfobloxInvalidIp(InfobloxObjectParsingError):
+    message = _("Bad IP address: %(ip)s")
+
+
 class InfobloxConnectionError(exceptions.NeutronException):
     message = _("Infoblox HTTP request failed with: %(reason)s")
 
