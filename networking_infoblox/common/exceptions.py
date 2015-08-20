@@ -48,6 +48,10 @@ class InfobloxFuncException(InfobloxException):
                 "ref %(ref)s: %(content)s [code %(code)s]")
 
 
+class InfobloxNetworkNotAvailable(exceptions.NeutronException):
+    message = _("No network view %(network_view)s for %(cidr)s")
+
+
 class InfobloxConnectionError(exceptions.NeutronException):
     message = _("Infoblox HTTP request failed with: %(reason)s")
 
