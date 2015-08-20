@@ -14,7 +14,6 @@
 #    under the License.
 
 import functools
-import re
 import requests
 from requests import exceptions as req_exc
 import urllib
@@ -23,8 +22,7 @@ import urlparse
 from oslo_serialization import jsonutils
 
 from networking_infoblox.common import exceptions as ib_ex
-
-CLOUD_WAPI_MAJOR_VERSION = 2
+from networking_infoblox.common import utils
 
 
 def reraise_neutron_exception(func):
@@ -70,7 +68,7 @@ class Connector(object):
 
         self.wapi_url = "https://%s/wapi/%s/" % (self.host,
                                                  self.wapi_version)
-        self.cloud_api_enabled = self.is_cloud_wapi(options.wapi_version)
+        self.cloud_api_enabled = utils.is_cloud_wapi(options.wapi_version)
 
     def _validate_wapi_config(self):
         if not self.wapi_url or not self.username or not self.password:
@@ -319,11 +317,3 @@ class Connector(object):
                 code=r.status_code)
 
         return jsonutils.loads(r.content)
-
-    @staticmethod
-    def is_cloud_wapi(wapi_version):
-        version_match = re.search('(\d+)\.(\d+)', wapi_version)
-        if (version_match and int(version_match.group(1)) >=
-                CLOUD_WAPI_MAJOR_VERSION):
-            return True
-        return False
