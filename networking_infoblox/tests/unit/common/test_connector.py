@@ -195,6 +195,7 @@ class TestInfobloxConnector(base.TestCase):
 
 
 class TestInfobloxConnectorStaticMethods(base.TestCase):
+
     def test_neutron_exception_is_raised_on_any_request_error(self):
         # timeout exception raises InfobloxTimeoutError
         f = mock.Mock()
@@ -231,14 +232,3 @@ class TestInfobloxConnectorStaticMethods(base.TestCase):
         for status_code in ok_statuses:
             response.status_code = status_code
             connector.Connector._validate_authorized(response)
-
-    def test_non_cloud_api_detection(self):
-        wapi_not_cloud = ('v1.4.1', 'v1.9/', 'v1.99', 'asd', '')
-        for url in wapi_not_cloud:
-            self.assertFalse(connector.Connector.is_cloud_wapi(url))
-
-    def test_cloud_api_detection(self):
-        wapi_cloud = ('v2.1/', '/v2.0/', 'v2.0.1',
-                      'v3.0/', 'v11.0.1/')
-        for url in wapi_cloud:
-            self.assertTrue(connector.Connector.is_cloud_wapi(url))
