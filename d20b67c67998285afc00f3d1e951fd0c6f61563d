@@ -1,0 +1,9 @@
+Verified+2: Jenkins
+Code-Review+2: Hosung Hwang <hhwang@infoblox.com>
+Workflow+1: Hosung Hwang <hhwang@infoblox.com>
+Code-Review+1: Pavel Bondar <pbondar@infoblox.com>
+Submitted-by: Jenkins
+Submitted-at: Wed, 26 Aug 2015 16:03:18 +0000
+Reviewed-on: https://review.openstack.org/215559
+Project: openstack/networking-infoblox
+Branch: refs/heads/master
