@@ -6,11 +6,16 @@ function install_networking_infoblox {
 }
 
 function init_networking_infoblox {
-    echo
+    echo "init_networking_infoblox"
+}
+
+function run_db_migration_for_networking_infoblox {
+    $NEUTRON_BIN_DIR/neutron-db-manage --config-file $NEUTRON_CONF --config-file /$Q_PLUGIN_CONF_FILE upgrade head
 }
 
 function configure_networking_infoblox {
-    echo
+    echo_summary "Running db migration for Infoblox Networking"
+    run_db_migration_for_networking_infoblox
 }
 
 DIR_INFOBLOX=$DEST/networking-infoblox
