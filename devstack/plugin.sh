@@ -6,11 +6,15 @@ function install_networking_infoblox {
 }
 
 function init_networking_infoblox {
-    echo
+    echo "init_networking_infoblox"
+}
+
+function run_db_migration_for_networking_infoblox {
+    $NEUTRON_BIN_DIR/neutron-db-manage --config-file $NEUTRON_CONF --config-file /$Q_PLUGIN_CONF_FILE upgrade head
 }
 
 function configure_networking_infoblox {
-    echo
+    echo "configure_networking_infoblox"
 }
 
 DIR_INFOBLOX=$DEST/networking-infoblox
@@ -29,6 +33,9 @@ if is_service_enabled networking-infoblox; then
         install_networking_infoblox
 
     elif [[ "$1" == "stack" && "$2" == "post-config" ]]; then
+        echo_summary "Running db migration for Infoblox Networking"
+        run_db_migration_for_networking_infoblox
+
         # Configure after the other layer 1 and 2 services have been configured
         echo_summary "Configuring Infoblox Networking"
         configure_networking_infoblox
