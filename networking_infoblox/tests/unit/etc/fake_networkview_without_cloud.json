@@ -1,0 +1,21 @@
+[
+    {
+        "_ref": "networkview/ZG5zLm5ldHdvcmtfdmlldyQw:default/true",
+        "extattrs": {},
+        "is_default": true,
+        "name": "default"
+    },
+    {
+        "_ref": "networkview/ZG5zLm5ldHdvcmtfdmlldyQx:hs-view-1/false",
+        "extattrs": {
+            "Address Scope ID": {
+                "value": "111"
+            },
+            "Address Scope Name": {
+                "value": "test"
+            }
+        },
+        "is_default": false,
+        "name": "hs-view-1"
+    }
+]

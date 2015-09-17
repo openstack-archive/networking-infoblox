@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # Copyright 2010-2011 OpenStack Foundation
 # Copyright (c) 2013 Hewlett-Packard Development Company, L.P.
 #
@@ -15,9 +13,45 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import fixtures
+import io
+import os
+from oslo_serialization import jsonutils
+
 from oslotest import base
 
 
 class TestCase(base.BaseTestCase):
 
     """Test case base class for all unit tests."""
+
+    def setUp(self):
+        super(TestCase, self).setUp()
+        self.connector_fixture = ConnectorFixture()
+
+
+class ConnectorFixture(fixtures.Fixture):
+
+    def __init__(self):
+        super(ConnectorFixture, self).__init__()
+        self.script_path = os.path.dirname(os.path.abspath(__file__))
+        self.test_fixture_data_path = self.script_path + '/unit/etc'
+
+    def get_object(self, fixture_data_filename):
+        stream = io.FileIO("%s/%s" % (self.test_fixture_data_path,
+                                      fixture_data_filename))
+        obj_json = jsonutils.loads(stream.read())
+        return obj_json
+
+
+class FixtureResourceMap(object):
+
+    FAKE_MEMBERS_WITHOUT_CLOUD = 'fake_members_without_cloud.json'
+    FAKE_MEMBERS_WITH_CLOUD = 'fake_members_with_cloud.json'
+    FAKE_MEMBER_LICENSES = 'fake_member_licenses.json'
+    FAKE_NETWORKVIEW_WITHOUT_CLOUD = 'fake_networkview_without_cloud.json'
+    FAKE_NETWORKVIEW_WITH_CLOUD = 'fake_networkview_with_cloud.json'
+    FAKE_NETWORK_WITHOUT_CLOUD = 'fake_network_without_cloud.json'
+    FAKE_NETWORK_WITH_CLOUD = 'fake_network_with_cloud.json.json'
+    FAKE_GRID_MASTER_GRID_CONFIGURATION = \
+        'fake_grid_master_grid_configuration.json'
