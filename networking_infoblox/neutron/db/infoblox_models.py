@@ -27,14 +27,16 @@ class InfobloxGrid(model_base.BASEV2):
     grid_id = sa.Column(sa.Integer(), nullable=False, primary_key=True)
     grid_name = sa.Column(sa.String(128), nullable=True)
     grid_connection = sa.Column(sa.String(1024), nullable=False)
+    grid_status = sa.Column(sa.String(length=6), nullable=False)
     __table_args__ = (
         sa.Index('ix_infoblox_grids_grid_name', 'grid_name'),
         model_base.BASEV2.__table_args__
     )
 
     def __repr__(self):
-        return "grid_id: %s, grid_name: %s, grid_connection: %s" % \
-               (self.grid_id, self.grid_name, self.grid_connection)
+        return "grid_id: %s, grid_name: %s, grid_connection: %s, " \
+               "grid_status: %s" % (self.grid_id, self.grid_name,
+                                    self.grid_connection, self.grid_status)
 
 
 class InfobloxGridMember(model_base.BASEV2):
