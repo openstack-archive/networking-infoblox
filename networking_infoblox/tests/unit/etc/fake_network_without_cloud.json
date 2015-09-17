@@ -1,0 +1,30 @@
+[
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTAuMTAuMS4wLzI0LzA:10.10.1.0/24/default",
+        "members": [
+            {
+                "_struct": "dhcpmember",
+                "ipv4addr": "192.168.1.10",
+                "name": "nios-7.2.0-member3.com"
+            }
+        ]
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTAuMTAuMi4wLzI0LzA:10.10.2.0/24/default",
+        "members": [
+            {
+                "_struct": "dhcpmember",
+                "ipv4addr": "192.168.1.10",
+                "name": "nios-7.2.0-member3.com"
+            }
+        ]
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTEuMTEuMS4wLzI0LzE:11.11.1.0/24/hs-view-1",
+        "members": []
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTEuMTEuMi4wLzI0LzE:11.11.2.0/24/hs-view-1",
+        "members": []
+    }
+]
