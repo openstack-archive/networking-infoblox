@@ -36,6 +36,7 @@ def upgrade():
         sa.Column('grid_id', sa.Integer(), nullable=False),
         sa.Column('grid_name', sa.String(length=128), nullable=True),
         sa.Column('grid_connection', sa.String(length=1024), nullable=False),
+        sa.Column('grid_status', sa.String(length=6), nullable=False),
         sa.PrimaryKeyConstraint('grid_id')
     )
 
