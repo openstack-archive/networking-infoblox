@@ -1,0 +1,68 @@
+[
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTAuMTAuMS4wLzI0LzA:10.10.1.0/24/default",
+        "cloud_info": {
+            "delegated_scope": "NONE",
+            "mgmt_platform": "",
+            "owned_by_adaptor": false
+        },
+        "members": [
+            {
+                "_struct": "dhcpmember",
+                "ipv4addr": "192.168.1.10",
+                "ipv6addr": null,
+                "name": "nios-7.2.0-member3.com"
+            }
+        ]
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTAuMTAuMi4wLzI0LzA:10.10.2.0/24/default",
+        "cloud_info": {
+            "delegated_scope": "NONE",
+            "mgmt_platform": "",
+            "owned_by_adaptor": false
+        },
+        "members": [
+            {
+                "_struct": "dhcpmember",
+                "ipv4addr": "192.168.1.10",
+                "ipv6addr": null,
+                "name": "nios-7.2.0-member3.com"
+            }
+        ]
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTEuMTEuMS4wLzI0LzE:11.11.1.0/24/hs-view-1",
+        "cloud_info": {
+            "delegated_member": {
+                "_struct": "dhcpmember",
+                "ipv4addr": "192.168.1.8",
+                "ipv6addr": "fd44:acb:5df6:1083::8",
+                "name": "nios-7.2.0-member1.com"
+            },
+            "delegated_root": "hs-view-1 (Network View)",
+            "delegated_scope": "SUBTREE",
+            "mgmt_platform": "Openstack",
+            "owned_by_adaptor": true,
+            "tenant": "grid:cloudapi:tenant/ZG5zLnRlbmFudCQxMDA5:1009/1009"
+        },
+        "members": []
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTEuMTEuMi4wLzI0LzE:11.11.2.0/24/hs-view-1",
+        "cloud_info": {
+            "delegated_member": {
+                "_struct": "dhcpmember",
+                "ipv4addr": "192.168.1.8",
+                "ipv6addr": "fd44:acb:5df6:1083::8",
+                "name": "nios-7.2.0-member1.com"
+            },
+            "delegated_root": "hs-view-1 (Network View)",
+            "delegated_scope": "SUBTREE",
+            "mgmt_platform": "Openstack",
+            "owned_by_adaptor": true,
+            "tenant": "grid:cloudapi:tenant/ZG5zLnRlbmFudCQxMDA5:1009/1009"
+        },
+        "members": []
+    }
+]

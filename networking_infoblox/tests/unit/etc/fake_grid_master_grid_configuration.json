@@ -1,0 +1,27 @@
+{
+    "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQw:nios-7.2.0-master.com",
+    "extattrs": {
+        "DNS Record Binding Types": {
+            "value": [
+                "record:a",
+                "record:aaaa",
+                "record:pt"
+            ]
+        },
+        "Default Domain Name Pattern": {
+            "value": "{subnet_id}.cloud.global.com"
+        },
+        "Default Host Name Pattern": {
+            "value": "host-{ip_address}"
+        },
+        "Default Network View": {
+            "value": "default"
+        },
+        "IP Allocation Strategy": {
+            "value": "Host Record"
+        },
+        "Network View Scope": {
+            "value": "Single"
+        }
+    }
+}

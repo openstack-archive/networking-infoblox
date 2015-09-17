@@ -1,0 +1,154 @@
+[
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQwLGRucyww:DNS/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d9faf94bcc74aafb8749f9d91d83a",
+        "key": "EwAAACGWL2mpHVmcL3Dvg+WI3bhj87Q=",
+        "kind": "Static",
+        "type": "DNS"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQwLGRoY3AsMA:DHCP/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d9faf94bcc74aafb8749f9d91d83a",
+        "key": "FAAAACGQP2XnHhTSLTyhgeSMlKcz/bpW",
+        "kind": "Static",
+        "type": "DHCP"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQwLGVudGVycHJpc2UsMA:GRID/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d9faf94bcc74aafb8749f9d91d83a",
+        "key": "GgAAACCWKHDpXFfHbGmhgeXBk+t5971RJaRkMej5",
+        "kind": "Static",
+        "type": "GRID"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQwLGNsb3VkLDA:CLOUD/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d9faf94bcc74aafb8749f9d91d83a",
+        "key": "FQAAACaUM2D/UBefYz7tz+aNkO558O5QcQ==",
+        "kind": "Static",
+        "type": "CLOUD"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQwLHZuaW9zLDA:VNIOS/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d9faf94bcc74aafb8749f9d91d83a",
+        "key": "GgAAADOWNXroUBefYz7tz+aNkO559KlUIvwyYuGt",
+        "kind": "Static",
+        "type": "VNIOS"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQyLGVudGVycHJpc2UsMA:GRID/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d9289586a2f2f5ef94e37b8b1f7b6",
+        "key": "GgAAAL7P8LC3GP2vl1izmpVsjcxsAszkPe+ccluk",
+        "kind": "Static",
+        "type": "GRID"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQyLHZuaW9zLDA:VNIOS/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d9289586a2f2f5ef94e37b8b1f7b6",
+        "key": "GwAAAK3P7bq2FL33mA//1JYgjslsAdjtOaOKdF3w5A==",
+        "kind": "Static",
+        "type": "VNIOS"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQyLGRucyww:DNS/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d9289586a2f2f5ef94e37b8b1f7b6",
+        "key": "EwAAAL/P96n3WfP01EH9mJUlw592BsU=",
+        "kind": "Static",
+        "type": "DNS"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQyLGNsb3VkX2FwaSww:CLOUD_API/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d9289586a2f2f5ef94e37b8b1f7b6",
+        "key": "GQAAALjN66ChN+62jUH9mdgij4AiAM3gdKvNJA0=",
+        "kind": "Static",
+        "type": "CLOUD_API"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQyLGRoY3AsMA:DHCP/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d9289586a2f2f5ef94e37b8b1f7b6",
+        "key": "FAAAAL/J56W5Wr661g2zmpQhioAmCMvj",
+        "kind": "Static",
+        "type": "DHCP"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQxLGVudGVycHJpc2UsMA:GRID/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d5f6b02a0a66cacb135cb0a63f88c",
+        "key": "GgAAAIh5zjlbLxDsnGh5Cg3zaCAfkMEwOsZyMnuK",
+        "kind": "Static",
+        "type": "GRID"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQxLHZuaW9zLDA:VNIOS/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d5f6b02a0a66cacb135cb0a63f88c",
+        "key": "GwAAAJt50zNaI1C0kz81RA6/ayUfk9U5PopkNH3efw==",
+        "kind": "Static",
+        "type": "VNIOS"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQxLGRucyww:DNS/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d5f6b02a0a66cacb135cb0a63f88c",
+        "key": "EwAAAIl5ySAbbh6333E3CA26JnMFlMg=",
+        "kind": "Static",
+        "type": "DNS"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQxLGRoY3AsMA:DHCP/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d5f6b02a0a66cacb135cb0a63f88c",
+        "key": "FAAAAIl/2SxVbVP53T15Cgy+b2xVmsY3",
+        "kind": "Static",
+        "type": "DHCP"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQxLGNsb3VkX2FwaSww:CLOUD_API/Static",
+        "expiry_date": 1442793599,
+        "hwid": "564d5f6b02a0a66cacb135cb0a63f88c",
+        "key": "GQAAAI571SlNAAP1hnE3CUC9amxRksA0c4IjZC0=",
+        "kind": "Static",
+        "type": "CLOUD_API"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQzLGVudGVycHJpc2UsMA:GRID/Static",
+        "expiry_date": 1442966399,
+        "hwid": "564dadadad7a8f64b57d13b085beac3e",
+        "key": "GgAAAFEKz4vTMivGAL3PR9bHox2M87VrZcdZpyrw",
+        "kind": "Static",
+        "type": "GRID"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQzLHZuaW9zLDA:VNIOS/Static",
+        "expiry_date": 1442966399,
+        "hwid": "564dadadad7a8f64b57d13b085beac3e",
+        "key": "GgAAAEIK0oHSPmueD+qBCdWLoBqM8KFuYp8P8iOm",
+        "kind": "Static",
+        "type": "VNIOS"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQzLGRucyww:DNS/Static",
+        "expiry_date": 1442966399,
+        "hwid": "564dadadad7a8f64b57d13b085beac3e",
+        "key": "EwAAAFAKyJKTcyWdQaSBRdaO7UyW97I=",
+        "kind": "Static",
+        "type": "DNS"
+    },
+    {
+        "_ref": "member:license/b25lLnByb2R1Y3RfbGljZW5zZSQzLGRoY3AsMA:DHCP/Static",
+        "expiry_date": 1442966399,
+        "hwid": "564dadadad7a8f64b57d13b085beac3e",
+        "key": "FAAAAFAM2J7dcGjTQerPR9eKpFPG97Js",
+        "kind": "Static",
+        "type": "DHCP"
+    }
+]
