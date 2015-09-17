@@ -31,9 +31,11 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         grid_1_id = 100
         grid_1_name = "Test Grid 1000"
         grid_1_connection = "{}"
+        grid_1_status = "ON"
         grid_2_id = 200
         grid_2_name = "Test Grid 2000"
         grid_2_connection = "{}"
+        grid_2_status = "OFF"
 
         # expects no grid
         grids = infoblox_db.get_grids(self.ctx.session)
@@ -41,9 +43,9 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
 
         # add two grids
         infoblox_db.add_grid(self.ctx.session, grid_1_id, grid_1_name,
-                             grid_1_connection)
+                             grid_1_connection, grid_1_status)
         infoblox_db.add_grid(self.ctx.session, grid_2_id, grid_2_name,
-                             grid_2_connection)
+                             grid_2_connection, grid_2_status)
 
         grids = infoblox_db.get_grids(self.ctx.session)
         self.assertEqual(2, len(grids))
@@ -51,11 +53,15 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         grids = infoblox_db.get_grids(self.ctx.session, grid_1_id)
         self.assertEqual(grid_1_id, grids[0]['grid_id'])
         self.assertEqual(grid_1_name, grids[0]['grid_name'])
+        self.assertEqual(grid_1_connection, grids[0]['grid_connection'])
+        self.assertEqual(grid_1_status, grids[0]['grid_status'])
 
         grids = infoblox_db.get_grids(self.ctx.session, grid_2_id,
                                       grid_2_name)
         self.assertEqual(grid_2_id, grids[0]['grid_id'])
         self.assertEqual(grid_2_name, grids[0]['grid_name'])
+        self.assertEqual(grid_2_connection, grids[0]['grid_connection'])
+        self.assertEqual(grid_2_status, grids[0]['grid_status'])
 
         # update grid 1
         grid_1_name_update = "Test Grid 1000 Enhanced"
@@ -87,7 +93,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
 
         # remove two grids
         infoblox_db.add_grid(self.ctx.session, grid_1_id, grid_1_name,
-                             grid_1_connection)
+                             grid_1_connection, grid_1_status)
         infoblox_db.remove_grids(self.ctx.session, [grid_1_id, grid_2_id])
 
         grids = infoblox_db.get_grids(self.ctx.session)
@@ -97,6 +103,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         grid_id = 100
         grid_name = "Test Grid 1000"
         grid_connection = "{}"
+        grid_status = "ON"
         member_1_id = 'M_1000'
         member_1_name = "Member 1000"
         member_1_ip = "10.10.1.12"
@@ -115,7 +122,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         self.assertEqual(0, len(members))
 
         infoblox_db.add_grid(self.ctx.session, grid_id, grid_name,
-                             grid_connection)
+                             grid_connection, grid_status)
         self.ctx.session.flush()
 
         # add two members
