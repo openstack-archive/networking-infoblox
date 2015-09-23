@@ -55,6 +55,14 @@ class GridManager(object):
         self.grid_config.sync()
         self.mapping.sync()
 
+    def get_config(self):
+        """Gets grid configuration.
+
+        Before this call is made, member must be in sync.
+        """
+        self.grid_config.sync()
+        return self.grid_config
+
     def _create_connector(self):
         opts = {'host': cfg.CONF_DC['grid_master_host'],
                 'username': cfg.CONF_DC['admin_user_name'],
@@ -82,6 +90,28 @@ class GridManager(object):
 
 
 class GridConfiguration(object):
+
+    property_to_ea_mapping = {
+        'network_view_scope': const.EA_GRID_CONFIG_NETWORK_VIEW_SCOPE,
+        'default_network_view': const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW,
+        'default_host_name_pattern':
+            const.EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN,
+        'default_domain_name_pattern':
+            const.EA_GRID_CONFIG_DEFAULT_DOMAIN_NAME_PATTERN,
+        'default_ns_group': const.EA_GRID_CONFIG_DEFAULT_NS_GROUP,
+        'admin_network_deletion': const.EA_GRID_CONFIG_ADMIN_NETWORK_DELETION,
+        'ip_allocation_strategy': const.EA_GRID_CONFIG_IP_ALLOCATION_STRATEGY,
+        'dns_record_binding_types':
+            const.EA_GRID_CONFIG_DNS_RECORD_BINDING_TYPES,
+        'dns_record_unbinding_types':
+            const.EA_GRID_CONFIG_DNS_RECORD_UNBINDING_TYPES,
+        'dns_record_removable_types':
+            const.EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES,
+        'dhcp_replay_management_network_view':
+            const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK_VIEW,
+        'dhcp_replay_management_network':
+            const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK,
+    }
 
     def __init__(self, context, connector):
         self._context = context
@@ -340,54 +370,10 @@ class GridConfiguration(object):
         return config
 
     def _update_fields(self, extattr):
-        self._update_from_ea(
-            'network_view_scope',
-            const.EA_GRID_CONFIG_NETWORK_VIEW_SCOPE,
-            extattr)
-        self._update_from_ea(
-            'default_network_view',
-            const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW,
-            extattr)
-        self._update_from_ea(
-            'default_host_name_pattern',
-            const.EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN,
-            extattr)
-        self._update_from_ea(
-            'default_domain_name_pattern',
-            const.EA_GRID_CONFIG_DEFAULT_DOMAIN_NAME_PATTERN,
-            extattr)
-        self._update_from_ea(
-            'default_ns_group',
-            const.EA_GRID_CONFIG_DEFAULT_NS_GROUP,
-            extattr)
-        self._update_from_ea(
-            'admin_network_deletion',
-            const.EA_GRID_CONFIG_ADMIN_NETWORK_DELETION,
-            extattr)
-        self._update_from_ea(
-            'ip_allocation_strategy',
-            const.EA_GRID_CONFIG_IP_ALLOCATION_STRATEGY,
-            extattr)
-        self._update_from_ea(
-            'dns_record_binding_types',
-            const.EA_GRID_CONFIG_DNS_RECORD_BINDING_TYPES,
-            extattr)
-        self._update_from_ea(
-            'dns_record_unbinding_types',
-            const.EA_GRID_CONFIG_DNS_RECORD_UNBINDING_TYPES,
-            extattr)
-        self._update_from_ea(
-            'dns_record_removable_types',
-            const.EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES,
-            extattr)
-        self._update_from_ea(
-            'dhcp_replay_management_network_view',
-            const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK_VIEW,
-            extattr)
-        self._update_from_ea(
-            'dhcp_replay_management_network',
-            const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK,
-            extattr)
+        for property in self.property_to_ea_mapping:
+            self._update_from_ea(property,
+                                 self.property_to_ea_mapping[property],
+                                 extattr)
 
     def _update_from_ea(self, field, ea_name, extattrs):
         value = utils.get_ea_value(ea_name, extattrs)

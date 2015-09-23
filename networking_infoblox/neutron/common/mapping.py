@@ -15,9 +15,6 @@
 
 from oslo_log import log as logging
 
-from networking_infoblox.neutron.common import exceptions as exc
-from networking_infoblox.neutron.common import utils
-from networking_infoblox.neutron.db import infoblox_db as dbi
 
 
 LOG = logging.getLogger(__name__)
