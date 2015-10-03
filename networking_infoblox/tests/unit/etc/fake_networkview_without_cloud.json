@@ -6,16 +6,50 @@
         "name": "default"
     },
     {
-        "_ref": "networkview/ZG5zLm5ldHdvcmtfdmlldyQx:hs-view-1/false",
+        "_ref": "networkview/ZG5zLm5ldHdvcmtfdmlldyQ1:hs-view-1/false",
         "extattrs": {
-            "Address Scope ID": {
-                "value": "111"
+            "Tenant CIDR Mapping": {
+                "value": [
+                    "11.11.1.0/24",
+                    "11.11.2.0/24"
+                ]
             },
-            "Address Scope Name": {
-                "value": "test"
+            "Tenant ID Mapping": {
+                "value": [
+                    "90fbad5a098a4b7cb98826128d5b40b3",
+                    "80afaaba012acb9c12888128d5123a09"
+                ]
             }
         },
         "is_default": false,
         "name": "hs-view-1"
+    },
+    {
+        "_ref": "networkview/ZG5zLm5ldHdvcmtfdmlldyQ2:hs-view-2/false",
+        "extattrs": {
+            "Tenant ID Mapping": {
+                "value": "90fbad5a098a4b7cb98826128d5b40b3"
+            },
+            "Subnet CIDR Mapping": {
+                "value": [
+                    "12.12.1.0/24",
+                    "12.12.2.0/24"
+                ]
+            }
+        },
+        "is_default": false,
+        "name": "hs-view-2"
+    },
+    {
+        "_ref": "networkview/ZG5zLm5ldHdvcmtfdmlldyQ3:hs-view-3/false",
+        "extattrs": {},
+        "is_default": false,
+        "name": "hs-view-3"
+    },
+    {
+        "_ref": "networkview/ZG5zLm5ldHdvcmtfdmlldyQ4:hs-view-4/false",
+        "extattrs": {},
+        "is_default": false,
+        "name": "hs-view-4"
     }
 ]
