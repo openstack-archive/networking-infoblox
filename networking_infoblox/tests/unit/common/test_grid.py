@@ -83,9 +83,10 @@ class GridTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.test_grid_config.sync()
 
         # verify if grid config object fields are set correctly
-        expected = utils.get_ea_value('Network View Scope', config_json)
+        expected = utils.get_ea_value('Default Network View Scope',
+                                      config_json)
         self.assertEqual(expected,
-                         self.test_grid_config.network_view_scope)
+                         self.test_grid_config.default_network_view_scope)
         expected = utils.get_ea_value('Default Network View', config_json)
         self.assertEqual(expected,
                          self.test_grid_config.default_network_view)
