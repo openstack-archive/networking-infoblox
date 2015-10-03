@@ -7,7 +7,9 @@
                 "ipv4addr": "192.168.1.10",
                 "name": "nios-7.2.0-member3.com"
             }
-        ]
+        ],
+        "network": "10.10.1.0/24",
+        "network_view": "default"
     },
     {
         "_ref": "network/ZG5zLm5ldHdvcmskMTAuMTAuMi4wLzI0LzA:10.10.2.0/24/default",
@@ -16,15 +18,105 @@
                 "_struct": "dhcpmember",
                 "ipv4addr": "192.168.1.10",
                 "name": "nios-7.2.0-member3.com"
+            },
+            {
+                "_struct": "dhcpmember",
+                "ipv4addr": "192.168.1.13",
+                "ipv6addr": null,
+                "name": "nios-7.2.0-member6.com"
             }
-        ]
+        ],
+        "network": "10.10.2.0/24",
+        "network_view": "default"
     },
     {
-        "_ref": "network/ZG5zLm5ldHdvcmskMTEuMTEuMS4wLzI0LzE:11.11.1.0/24/hs-view-1",
-        "members": []
+        "_ref": "network/ZG5zLm5ldHdvcmskMTAuMTAuMy4wLzI0LzA:10.10.3.0/24/default",
+        "members": [],
+        "network": "10.10.3.0/24",
+        "network_view": "default"
     },
     {
-        "_ref": "network/ZG5zLm5ldHdvcmskMTEuMTEuMi4wLzI0LzE:11.11.2.0/24/hs-view-1",
-        "members": []
+        "_ref": "network/ZG5zLm5ldHdvcmskMTAuMTAuNC4wLzI0LzA:10.10.4.0/24/default",
+        "members": [],
+        "network": "10.10.4.0/24",
+        "network_view": "default"
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTAuMTAuNS4wLzI0LzA:10.10.5.0/24/default",
+        "members": [
+            {
+                "_struct": "dhcpmember",
+                "ipv4addr": "192.168.1.11",
+                "name": "nios-7.2.0-member4.com"
+            }
+        ],
+        "network": "10.10.5.0/24",
+        "network_view": "default"
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTAuMTAuNi4wLzI0LzA:10.10.6.0/24/default",
+        "members": [],
+        "network": "10.10.6.0/24",
+        "network_view": "default"
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTEuMTEuMS4wLzI0LzU:11.11.1.0/24/hs-view-1",
+        "members": [],
+        "network": "11.11.1.0/24",
+        "network_view": "hs-view-1"
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTEuMTEuMi4wLzI0LzU:11.11.2.0/24/hs-view-1",
+        "members": [
+            {
+                "_struct": "dhcpmember",
+                "ipv4addr": "192.168.1.8",
+                "name": "nios-7.2.0-member1.com"
+            }
+        ],
+        "network": "11.11.2.0/24",
+        "network_view": "hs-view-1"
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTIuMTIuMS4wLzI0LzY:12.12.1.0/24/hs-view-2",
+        "members": [],
+        "network": "12.12.1.0/24",
+        "network_view": "hs-view-2"
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTIuMTIuMi4wLzI0LzY:12.12.2.0/24/hs-view-2",
+        "members": [],
+        "network": "12.12.2.0/24",
+        "network_view": "hs-view-2"
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTMuMTMuMS4wLzI0Lzc:13.13.1.0/24/hs-view-3",
+        "members": [],
+        "network": "13.13.1.0/24",
+        "network_view": "hs-view-3"
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTMuMTMuMi4wLzI0Lzc:13.13.2.0/24/hs-view-3",
+        "members": [
+            {
+                "_struct": "dhcpmember",
+                "ipv4addr": "192.168.1.9",
+                "name": "nios-7.2.0-member2.com"
+            }
+        ],
+        "network": "13.13.2.0/24",
+        "network_view": "hs-view-3"
+    },
+    {
+        "_ref": "network/ZG5zLm5ldHdvcmskMTMuMTMuNC4wLzI0Lzc:13.13.4.0/24/hs-view-3",
+        "members": [],
+        "network": "13.13.4.0/24",
+        "network_view": "hs-view-3"
+    },
+    {
+        "_ref": "ipv6network/ZG5zLm5ldHdvcmskMjAwMTpkYjg6ODVhMzo6LzY0LzA:2001%3Adb8%3A85a3%3A%3A/64/default",
+        "members": [],
+        "network": "2001:db8:85a3::/64",
+        "network_view": "default"
     }
 ]

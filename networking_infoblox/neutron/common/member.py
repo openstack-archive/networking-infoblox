@@ -26,10 +26,10 @@ LOG = logging.getLogger(__name__)
 
 class GridMemberManager(object):
 
-    def __init__(self, context, connector, grid_config):
-        self._context = context
-        self._connector = connector
+    def __init__(self, grid_config):
         self._grid_config = grid_config
+        self._context = self._grid_config.context
+        self._connector = self._grid_config.gm_connector
 
     def sync(self):
         """Discover and sync the active grid and its members."""
@@ -64,8 +64,7 @@ class GridMemberManager(object):
         # deleting grids are delicate operation so we won't allow it
         # but we will set grid status to OFF to unused grids.
         persisted_set = set(db_grid_ids)
-        current_set = set([self._grid_config.grid_id])
-        disable_set = persisted_set.difference(current_set)
+        disable_set = persisted_set.difference([self._grid_config.grid_id])
         disabling_grid_ids = list(disable_set)
         for grid_id in disabling_grid_ids:
             dbi.update_grid(session,
@@ -95,11 +94,8 @@ class GridMemberManager(object):
         in used are set to 'OFF' status.
         """
         session = self._context.session
-
-        db_members = dbi.get_members(session,
-                                     grid_id=self._grid_config.grid_id)
-        db_member_ids = utils.get_values_from_records('member_id',
-                                                      db_members)
+        grid_id = self._grid_config.grid_id
+        db_members = dbi.get_members(session, grid_id=grid_id)
 
         discovered_members = self._discover_members()
         if not discovered_members:
@@ -112,7 +108,6 @@ class GridMemberManager(object):
 
         for member in discovered_members:
             # get member attributes
-            member_id = utils.get_oid_from_nios_ref(member['_ref'])
             member_name = member['host_name']
             member_ipv4 = member['vip_setting']['address']
             member_ipv6 = member['ipv6_setting'].get('virtual_ip') \
@@ -132,19 +127,23 @@ class GridMemberManager(object):
                                                 member_ipv6)
 
             # update the existing member or add a new member
-            if member_id in db_member_ids:
+            db_member = utils.find_one_in_list('member_name', member_name,
+                                               db_members)
+            if db_member:
+                member_id = db_member.member_id
                 dbi.update_member(session,
                                   member_id,
-                                  self._grid_config.grid_id,
+                                  grid_id,
                                   member_name,
                                   member_ipv4,
                                   member_ipv6,
                                   member_type,
                                   member_status)
             else:
+                member_id = utils.get_hash(str(grid_id) + member_name)
                 dbi.add_member(session,
                                member_id,
-                               self._grid_config.grid_id,
+                               grid_id,
                                member_name,
                                member_ipv4,
                                member_ipv6,
@@ -155,6 +154,7 @@ class GridMemberManager(object):
 
         # deleting members are delicate operation so we won't allow it
         # but we will set member status to OFF to unused members.
+        db_member_ids = utils.get_values_from_records('member_id', db_members)
         persisted_set = set(db_member_ids)
         discovered_set = set(discovered_member_ids)
         disable_set = persisted_set.difference(discovered_set)
@@ -162,7 +162,7 @@ class GridMemberManager(object):
         for member_id in disabling_member_ids:
             dbi.update_member(session,
                               member_id,
-                              self._grid_config.grid_id,
+                              grid_id,
                               member_status=const.MEMBER_STATUS_OFF)
         session.flush()
 

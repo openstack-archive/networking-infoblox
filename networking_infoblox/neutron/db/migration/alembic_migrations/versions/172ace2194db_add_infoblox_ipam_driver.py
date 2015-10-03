@@ -30,7 +30,6 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    # infoblox grids
     op.create_table(
         'infoblox_grids',
         sa.Column('grid_id', sa.Integer(), nullable=False),
@@ -40,7 +39,6 @@ def upgrade():
         sa.PrimaryKeyConstraint('grid_id')
     )
 
-    # infoblox grid members
     op.create_table(
         'infoblox_grid_members',
         sa.Column('member_id', sa.String(length=32), nullable=False),
@@ -68,36 +66,44 @@ def upgrade():
             'grid_id', 'member_status')
     )
 
-    # infoblox mapping
     op.create_table(
-        'infoblox_mapping',
+        'infoblox_network_views',
         sa.Column('id', sa.String(length=36), nullable=False),
         sa.Column('network_view', sa.String(length=255), nullable=False),
-        sa.Column('neutron_object_id', sa.String(length=255), nullable=False),
-        sa.Column('neutron_object_name', sa.String(length=255), nullable=True),
-        sa.Column('mapping_scope', sa.String(length=24), nullable=False),
+        sa.Column('grid_id', sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint(
-            'network_view', 'neutron_object_id', 'neutron_object_name',
-            name='uniq_infoblox_mapping_network_view_neutron_object_id')
+            'network_view', 'grid_id',
+            name='uniq_infoblox_network_views_network_view_grid_id')
     )
 
-    # infoblox mapping members
+    op.create_table(
+        'infoblox_mapping_conditions',
+        sa.Column('network_view_id', sa.String(length=36), nullable=False),
+        sa.Column('neutron_object_name', sa.String(length=48), nullable=False),
+        sa.Column('neutron_object_value', sa.String(length=255),
+                  nullable=False),
+        sa.ForeignKeyConstraint(['network_view_id'],
+                                ['infoblox_network_views.id'],
+                                ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('network_view_id', 'neutron_object_name',
+                                'neutron_object_value')
+    )
+
     op.create_table(
         'infoblox_mapping_members',
-        sa.Column('mapping_id', sa.String(length=36), nullable=False),
+        sa.Column('network_view_id', sa.String(length=36), nullable=False),
         sa.Column('member_id', sa.String(length=32), nullable=False),
         sa.Column('mapping_relation', sa.String(length=24), nullable=False),
-        sa.ForeignKeyConstraint(['mapping_id'],
-                                ['infoblox_mapping.id'],
+        sa.ForeignKeyConstraint(['network_view_id'],
+                                ['infoblox_network_views.id'],
                                 ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['member_id'],
                                 ['infoblox_grid_members.member_id'],
                                 ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('mapping_id', 'member_id')
+        sa.PrimaryKeyConstraint('network_view_id', 'member_id')
     )
 
-    # infoblox service members
     op.create_table(
         'infoblox_service_members',
         sa.Column('member_id', sa.String(length=48), nullable=False),
@@ -115,18 +121,19 @@ def upgrade():
             'network_id')
     )
 
-    # infoblox network views
     op.create_table(
-        'infoblox_network_views',
+        'infoblox_network_view_allocations',
         sa.Column('network_id', sa.String(length=36), nullable=False),
-        sa.Column('network_view', sa.String(length=255), nullable=False),
+        sa.Column('network_view_id', sa.String(length=36), nullable=False),
         sa.ForeignKeyConstraint(['network_id'],
                                 ['networks.id'],
+                                ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['network_view_id'],
+                                ['infoblox_network_views.id'],
                                 ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('network_id')
     )
 
-    # infoblox management networks
     op.create_table(
         'infoblox_management_networks',
         sa.Column('network_id', sa.String(length=36), nullable=False),
@@ -139,7 +146,6 @@ def upgrade():
         sa.PrimaryKeyConstraint('network_id', 'ip_address')
     )
 
-    # infoblox_objects
     op.create_table(
         'infoblox_objects',
         sa.Column('object_id', sa.String(length=255), nullable=False),
