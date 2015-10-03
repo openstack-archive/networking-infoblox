@@ -124,7 +124,6 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         member_mgr._discover_member_licenses = mock.Mock()
         member_mgr._discover_member_licenses.return_value = None
-
         member_mgr.sync_members()
 
         members = dbi.get_members(self.ctx.session)
@@ -185,7 +184,8 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         member_hwids = utils.get_values_from_records('hwid',
                                                      cloud_lecensed_members)
         for m in member_json:
-            member_id = utils.get_oid_from_nios_ref(m['_ref'])
+            member_id_arg = str(self.test_grid_config.grid_id) + m['host_name']
+            member_id = utils.get_hash(member_id_arg)
             member_hwid = m['node_info'][0].get('hwid')
             if member_hwid in member_hwids:
                 cloud_member_list.append(member_id)
@@ -193,7 +193,6 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         # now we know member licenses so get members in db
         members = dbi.get_members(self.ctx.session)
         self.assertEqual(len(member_json), len(members))
-
         # verify member types
         for m in members:
             if self.test_grid_config.grid_master_host == m['member_ip']:

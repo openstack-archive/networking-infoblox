@@ -63,6 +63,25 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual('test grid 1', grid_names[0])
         self.assertEqual('test grid 2', grid_names[1])
 
+    def test_get_composite_values_from_records(self):
+        grid_1_id = 100
+        grid_1_name = 'test grid 1'
+        grid_2_id = 200
+        grid_2_name = 'test grid 2'
+        dbi.add_grid(self.ctx.session, grid_1_id, grid_1_name, '{}', 'ON')
+        dbi.add_grid(self.ctx.session, grid_2_id, grid_2_name, '{}', 'OFF')
+
+        grids = dbi.get_grids(self.ctx.session)
+        composite_keys = ['grid_id', 'grid_name']
+        delimiter = '-'
+        composite_values = utils.get_composite_values_from_records(
+            composite_keys, grids, delimiter)
+        self.assertEqual(2, len(composite_values))
+        expected_value = str(grid_1_id) + delimiter + grid_1_name
+        self.assertEqual(expected_value, composite_values[0])
+        expected_value = str(grid_2_id) + delimiter + grid_2_name
+        self.assertEqual(expected_value, composite_values[1])
+
     def test_db_records_to_json(self):
         grid_1_id = 100
         grid_2_id = 200
@@ -153,6 +172,7 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual(str(value), my_string)
 
     def test_get_ea_value(self):
+        # test EAs with scalar
         ea = {"extattrs": {"Cloud API Owned": {"value": "True"},
                            "CMP Type": {"value": "Openstack"},
                            "Subnet ID": {"value": "subnet-22222222"}}}
@@ -162,6 +182,31 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual('Openstack', cmp_type_ea)
         subnet_id_ea = utils.get_ea_value("Subnet ID", ea)
         self.assertEqual('subnet-22222222', subnet_id_ea)
+
+        # test EA with a list
+        ea = {
+            "extattrs": {
+                "Tenant CIDR Mapping": {
+                    "value": [
+                        "11.11.1.0/24",
+                        "11.11.2.0/24"
+                    ]
+                },
+                "Tenant ID Mapping": {
+                    "value": "1234567890"
+                }
+            }
+        }
+        tenant_cidr_mapping = utils.get_ea_value("Tenant CIDR Mapping", ea)
+        expected = ["11.11.1.0/24", "11.11.2.0/24"]
+        self.assertEqual(expected, tenant_cidr_mapping)
+        tenant_id_mapping = utils.get_ea_value("Tenant ID Mapping", ea)
+        expected = "1234567890"
+        self.assertEqual(expected, tenant_id_mapping)
+        # use 'should_return_list_value' parameter
+        tenant_id_mapping = utils.get_ea_value("Tenant ID Mapping", ea, True)
+        expected = ["1234567890"]
+        self.assertEqual(expected, tenant_id_mapping)
 
         # negative tests
         invalid_ea = utils.get_ea_value("Invalid", ea)
@@ -274,6 +319,22 @@ class TestUtils(testlib_api.SqlTestCase):
     def test_remove_any_space(self):
         pass
 
+    def test_get_hash(self):
+        hash_str = utils.get_hash("")
+        self.assertEqual(None, hash_str)
+
+        hash_str = utils.get_hash(None)
+        self.assertEqual(None, hash_str)
+
+        hash_str = utils.get_hash([])
+        self.assertEqual(None, hash_str)
+
+        hash_str = utils.get_hash(['abc'])
+        self.assertEqual(None, hash_str)
+
+        hash_str = utils.get_hash('I need a hash string!!!')
+        self.assertEqual(32, len(hash_str))
+
     def test_get_oid_from_nios_ref(self):
         ref = None
         oid = utils.get_oid_from_nios_ref(ref)
@@ -291,3 +352,28 @@ class TestUtils(testlib_api.SqlTestCase):
               "VNIOS/Static"
         oid = utils.get_oid_from_nios_ref(ref)
         self.assertEqual("b25lLnByb2R1Y3RfbGljZW5zZSQwLHZuaW9zLDA", oid)
+
+    def test_get_network_info_from_nios_ref(self):
+        ref = None
+        network = utils.get_network_info_from_nios_ref(ref)
+        self.assertEqual(None, network)
+
+        ref = ""
+        network = utils.get_network_info_from_nios_ref(ref)
+        self.assertEqual(None, network)
+
+        ref = "network/ZG5zLm5ldHdvcmskMTQuMTQuMS4wLzI0LzQ:" + \
+              "14.14.1.0/24/hs-view-4"
+        network = utils.get_network_info_from_nios_ref(ref)
+        expect = {'object_id': 'ZG5zLm5ldHdvcmskMTQuMTQuMS4wLzI0LzQ',
+                  'network_view': 'hs-view-4',
+                  'cidr': '14.14.1.0/24'}
+        self.assertEqual(expect, network)
+
+        ref = "ipv6network/ZG5zLm5ldHdvcmskMjAwMTpkYjg6ODVhMzo6LzY0LzA:" + \
+              "2001%3Adb8%3A85a3%3A%3A/64/default"
+        network = utils.get_network_info_from_nios_ref(ref)
+        expect = {'object_id': 'ZG5zLm5ldHdvcmskMjAwMTpkYjg6ODVhMzo6LzY0LzA',
+                  'network_view': 'default',
+                  'cidr': '2001:db8:85a3::/64'}
+        self.assertEqual(expect, network)

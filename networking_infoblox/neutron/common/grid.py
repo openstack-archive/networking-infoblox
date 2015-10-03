@@ -92,7 +92,8 @@ class GridManager(object):
 class GridConfiguration(object):
 
     property_to_ea_mapping = {
-        'network_view_scope': const.EA_GRID_CONFIG_NETWORK_VIEW_SCOPE,
+        'default_network_view_scope':
+            const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE,
         'default_network_view': const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW,
         'default_host_name_pattern':
             const.EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN,
@@ -136,7 +137,7 @@ class GridConfiguration(object):
         self._is_cloud_wapi = False
 
         # default settings from nios grid master
-        self.network_view_scope = const.NETWORK_VIEW_SCOPE_SINGLE
+        self.default_network_view_scope = const.NETWORK_VIEW_SCOPE_SINGLE
         self.default_network_view = 'default'
         self.default_host_name_pattern = 'host-{ip_address}'
         self.default_domain_name_pattern = '{subnet_id}.cloud.global.com'

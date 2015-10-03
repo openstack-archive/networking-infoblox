@@ -139,91 +139,166 @@ def remove_members(session, member_ids):
     if member_ids and isinstance(member_ids, list):
         with session.begin(subtransactions=True):
             q = session.query(ib_models.InfobloxGridMember)
-            q = q.filter(
-                ib_models.InfobloxGridMember.member_id.in_(member_ids))
+            q = q.filter(ib_models.InfobloxGridMember.member_id.in_(
+                         member_ids))
             q.delete(synchronize_session=False)
 
 
-# Network View Mapping
-def get_mapping(session, network_view=None, neutron_object_id=None,
-                neutron_object_name=None):
-    q = session.query(ib_models.InfobloxMapping)
+# Network Views
+def get_network_views(session, network_view=None, grid_id=None):
+    q = session.query(ib_models.InfobloxNetworkView)
     if network_view:
-        q = q.filter(ib_models.InfobloxMapping.network_view == network_view)
-    if neutron_object_id:
-        q = q.filter(ib_models.InfobloxMapping.neutron_object_id ==
-                     neutron_object_id)
-    if neutron_object_name:
-        q = q.filter(ib_models.InfobloxMapping.neutron_object_name ==
-                     neutron_object_name)
+        q = q.filter(ib_models.InfobloxNetworkView.network_view ==
+                     network_view)
+    if grid_id:
+        q = q.filter(ib_models.InfobloxNetworkView.grid_id == grid_id)
     return q.all()
 
 
-def add_mapping(session, network_view, neutron_object_id, neutron_object_name,
-                mapping_scope):
-    mapping = ib_models.InfobloxMapping(
-        network_view=network_view,
-        neutron_object_id=neutron_object_id,
-        neutron_object_name=neutron_object_name,
-        mapping_scope=mapping_scope)
-    session.add(mapping)
-    return mapping
+def add_network_view(session, network_view, grid_id):
+    network_view = ib_models.InfobloxNetworkView(network_view=network_view,
+                                                 grid_id=grid_id)
+    session.add(network_view)
+    session.flush()
+    return network_view
 
 
-def update_mapping(session, network_view, neutron_object_id=None,
-                   neutron_object_name=None, mapping_scope=None):
-    update_data = dict()
-    if network_view:
-        update_data['network_view'] = network_view
-    if neutron_object_id:
-        update_data['neutron_object_id'] = neutron_object_id
+def remove_network_views(session, ids):
+    if ids and isinstance(ids, list):
+        with session.begin(subtransactions=True):
+            q = session.query(ib_models.InfobloxNetworkView)
+            q = q.filter(ib_models.InfobloxNetworkView.id.in_(ids))
+            q.delete(synchronize_session=False)
+
+
+def remove_network_views_by_names(session, network_views, grid_id):
+    if network_views and isinstance(network_views, list):
+        with session.begin(subtransactions=True):
+            q = session.query(ib_models.InfobloxNetworkView)
+            q = q.filter(ib_models.InfobloxNetworkView.grid_id == grid_id)
+            q = q.filter(ib_models.InfobloxNetworkView.network_view.in_(
+                         network_views))
+            q.delete(synchronize_session=False)
+
+
+# Mapping Conditions
+def get_mapping_conditions(session, network_view_id=None, grid_id=None,
+                           neutron_object_name=None,
+                           neutron_object_value=None):
+    q = session.query(ib_models.InfobloxMappingCondition)
+    if network_view_id:
+        q = q.filter(ib_models.InfobloxMappingCondition.network_view_id ==
+                     network_view_id)
     if neutron_object_name:
-        update_data['neutron_object_name'] = neutron_object_name
-    if mapping_scope:
-        update_data['mapping_scope'] = mapping_scope
+        q = q.filter(ib_models.InfobloxMappingCondition.neutron_object_name ==
+                     neutron_object_name)
+    if neutron_object_value:
+        q = q.filter(ib_models.InfobloxMappingCondition.neutron_object_value ==
+                     neutron_object_value)
+    if grid_id:
+        sub_qry = session.query(ib_models.InfobloxNetworkView.id)
+        sub_qry = sub_qry.filter(ib_models.InfobloxNetworkView.grid_id ==
+                                 grid_id)
+        q = q.filter(ib_models.InfobloxMappingCondition.network_view_id.in_(
+                     sub_qry))
+    return q.all()
 
-    if update_data:
-        session.query(ib_models.InfobloxMapping).\
-            filter_by(network_view=network_view).\
-            update(update_data)
+
+def add_mapping_condition(session, network_view_id, neutron_object_name,
+                          neutron_object_value):
+    mapping_condition = ib_models.InfobloxMappingCondition(
+        network_view_id=network_view_id,
+
+        neutron_object_name=neutron_object_name,
+        neutron_object_value=neutron_object_value)
+    session.add(mapping_condition)
+    return mapping_condition
 
 
-def remove_mapping(session, network_view):
+def add_mapping_conditions(session, network_view_id, neutron_object_name,
+                           neutron_object_values):
+    mapping_conditions = []
+    if neutron_object_values and isinstance(neutron_object_values, list):
+        for value in neutron_object_values:
+            mapping_condition = ib_models.InfobloxMappingCondition(
+                network_view_id=network_view_id,
+                neutron_object_name=neutron_object_name,
+                neutron_object_value=value
+            )
+            session.add(mapping_condition)
+            mapping_conditions.append(mapping_condition)
+    return mapping_conditions
+
+
+def remove_mapping_condition(session, network_view_id, neutron_object_name,
+                             neutron_object_value):
     with session.begin(subtransactions=True):
-        session.query(ib_models.InfobloxMapping).\
-            filter_by(network_view=network_view).delete()
+        q = session.query(ib_models.InfobloxMappingCondition)
+        q = q.filter(ib_models.InfobloxMappingCondition.network_view_id ==
+                     network_view_id)
+        q = q.filter(ib_models.InfobloxMappingCondition.neutron_object_name ==
+                     neutron_object_name)
+        q = q.filter(ib_models.InfobloxMappingCondition.neutron_object_value ==
+                     neutron_object_value)
+        q.delete(synchronize_session=False)
 
 
-# Mapping Member
-def get_mapping_member(session, mapping_id=None, member_id=None,
-                       mapping_relation=None):
-    q = session.query(ib_models.InfobloxMapping)
-    if mapping_id:
-        q = q.filter(ib_models.InfobloxMappingMember.mapping_id == mapping_id)
+def remove_mapping_conditions(session, network_view_id, neutron_object_name,
+                              neutron_object_values):
+    if network_view_id:
+        with session.begin(subtransactions=True):
+            q = session.query(ib_models.InfobloxMappingCondition)
+            q = q.filter(ib_models.InfobloxMappingCondition.network_view_id ==
+                         network_view_id)
+            if neutron_object_name:
+                q = q.filter(ib_models.InfobloxMappingCondition.
+                             neutron_object_name == neutron_object_name)
+            if (neutron_object_values and
+                    isinstance(neutron_object_values, list)):
+                q = q.filter(ib_models.InfobloxMappingCondition.
+                             neutron_object_value.in_(neutron_object_values))
+            q.delete(synchronize_session=False)
+
+
+# Mapping Members
+def get_mapping_members(session, network_view_id=None, member_id=None,
+                        grid_id=None, mapping_relation=None):
+    q = session.query(ib_models.InfobloxMappingMember)
+    if network_view_id:
+        q = q.filter(ib_models.InfobloxMappingMember.network_view_id ==
+                     network_view_id)
     if member_id:
         q = q.filter(ib_models.InfobloxMappingMember.member_id == member_id)
     if mapping_relation:
         q = q.filter(ib_models.InfobloxMappingMember.mapping_relation ==
                      mapping_relation)
+    if grid_id:
+        sub_qry = session.query(ib_models.InfobloxNetworkView.id)
+        sub_qry = sub_qry.filter(ib_models.InfobloxNetworkView.grid_id ==
+                                 grid_id)
+        q = q.filter(ib_models.InfobloxMappingMember.network_view_id.in_(
+                     sub_qry))
     return q.all()
 
 
-def add_mapping_member(session, mapping_id, member_id, mapping_relation):
-    mapping = ib_models.InfobloxMappingMember(
-        mapping_id=mapping_id,
+def add_mapping_member(session, network_view_id, member_id, mapping_relation):
+    mapping_member = ib_models.InfobloxMappingMember(
+        network_view_id=network_view_id,
         member_id=member_id,
         mapping_relation=mapping_relation)
-    session.add(mapping)
-    return mapping
+    session.add(mapping_member)
+    return mapping_member
 
 
-def update_mapping_member(session, mapping_id, member_id, mapping_relation):
+def update_mapping_member(session, network_view_id, member_id,
+                          mapping_relation):
     session.query(ib_models.InfobloxMappingMember).\
-        filter_by(mapping_id=mapping_id, member_id=member_id).\
+        filter_by(network_view_id=network_view_id, member_id=member_id).\
         update({'mapping_relation': mapping_relation})
 
 
-def remove_mapping_member(session, network_view):
+def remove_mapping_member(session, network_view_id, member_id):
     with session.begin(subtransactions=True):
-        session.query(ib_models.InfobloxMappingMember).\
-            filter_by(network_view=network_view).delete()
+        q = session.query(ib_models.InfobloxMappingMember)
+        q = q.filter_by(network_view_id=network_view_id, member_id=member_id)
+        q.delete(synchronize_session=False)
