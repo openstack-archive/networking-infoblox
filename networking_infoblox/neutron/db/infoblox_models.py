@@ -34,9 +34,9 @@ class InfobloxGrid(model_base.BASEV2):
     )
 
     def __repr__(self):
-        return "grid_id: %s, grid_name: %s, grid_connection: %s, " \
-               "grid_status: %s" % (self.grid_id, self.grid_name,
-                                    self.grid_connection, self.grid_status)
+        return ("grid_id: %s, grid_name: %s, grid_connection: %s, "
+                "grid_status: %s" % (self.grid_id, self.grid_name,
+                                     self.grid_connection, self.grid_status))
 
 
 class InfobloxGridMember(model_base.BASEV2):
@@ -71,46 +71,66 @@ class InfobloxGridMember(model_base.BASEV2):
     )
 
     def __repr__(self):
-        return "member_id: %s, grid_id: %s, member_name: %s, member_ip: %s," \
-               " member_ipv6: %s, member_type: %s, member_status: %s" % \
-               (self.member_id, self.grid_id, self.member_name,
-                self.member_ip, self.member_ipv6, self.member_type,
-                self.member_status)
+        return ("member_id: %s, grid_id: %s, member_name: %s, member_ip: %s, "
+                "member_ipv6: %s, member_type: %s, member_status: %s" %
+                (self.member_id, self.grid_id, self.member_name,
+                 self.member_ip, self.member_ipv6, self.member_type,
+                 self.member_status))
 
 
-class InfobloxMapping(model_base.BASEV2, models_v2.HasId):
-    """Network view mapping to Neutron objects."""
+class InfobloxNetworkView(model_base.BASEV2, models_v2.HasId):
+    """Network views"""
 
-    __tablename__ = 'infoblox_mapping'
+    __tablename__ = 'infoblox_network_views'
 
     network_view = sa.Column(sa.String(255), nullable=False)
-    neutron_object_id = sa.Column(sa.String(255), nullable=False)
-    neutron_object_name = sa.Column(sa.String(255), nullable=False)
-    mapping_scope = sa.Column(sa.String(24), nullable=False)
+    grid_id = sa.Column(sa.Integer(), nullable=False)
     __table_args__ = (
         sa.UniqueConstraint(
-            'network_view', 'neutron_object_id', 'neutron_object_name',
-            name='uniq_infoblox_mapping_network_view_neutron_object_id'),
+            'network_view', 'grid_id',
+            name='uniq_infoblox_network_views_network_view_grid_id'),
         model_base.BASEV2.__table_args__
     )
 
     def __repr__(self):
-        return "network_view: %s, neutron_object_id: %s, " \
-               "neutron_object_name: %s, mapping_scope: %s" % \
-               (self.network_view, self.neutron_object_id,
-                self.neutron_object_name, self.mapping_scope)
+        return "network_view: %s, grid_id: %s" % (self.network_view,
+                                                  self.grid_id)
+
+
+class InfobloxMappingCondition(model_base.BASEV2):
+    """Network view mapping conditions."""
+
+    __tablename__ = 'infoblox_mapping_conditions'
+
+    network_view_id = sa.Column(sa.String(36),
+                                sa.ForeignKey('infoblox_network_views.id',
+                                              ondelete="CASCADE"),
+                                nullable=False,
+                                primary_key=True)
+    neutron_object_name = sa.Column(sa.String(48),
+                                    nullable=False,
+                                    primary_key=True)
+    neutron_object_value = sa.Column(sa.String(255),
+                                     nullable=False,
+                                     primary_key=True)
+
+    def __repr__(self):
+        return ("network_view_id: %s, neutron_object_name: %s, "
+                "neutron_object_value: %s" %
+                (self.network_view_id, self.neutron_object_name,
+                 self.neutron_object_value))
 
 
 class InfobloxMappingMember(model_base.BASEV2, models_v2.HasId):
-    """Network views assigned to infoblox members."""
+    """Network views owned by infoblox members."""
 
     __tablename__ = 'infoblox_mapping_members'
 
-    mapping_id = sa.Column(sa.String(36),
-                           sa.ForeignKey('infoblox_mapping.id',
-                                         ondelete="CASCADE"),
-                           nullable=False,
-                           primary_key=True)
+    network_view_id = sa.Column(sa.String(36),
+                                sa.ForeignKey('infoblox_network_views.id',
+                                              ondelete="CASCADE"),
+                                nullable=False,
+                                primary_key=True)
     member_id = sa.Column(sa.String(32),
                           sa.ForeignKey('infoblox_grid_members.member_id',
                                         ondelete="CASCADE"),
@@ -119,8 +139,8 @@ class InfobloxMappingMember(model_base.BASEV2, models_v2.HasId):
     mapping_relation = sa.Column(sa.String(24), nullable=False)
 
     def __repr__(self):
-        return "mapping_id: %s, member_id: %s, mapping_relation: %s, " % \
-               (self.mapping_id, self.member_id, self.mapping_relation)
+        return ("network_view_id: %s, member_id: %s, mapping_relation: %s, " %
+                (self.network_view_id, self.member_id, self.mapping_relation))
 
 
 class InfobloxServiceMember(model_base.BASEV2):
@@ -146,25 +166,28 @@ class InfobloxServiceMember(model_base.BASEV2):
     )
 
     def __repr__(self):
-        return "member_id: %s, service: %s, network_id: %s" % \
-               (self.member_id, self.service, self.network_id)
+        return ("member_id: %s, service: %s, network_id: %s" %
+                (self.member_id, self.service, self.network_id))
 
 
-class InfobloxNetworkView(model_base.BASEV2):
+class InfobloxNetworkViewAllocation(model_base.BASEV2):
     """Network views used in Neutron networks.
 
     This is needed to properly delete network views in NIOS on network
     delete.
     """
 
-    __tablename__ = 'infoblox_network_views'
+    __tablename__ = 'infoblox_network_view_allocations'
 
     network_id = sa.Column(sa.String(36),
                            sa.ForeignKey("networks.id",
                                          ondelete="CASCADE"),
                            nullable=False,
                            primary_key=True)
-    network_view = sa.Column(sa.String(255), nullable=False)
+    network_view_id = sa.Column(sa.String(36),
+                                sa.ForeignKey("infoblox_network_views.id",
+                                              ondelete="CASCADE"),
+                                nullable=False)
 
 
 class InfobloxManagementNetwork(model_base.BASEV2):

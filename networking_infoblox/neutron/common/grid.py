@@ -30,20 +30,15 @@ LOG = logging.getLogger(__name__)
 
 
 class GridManager(object):
-    context = None
     grid_config = None
     connector = None
     member = None
     mapping = None
 
     def __init__(self, context):
-        self.context = context
-        self.connector = self._create_connector()
-        self.grid_config = self._create_grid_configuration()
-        self.member = grid_member.GridMemberManager(context, self.connector,
-                                                    self.grid_config)
-        self.mapping = grid_mapping.GridMappingManager(context, self.connector,
-                                                       self.grid_config)
+        self.grid_config = self._create_grid_configuration(context)
+        self.member = grid_member.GridMemberManager(self.grid_config)
+        self.mapping = grid_mapping.GridMappingManager(self.grid_config)
 
     def sync(self):
         """Synchronize members, config, and mapping between NIOS and neutron.
@@ -63,19 +58,8 @@ class GridManager(object):
         self.grid_config.sync()
         return self.grid_config
 
-    def _create_connector(self):
-        opts = {'host': cfg.CONF_DC['grid_master_host'],
-                'username': cfg.CONF_DC['admin_user_name'],
-                'password': cfg.CONF_DC['admin_password'],
-                'wapi_version': cfg.CONF_DC['wapi_version'],
-                'ssl_verify': cfg.CONF_DC['ssl_verify'],
-                'http_request_timeout': cfg.CONF_DC['http_request_timeout'],
-                'http_pool_connections': cfg.CONF_DC['http_pool_connections'],
-                'http_pool_maxsize': cfg.CONF_DC['http_pool_maxsize']}
-        return connector.Connector(opts)
-
-    def _create_grid_configuration(self):
-        grid_conf = GridConfiguration(self.context, self.connector)
+    def _create_grid_configuration(self, context):
+        grid_conf = GridConfiguration(context)
         grid_conf.grid_id = cfg.CONF_IPAM.cloud_data_center_id
         grid_conf.grid_name = cfg.CONF_DC['data_center_name']
         grid_conf.grid_master_host = cfg.CONF_DC['grid_master_host']
@@ -86,13 +70,26 @@ class GridManager(object):
         grid_conf.http_request_timeout = cfg.CONF_DC['http_request_timeout']
         grid_conf.http_pool_connections = cfg.CONF_DC['http_pool_connections']
         grid_conf.http_pool_maxsize = cfg.CONF_DC['http_pool_maxsize']
+
+        # create connector to GM
+        admin_opts = {
+            'host': grid_conf.grid_master_host,
+            'username': grid_conf.admin_username,
+            'password': grid_conf.admin_password,
+            'wapi_version': grid_conf.wapi_version,
+            'ssl_verify': grid_conf.ssl_verify,
+            'http_request_timeout': grid_conf.http_request_timeout,
+            'http_pool_connections': grid_conf.http_pool_connections,
+            'http_pool_maxsize': grid_conf.http_pool_maxsize}
+        grid_conf.gm_connector = connector.Connector(admin_opts)
         return grid_conf
 
 
 class GridConfiguration(object):
 
     property_to_ea_mapping = {
-        'network_view_scope': const.EA_GRID_CONFIG_NETWORK_VIEW_SCOPE,
+        'default_network_view_scope':
+            const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE,
         'default_network_view': const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW,
         'default_host_name_pattern':
             const.EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN,
@@ -113,9 +110,8 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK
     }
 
-    def __init__(self, context, connector):
-        self._context = context
-        self._connector = connector
+    def __init__(self, context):
+        self.context = context
 
         # grid info from neutron conf
         self.grid_id = None
@@ -132,11 +128,14 @@ class GridConfiguration(object):
         self.http_pool_connections = 100
         self.http_pool_maxsize = 100
 
+        # connector object to GM
+        self.gm_connector = None
+
         self._wapi_version = None
         self._is_cloud_wapi = False
 
         # default settings from nios grid master
-        self.network_view_scope = const.NETWORK_VIEW_SCOPE_SINGLE
+        self.default_network_view_scope = const.NETWORK_VIEW_SCOPE_SINGLE
         self.default_network_view = 'default'
         self.default_host_name_pattern = 'host-{ip_address}'
         self.default_domain_name_pattern = '{subnet_id}.cloud.global.com'
@@ -163,7 +162,7 @@ class GridConfiguration(object):
         return self._is_cloud_wapi
 
     def sync(self):
-        session = self._context.session
+        session = self.context.session
         members = dbi.get_members(session,
                                   grid_id=self.grid_id,
                                   member_type=const.MEMBER_TYPE_GRID_MASTER)
@@ -181,8 +180,8 @@ class GridConfiguration(object):
 
         obj_type = "member/%s:%s" % (gm_member['member_id'],
                                      gm_member['member_name'])
-        config = self._connector.get_object(obj_type,
-                                            return_fields=return_fields)
+        config = self.gm_connector.get_object(
+            obj_type, return_fields=return_fields)
         return config
 
     def _update_fields(self, extattr):
