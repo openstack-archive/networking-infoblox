@@ -52,6 +52,6 @@ class FixtureResourceMap(object):
     FAKE_NETWORKVIEW_WITHOUT_CLOUD = 'fake_networkview_without_cloud.json'
     FAKE_NETWORKVIEW_WITH_CLOUD = 'fake_networkview_with_cloud.json'
     FAKE_NETWORK_WITHOUT_CLOUD = 'fake_network_without_cloud.json'
-    FAKE_NETWORK_WITH_CLOUD = 'fake_network_with_cloud.json.json'
+    FAKE_NETWORK_WITH_CLOUD = 'fake_network_with_cloud.json'
     FAKE_GRID_MASTER_GRID_CONFIGURATION = \
         'fake_grid_master_grid_configuration.json'
