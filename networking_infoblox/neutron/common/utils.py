@@ -15,10 +15,12 @@
 
 import datetime
 import decimal
+import hashlib
 import netaddr
 import random
 import re
 import six
+import urllib
 
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
@@ -57,6 +59,23 @@ def get_values_from_records(key, records):
         key_val = record.get(key, None)
         if key_val:
             key_vals.append(key_val)
+    return key_vals
+
+
+def get_composite_values_from_records(keys, records, delimiter='^'):
+    key_vals = []
+    if records is None:
+        return key_vals
+
+    for record in records:
+        values = []
+        for key in keys:
+            key_val = record.get(key)
+            if key_val:
+                if not isinstance(key_val, six.string_types):
+                    key_val = str(key_val)
+                values.append(key_val)
+        key_vals.append(delimiter.join(values))
     return key_vals
 
 
@@ -119,7 +138,7 @@ def get_string_or_none(value):
     return ret_val
 
 
-def get_ea_value(name, extattrs):
+def get_ea_value(name, extattrs, should_return_list_value=False):
     valid = (name and isinstance(name, six.string_types) and
              extattrs and isinstance(extattrs, dict))
     if not valid:
@@ -131,6 +150,8 @@ def get_ea_value(name, extattrs):
         name_attr = root.get(name)
         if name_attr:
             value = name_attr.get('value')
+            if should_return_list_value and not isinstance(value, list):
+                value = [value]
     return value
 
 
@@ -256,12 +277,13 @@ def get_list_from_string(data_string, delimiter_list):
 
 
 def exists_in_sequence(sub_sequence_to_find, full_list_in_sequence):
-    valid = (sub_sequence_to_find and
-             isinstance(sub_sequence_to_find, list) and
-             full_list_in_sequence and
+    valid = (isinstance(sub_sequence_to_find, list) and
              isinstance(full_list_in_sequence, list))
     if not valid:
         raise ValueError("Invalid argument was passed")
+
+    if not sub_sequence_to_find or not full_list_in_sequence:
+        return False
 
     return any(full_list_in_sequence[pos:pos + len(sub_sequence_to_find)] ==
                sub_sequence_to_find for pos in
@@ -271,33 +293,77 @@ def exists_in_sequence(sub_sequence_to_find, full_list_in_sequence):
 
 
 def exists_in_list(list_to_find, full_list):
-    valid = (list_to_find and isinstance(list_to_find, list) and
-             full_list and isinstance(full_list, list))
+    valid = isinstance(list_to_find, list) and isinstance(full_list, list)
     if not valid:
         raise ValueError("Invalid argument was passed")
+
+    if not list_to_find or not full_list:
+        return False
 
     found_list = [m for m in list_to_find if m in full_list]
     return len(found_list) == len(list_to_find)
 
 
 def find_one_in_list(search_key, search_value, search_list):
-    valid = (search_key and isinstance(search_key, six.string_types) and
-             search_value and isinstance(search_value, six.string_types) and
-             search_list and isinstance(search_list, list))
+    """Find one item that match searching one key and value."""
+    valid = (isinstance(search_key, six.string_types) and
+             isinstance(search_value, six.string_types) and
+             isinstance(search_list, list))
     if not valid:
         raise ValueError("Invalid argument was passed")
+
+    if not search_key or not search_value or not search_list:
+        return None
 
     found_list = [m for m in search_list
                   if m.get(search_key) == search_value]
     return found_list[0] if found_list else None
 
 
-def find_in_list(search_key, search_values, search_list):
-    valid = (search_key and isinstance(search_key, six.string_types) and
-             search_values and isinstance(search_values, list) and
-             search_list and isinstance(search_list, list))
+def find_one_in_list_by_condition(search_key_value_pairs, search_list):
+    """Find one item that match given search key value pairs.
+
+    :param search_key_value_pairs: dictionary that contains search key and
+    values
+    :param search_list: list to search
+    :return: a single item that matches criteria or None
+    """
+    valid = (isinstance(search_key_value_pairs, dict) and
+             isinstance(search_list, list))
     if not valid:
         raise ValueError("Invalid argument was passed")
+
+    if not search_key_value_pairs or not search_list:
+        return None
+
+    result = None
+    for m in search_list:
+        found_counter = 0
+        for key in search_key_value_pairs:
+            if m.get(key) == search_key_value_pairs[key]:
+                found_counter += 1
+        if found_counter > 0 and found_counter == len(search_key_value_pairs):
+            result = m
+            break
+    return result
+
+
+def find_in_list(search_key, search_values, search_list):
+    """Find items that match multiple search values on a single search key.
+
+    :param search_key: a key to search
+    :param search_values: values that match
+    :param search_list: list to search
+    :return: list that matches criteria
+    """
+    valid = (isinstance(search_key, six.string_types) and
+             isinstance(search_values, list) and
+             isinstance(search_list, list))
+    if not valid:
+        raise ValueError("Invalid argument was passed")
+
+    if not search_key or not search_values or not search_list:
+        return None
 
     found_list = [m for m in search_list
                   if m.get(search_key) in search_values]
@@ -315,11 +381,31 @@ def remove_any_space(text):
     return re.sub(r'\s+', '', text)
 
 
+def get_hash(text):
+    if text and isinstance(text, six.string_types):
+        text = text.encode('utf-8')
+        return hashlib.md5(text).hexdigest()
+    return None
+
+
 def get_oid_from_nios_ref(obj_ref):
     if obj_ref and len(obj_ref) > 0:
-        match = re.search('\w+\/(\w+):(\w+)', obj_ref)
+        match = re.search('\S+\/(\S+):(\S+)', obj_ref)
         if match:
             return match.group(1)
+    return None
+
+
+def get_network_info_from_nios_ref(network_ref):
+    if network_ref and len(network_ref) > 0:
+        match = re.search('(\S+)\/(\S+):(\S+)\/(\d+)\/(\S+)', network_ref)
+        if match:
+            cidr = match.group(3) + '/' + match.group(4)
+            if match.group(1) == 'ipv6network':
+                cidr = urllib.unquote(cidr)
+            return {'object_id': match.group(2),
+                    'network_view': match.group(5),
+                    'cidr': cidr}
     return None
 
 
