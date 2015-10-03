@@ -33,9 +33,8 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         super(GridMemberTestCase, self).setUp()
         self.ctx = context.get_admin_context()
 
-        self.connector = mock.Mock()
-        self.test_grid_config = grid.GridConfiguration(self.ctx,
-                                                       self.connector)
+        self.test_grid_config = grid.GridConfiguration(self.ctx)
+        self.test_grid_config.gm_connector = mock.Mock()
         self.test_grid_config.grid_id = 100
         self.test_grid_config.grid_name = "Test Grid 1"
         self.test_grid_config.grid_master_host = '192.168.1.7'
@@ -44,8 +43,7 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.test_grid_config.wapi_version = '2.2'
 
     def test_sync_grid(self):
-        member_mgr = member.GridMemberManager(self.ctx, self.connector,
-                                              self.test_grid_config)
+        member_mgr = member.GridMemberManager(self.test_grid_config)
         member_mgr.sync_grid()
 
         grids = dbi.get_grids(self.ctx.session)
@@ -72,16 +70,15 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertEqual('ON', grids[0]['grid_status'])
 
         # change active grid to "Test Grid 2"
-        new_active_grid_config = grid.GridConfiguration(self.ctx,
-                                                        self.connector)
+        new_active_grid_config = grid.GridConfiguration(self.ctx)
+        new_active_grid_config.gm_connector = mock.Mock()
         new_active_grid_config.grid_id = 200
         new_active_grid_config.grid_name = "Test Grid 2"
         new_active_grid_config.grid_master_host = '192.168.1.8'
         new_active_grid_config.admin_username = 'admin'
         new_active_grid_config.admin_password = 'infoblox'
         new_active_grid_config.wapi_version = '1.4.2'
-        member_mgr = member.GridMemberManager(self.ctx, self.connector,
-                                              new_active_grid_config)
+        member_mgr = member.GridMemberManager(new_active_grid_config)
         member_mgr.sync_grid()
 
         grids = dbi.get_grids(self.ctx.session)
@@ -113,8 +110,7 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
     def test_sync_member_without_cloud_support(self):
         # wapi version less than 2.0 indicates no cloud support
         self.test_grid_config.wapi_version = '1.4.2'
-        member_mgr = member.GridMemberManager(self.ctx, self.connector,
-                                              self.test_grid_config)
+        member_mgr = member.GridMemberManager(self.test_grid_config)
         member_mgr.sync_grid()
 
         member_json = self.connector_fixture.get_object(
@@ -124,7 +120,6 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         member_mgr._discover_member_licenses = mock.Mock()
         member_mgr._discover_member_licenses.return_value = None
-
         member_mgr.sync_members()
 
         members = dbi.get_members(self.ctx.session)
@@ -136,8 +131,7 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
                 self.assertEqual('REGULAR', m['member_type'])
 
     def test_sync_member_with_cloud_support_without_member_licenses(self):
-        member_mgr = member.GridMemberManager(self.ctx, self.connector,
-                                              self.test_grid_config)
+        member_mgr = member.GridMemberManager(self.test_grid_config)
         member_mgr.sync_grid()
 
         member_json = self.connector_fixture.get_object(
@@ -159,8 +153,7 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
                 self.assertEqual('REGULAR', m['member_type'])
 
     def test_sync_member_with_cloud_support_with_member_licenses(self):
-        member_mgr = member.GridMemberManager(self.ctx, self.connector,
-                                              self.test_grid_config)
+        member_mgr = member.GridMemberManager(self.test_grid_config)
         member_mgr.sync_grid()
 
         member_json = self.connector_fixture.get_object(
@@ -185,7 +178,8 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         member_hwids = utils.get_values_from_records('hwid',
                                                      cloud_lecensed_members)
         for m in member_json:
-            member_id = utils.get_oid_from_nios_ref(m['_ref'])
+            member_id_arg = str(self.test_grid_config.grid_id) + m['host_name']
+            member_id = utils.get_hash(member_id_arg)
             member_hwid = m['node_info'][0].get('hwid')
             if member_hwid in member_hwids:
                 cloud_member_list.append(member_id)
@@ -193,7 +187,6 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         # now we know member licenses so get members in db
         members = dbi.get_members(self.ctx.session)
         self.assertEqual(len(member_json), len(members))
-
         # verify member types
         for m in members:
             if self.test_grid_config.grid_master_host == m['member_ip']:

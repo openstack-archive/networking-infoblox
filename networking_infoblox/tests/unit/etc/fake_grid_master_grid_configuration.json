@@ -20,7 +20,7 @@
         "IP Allocation Strategy": {
             "value": "Host Record"
         },
-        "Network View Scope": {
+        "Default Network View Scope": {
             "value": "Single"
         }
     }
