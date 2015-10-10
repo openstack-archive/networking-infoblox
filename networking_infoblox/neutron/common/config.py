@@ -16,43 +16,43 @@
 from oslo_config import cfg
 
 
-cfg.CONF.register_group(cfg.OptGroup(
-    name='infoblox',
-    title="Configuration for Infoblox IPAM Driver"))
-
 ipam_opts = [
     cfg.IntOpt('cloud_data_center_id',
+               default=0,
                help=_("ID used for selecting a particular grid from one or "
-                      "more grids to serve networks in Infoblox backend."))
+                      "more grids to serve networks in Infoblox backend.")),
+    cfg.IntOpt('ipam_agent_workers',
+               default=1,
+               help=_("Number of Infoblox IPAM agent workers to run"))
 ]
 
-cfg.CONF.register_opts(ipam_opts, group='infoblox')
-CONF = cfg.CONF
-CONF_IPAM = CONF['infoblox']
-
-
-DATA_CENTER_SECTION = 'infoblox-dc:%s' % CONF_IPAM.cloud_data_center_id
-
-dc_opts = [
-    cfg.StrOpt('data_center_name ',
+data_center_opts = [
+    cfg.StrOpt('data_center_name',
+               default='',
                help=_('The name of data center to identify.')),
     cfg.StrOpt('grid_master_host',
+               default='',
                help=_('Host IP or name of the grid master.')),
     cfg.StrOpt('admin_user_name',
+               default='',
                help=_("Admin user name to access grid master.")),
     cfg.StrOpt('admin_password',
+               default='',
                help=_("Admin user password to access grid master.")),
     cfg.StrOpt('cloud_user_name',
+               default='',
                help=_("Cloud user name to access cloud platform members.")),
     cfg.StrOpt('cloud_user_password',
+               default='',
                help=_("Cloud user password to access cloud platform "
                       "members.")),
     cfg.StrOpt('wapi_version',
+               default='',
                help=_("WAPI (Web API) version.")),
     cfg.BoolOpt('ssl_verify',
                 default=False,
-                help=_("Ensure whether WAPI requests sent over HTTPS require"
-                       " SSL verification.")),
+                help=_("Ensure whether WAPI requests sent over HTTPS require "
+                       "SSL verification.")),
     cfg.IntOpt('http_pool_connections',
                default=100,
                help=_("HTTP pool connection.")),
@@ -64,5 +64,27 @@ dc_opts = [
                help=_("HTTP request timeout."))
 ]
 
-cfg.CONF.register_opts(dc_opts, group=DATA_CENTER_SECTION)
-CONF_DC = CONF[DATA_CENTER_SECTION]
+CONF = cfg.CONF
+
+
+def register_infoblox_ipam_opts(conf):
+    conf.register_group(cfg.OptGroup(
+        name='infoblox',
+        title="Configuration for Infoblox IPAM Driver"))
+    conf.register_opts(ipam_opts, group='infoblox')
+
+
+def register_infoblox_grid_opts(conf, data_center_id):
+    data_center = 'infoblox-dc:%s' % data_center_id
+    conf.register_group(cfg.OptGroup(
+        name=data_center,
+        title="Configuration for Infoblox data center %s" % data_center_id))
+    conf.register_opts(data_center_opts, group=data_center)
+
+
+def get_infoblox_grid_opts(data_center_id):
+    grid_info = dict()
+    data_center = 'infoblox-dc:%s' % data_center_id
+    for opt in data_center_opts:
+        grid_info[opt.name] = CONF[data_center][opt.name]
+    return grid_info

@@ -16,6 +16,9 @@
 import fixtures
 import io
 import os
+
+from oslo_config import cfg
+import oslo_messaging
 from oslo_serialization import jsonutils
 
 from oslotest import base
@@ -28,6 +31,20 @@ class TestCase(base.BaseTestCase):
     def setUp(self):
         super(TestCase, self).setUp()
         self.connector_fixture = ConnectorFixture()
+
+
+class RpcTestCase(TestCase):
+
+    """Test case base class for RPC capability."""
+
+    def setUp(self):
+        super(RpcTestCase, self).setUp()
+        self.transport = oslo_messaging.get_transport(cfg.CONF, "fake://")
+
+    def get_notifier(self, topic='testtopic', publisher_id='testpublisher'):
+        return oslo_messaging.Notifier(self.transport, topic=topic,
+                                       driver='messaging',
+                                       publisher_id=publisher_id)
 
 
 class ConnectorFixture(fixtures.Fixture):
