@@ -13,6 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+AGENT_BINARY_NAME = 'infoblox-ipam-agent'
+AGENT_TYPE_INFOBLOX_IPAM = 'Infoblox IPAM agent'
+AGENT_TOPIC = 'infoblox_ipam_agent'
+
 GRID_STATUS_ON = 'ON'
 GRID_STATUS_OFF = 'OFF'
 
