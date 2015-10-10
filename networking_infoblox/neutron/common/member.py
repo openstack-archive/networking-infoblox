@@ -42,7 +42,8 @@ class GridMemberManager(object):
         Only one active grid should be kept where grid_status is set to 'ON'.
         """
         session = self._context.session
-        grid_connection = self._get_grid_connection()
+        grid_connection = self._grid_config.get_grid_connection()
+        grid_connection_json = jsonutils.dumps(grid_connection)
 
         db_grids = dbi.get_grids(session)
         db_grid_ids = utils.get_values_from_records('grid_id', db_grids)
@@ -52,13 +53,13 @@ class GridMemberManager(object):
             dbi.update_grid(session,
                             self._grid_config.grid_id,
                             self._grid_config.grid_name,
-                            grid_connection,
+                            grid_connection_json,
                             const.GRID_STATUS_ON)
         else:
             dbi.add_grid(session,
                          self._grid_config.grid_id,
                          self._grid_config.grid_name,
-                         grid_connection,
+                         grid_connection_json,
                          const.GRID_STATUS_ON)
 
         # deleting grids are delicate operation so we won't allow it
@@ -71,20 +72,6 @@ class GridMemberManager(object):
                             grid_id,
                             grid_status=const.GRID_STATUS_OFF)
         session.flush()
-
-    def _get_grid_connection(self):
-        grid_connection = {
-            "wapi_version": self._grid_config.wapi_version,
-            "ssl_verify": self._grid_config.ssl_verify,
-            "http_pool_connections": self._grid_config.http_pool_connections,
-            "http_pool_maxsize": self._grid_config.http_pool_maxsize,
-            "http_request_timeout": self._grid_config.http_request_timeout,
-            "admin_user": {"name": self._grid_config.admin_username,
-                           "password": self._grid_config.admin_password},
-            "cloud_user": {"name": self._grid_config.cloud_username,
-                           "password": self._grid_config.cloud_user_password}
-        }
-        return jsonutils.dumps(grid_connection)
 
     def sync_members(self):
         """Synchronizes grid members.
@@ -165,6 +152,12 @@ class GridMemberManager(object):
                               grid_id,
                               member_status=const.MEMBER_STATUS_OFF)
         session.flush()
+
+    def reserve_authority_member(self, ib_context):
+        pass
+
+    def reserve_service_member(self):
+        pass
 
     def _discover_members(self):
         return_fields = ['node_info', 'host_name', 'vip_setting']
