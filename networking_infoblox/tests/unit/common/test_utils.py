@@ -21,6 +21,7 @@ from oslo_serialization import jsonutils
 from neutron import context
 from neutron.tests.unit import testlib_api
 
+from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
@@ -296,28 +297,170 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual(None, prefix)
 
     def test_get_physical_network_meta(self):
-        pass
+        self.assertRaises(ValueError, utils.get_physical_network_meta, None)
+        self.assertRaises(ValueError, utils.get_physical_network_meta, '')
+        self.assertEqual({}, utils.get_physical_network_meta({}))
+
+        physical_network_json = {
+            'provider:physical_network': None,
+            'provider:network_type': 'vxlan'
+        }
+        actual = utils.get_physical_network_meta(physical_network_json)
+        expected = {
+            'network_type': 'vxlan',
+            'physical_network': None,
+            'segmentation_id': None
+        }
+        self.assertEqual(expected, actual)
 
     def test_get_list_from_string(self):
-        pass
+        self.assertRaises(ValueError, utils.get_list_from_string, None, None)
+        self.assertRaises(ValueError, utils.get_list_from_string, 'key', [])
+        self.assertRaises(ValueError, utils.get_list_from_string, 'key', [''])
+
+        test_string_list = "1,3,5,7,9"
+        expected = ['1,3,5,7,9']
+        actual = utils.get_list_from_string(test_string_list, [':'])
+        self.assertEqual(expected, actual)
+        expected = ['1', '3', '5', '7', '9']
+        actual = utils.get_list_from_string(test_string_list, [','])
+        self.assertEqual(expected, actual)
+
+        test_string_list = "k1:v1, k2:v2, k3:v3"
+        expected = ['k1:v1', 'k2:v2', 'k3:v3']
+        actual = utils.get_list_from_string(test_string_list, [','])
+        self.assertEqual(expected, actual)
+        expected = [['k1', 'v1'], ['k2', 'v2'], ['k3', 'v3']]
+        actual = utils.get_list_from_string(test_string_list, [',', ':'])
+        self.assertEqual(expected, actual)
 
     def test_exists_in_sequence(self):
-        pass
+        self.assertRaises(ValueError, utils.exists_in_sequence, None, None)
+        self.assertRaises(ValueError, utils.exists_in_sequence, 'key', None)
+        self.assertEqual(False, utils.exists_in_sequence([], []))
+
+        search_list = [1, 2, 3, 4, 'a', 'b', 'c']
+
+        actual = utils.exists_in_sequence([], search_list)
+        self.assertEqual(False, actual)
+
+        actual = utils.exists_in_sequence([1, 5], search_list)
+        self.assertEqual(False, actual)
+
+        actual = utils.exists_in_sequence([1, 2, 4], search_list)
+        self.assertEqual(False, actual)
+
+        actual = utils.exists_in_sequence([4, 'a', 'b'], search_list)
+        self.assertEqual(True, actual)
 
     def test_exists_in_list(self):
-        pass
+        self.assertRaises(ValueError, utils.exists_in_list, None, None)
+        self.assertRaises(ValueError, utils.exists_in_list, 'key', None)
+        self.assertEqual(False, utils.exists_in_list([], []))
+
+        search_list = [1, 2, 3, 4, 'a', 'b', 'c']
+
+        actual = utils.exists_in_list([], search_list)
+        self.assertEqual(False, actual)
+
+        actual = utils.exists_in_list([1, 5], search_list)
+        self.assertEqual(False, actual)
+
+        actual = utils.exists_in_list([1, 'a'], search_list)
+        self.assertEqual(True, actual)
+
+        actual = utils.exists_in_list([1, 4, 'c'], search_list)
+        self.assertEqual(True, actual)
 
     def test_find_one_in_list(self):
-        pass
+        self.assertRaises(ValueError, utils.find_one_in_list, None, None, None)
+        self.assertRaises(ValueError, utils.find_one_in_list, 'key', None, [])
+        self.assertEqual(None, utils.find_one_in_list('key', 'val', []))
+
+        search_list = [{'key1': 'val1', 'key2': 'val2', 'key3': 'val3'},
+                       {'key1': 'val11', 'key2': 'val22', 'key3': 'val33'}]
+
+        expected = None
+        actual = utils.find_one_in_list('key2', 'val33', search_list)
+        self.assertEqual(expected, actual)
+
+        expected = {'key1': 'val11', 'key2': 'val22', 'key3': 'val33'}
+        actual = utils.find_one_in_list('key2', 'val22', search_list)
+        self.assertEqual(expected, actual)
+
+    def test_find_one_in_list_by_condition(self):
+        self.assertRaises(ValueError,
+                          utils.find_one_in_list_by_condition, None, None)
+        self.assertRaises(ValueError,
+                          utils.find_one_in_list_by_condition, 'key', [])
+        self.assertEqual(None,
+                         utils.find_one_in_list_by_condition({'key': 'val'},
+                                                             []))
+
+        search_list = [{'key1': 'val1', 'key2': 'val2', 'key3': 'val3'},
+                       {'key1': 'val11', 'key2': 'val22', 'key3': 'val33'}]
+
+        search_condition = {'key2': 'val33'}
+        expected = None
+        actual = utils.find_one_in_list_by_condition(search_condition,
+                                                     search_list)
+        self.assertEqual(expected, actual)
+
+        search_condition = {'key2': 'val22'}
+        expected = {'key1': 'val11', 'key2': 'val22', 'key3': 'val33'}
+        actual = utils.find_one_in_list_by_condition(search_condition,
+                                                     search_list)
+        self.assertEqual(expected, actual)
+
+        search_condition = {'key1': 'val1', 'key3': 'val3'}
+        expected = {'key1': 'val1', 'key2': 'val2', 'key3': 'val3'}
+        actual = utils.find_one_in_list_by_condition(search_condition,
+                                                     search_list)
+        self.assertEqual(expected, actual)
 
     def test_find_in_list(self):
-        pass
+        self.assertRaises(ValueError, utils.find_in_list, None, None, None)
+        self.assertRaises(ValueError, utils.find_in_list, 'key', 'val', [])
+        self.assertEqual(None, utils.find_in_list('key', ['val'], []))
+
+        key = 'key'
+        value = ['val1']
+        search_list = [{'key': 'val'}]
+        self.assertEqual([], utils.find_in_list(key, value, search_list))
+
+        key = 'key'
+        value = ['val1']
+        search_list = [{'key': 'val1'}]
+        expected = [{'key': 'val1'}]
+        self.assertEqual(expected, utils.find_in_list(key, value, search_list))
+
+        key = 'key'
+        value = ['val1', 'val3']
+        search_list = [{'key': 'val1'},
+                       {'key': 'val2'},
+                       {'key': 'val3'}]
+        expected = [{'key': 'val1'}, {'key': 'val3'}]
+        self.assertEqual(expected, utils.find_in_list(key, value, search_list))
 
     def test_merge_list(self):
-        pass
+        self.assertRaises(ValueError, utils.merge_list, None)
+        self.assertRaises(ValueError, utils.merge_list, [], "string")
+        self.assertEqual([], utils.merge_list([]))
+        self.assertEqual([], utils.merge_list([], []))
+        self.assertEqual([1], utils.merge_list([1], [1]))
+        self.assertEqual([1, 2, 3, 4, 5],
+                         utils.merge_list([1, 2, 3], [1, 4, 5]))
+        self.assertEqual([1, 2, 3, 4, 5, 6],
+                         utils.merge_list([1, 2, 3], [1, 4, 5], [6]))
+        self.assertEqual(set(['a', 'b', 'c', 'd']),
+                         set(utils.merge_list(['a', 'b'], ['a', 'c'], ['d'])))
 
     def test_remove_any_space(self):
-        pass
+        self.assertEqual('', utils.remove_any_space(''))
+        self.assertEqual('', utils.remove_any_space('   '))
+        self.assertEqual(None, utils.remove_any_space(None))
+        self.assertEqual('add', utils.remove_any_space('\nadd'))
+        self.assertEqual('abcde', utils.remove_any_space(' ab cd  \ne '))
 
     def test_get_hash(self):
         hash_str = utils.get_hash("")
@@ -377,3 +520,47 @@ class TestUtils(testlib_api.SqlTestCase):
                   'network_view': 'default',
                   'cidr': '2001:db8:85a3::/64'}
         self.assertEqual(expect, network)
+
+    def test_get_member_status(self):
+        self.assertEqual(const.MEMBER_STATUS_OFF,
+                         utils.get_member_status(None))
+
+        self.assertEqual(const.MEMBER_STATUS_OFF,
+                         utils.get_member_status('babo'))
+
+        status = const.MEMBER_NODE_STATUS_FAILED
+        self.assertEqual(const.MEMBER_STATUS_OFF,
+                         utils.get_member_status(status))
+
+        status = const.MEMBER_NODE_STATUS_INACTIVE
+        self.assertEqual(const.MEMBER_STATUS_OFF,
+                         utils.get_member_status(status))
+
+        status = const.MEMBER_NODE_STATUS_WARNING
+        self.assertEqual(const.MEMBER_STATUS_ON,
+                         utils.get_member_status(status))
+
+        status = const.MEMBER_NODE_STATUS_WORKING
+        self.assertEqual(const.MEMBER_STATUS_ON,
+                         utils.get_member_status(status))
+
+    def test_get_notification_handler_name(self):
+        event_type = 'network.create.start'
+        expected = 'create_network_alert'
+        self.assertEqual(expected,
+                         utils.get_notification_handler_name(event_type))
+
+        event_type = 'network.create.end'
+        expected = 'create_network_sync'
+        self.assertEqual(expected,
+                         utils.get_notification_handler_name(event_type))
+
+        event_type = 'floatingip.delete.end'
+        expected = 'delete_floatingip_sync'
+        self.assertEqual(expected,
+                         utils.get_notification_handler_name(event_type))
+
+        event_type = 'compute.instance.create.end'
+        expected = 'create_instance_sync'
+        self.assertEqual(expected,
+                         utils.get_notification_handler_name(event_type))
