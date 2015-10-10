@@ -224,9 +224,11 @@ def get_prefix_for_dns_zone(subnet_name, cidr):
 
 
 def get_physical_network_meta(network):
-    valid = network and isinstance(network, dict)
-    if not valid:
+    if not isinstance(network, dict):
         raise ValueError("Invalid argument was passed")
+
+    if not network:
+        return {}
 
     network = network if network else {}
     provider_network_type = network.get('provider:network_type')
@@ -325,7 +327,7 @@ def find_one_in_list_by_condition(search_key_value_pairs, search_list):
 
     :param search_key_value_pairs: dictionary that contains search key and
     values
-    :param search_list: list to search
+    :param search_list: list of dictionary objects to search
     :return: a single item that matches criteria or None
     """
     valid = (isinstance(search_key_value_pairs, dict) and
@@ -353,7 +355,7 @@ def find_in_list(search_key, search_values, search_list):
 
     :param search_key: a key to search
     :param search_values: values that match
-    :param search_list: list to search
+    :param search_list: list of dictionary objects to search
     :return: list that matches criteria
     """
     valid = (isinstance(search_key, six.string_types) and
@@ -373,12 +375,16 @@ def find_in_list(search_key, search_values, search_list):
 def merge_list(*list_args):
     merge_lsit = []
     for lst in list_args:
+        if not isinstance(lst, list):
+            raise ValueError("Invalid argument was passed")
         merge_lsit += lst
     return list(set(merge_lsit))
 
 
 def remove_any_space(text):
-    return re.sub(r'\s+', '', text)
+    if text:
+        return re.sub(r'\s+', '', text)
+    return text
 
 
 def get_hash(text):
@@ -420,3 +426,15 @@ def get_member_status(node_status):
     elif node_status == const.MEMBER_NODE_STATUS_WORKING:
         member_status = const.MEMBER_STATUS_ON
     return member_status
+
+
+def get_notification_handler_name(event_type):
+    service, resource, action, sequence = (None, None, None, None)
+    if event_type.count('.') == 2:
+        resource, action, sequence = event_type.split('.', 2)
+    else:
+        service, resource, action, sequence = event_type.split('.', 3)
+
+    event_sequence = 'alert' if sequence == 'start' else 'sync'
+    handler_name = "%s_%s_%s" % (action, resource, event_sequence)
+    return handler_name
