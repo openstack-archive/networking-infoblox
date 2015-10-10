@@ -30,6 +30,7 @@ LOG = logging.getLogger(__name__)
 
 
 class GridManager(object):
+
     grid_config = None
     connector = None
     member = None
@@ -53,23 +54,24 @@ class GridManager(object):
     def get_config(self):
         """Gets grid configuration.
 
-        Before this call is made, member must be in sync.
+        Before this call is made, the grid member must be in sync.
         """
         self.grid_config.sync()
         return self.grid_config
 
     def _create_grid_configuration(self, context):
         grid_conf = GridConfiguration(context)
-        grid_conf.grid_id = cfg.CONF_IPAM.cloud_data_center_id
-        grid_conf.grid_name = cfg.CONF_DC['data_center_name']
-        grid_conf.grid_master_host = cfg.CONF_DC['grid_master_host']
-        grid_conf.admin_username = cfg.CONF_DC['admin_user_name']
-        grid_conf.admin_password = cfg.CONF_DC['admin_password']
-        grid_conf.wapi_version = cfg.CONF_DC['wapi_version']
-        grid_conf.ssl_verify = cfg.CONF_DC['ssl_verify']
-        grid_conf.http_request_timeout = cfg.CONF_DC['http_request_timeout']
-        grid_conf.http_pool_connections = cfg.CONF_DC['http_pool_connections']
-        grid_conf.http_pool_maxsize = cfg.CONF_DC['http_pool_maxsize']
+        grid_conf.grid_id = cfg.CONF.infoblox.cloud_data_center_id
+        grid_opts = cfg.get_infoblox_grid_opts(grid_conf.grid_id)
+        grid_conf.grid_name = grid_opts['data_center_name']
+        grid_conf.grid_master_host = grid_opts['grid_master_host']
+        grid_conf.admin_username = grid_opts['admin_user_name']
+        grid_conf.admin_password = grid_opts['admin_password']
+        grid_conf.wapi_version = grid_opts['wapi_version']
+        grid_conf.ssl_verify = grid_opts['ssl_verify']
+        grid_conf.http_request_timeout = grid_opts['http_request_timeout']
+        grid_conf.http_pool_connections = grid_opts['http_pool_connections']
+        grid_conf.http_pool_maxsize = grid_opts['http_pool_maxsize']
 
         # create connector to GM
         admin_opts = {
@@ -155,7 +157,8 @@ class GridConfiguration(object):
     @wapi_version.setter
     def wapi_version(self, value):
         self._wapi_version = value
-        self._is_cloud_wapi = connector.Connector.is_cloud_wapi(value)
+        if value:
+            self._is_cloud_wapi = connector.Connector.is_cloud_wapi(value)
 
     @property
     def is_cloud_wapi(self):
@@ -172,6 +175,20 @@ class GridConfiguration(object):
         discovered_config = self._discover_config(members[0])
         if discovered_config and discovered_config.get('extattrs'):
             self._update_fields(discovered_config)
+
+    def get_grid_connection(self):
+        grid_connection = {
+            "wapi_version": self.wapi_version,
+            "ssl_verify": self.ssl_verify,
+            "http_pool_connections": self.http_pool_connections,
+            "http_pool_maxsize": self.http_pool_maxsize,
+            "http_request_timeout": self.http_request_timeout,
+            "admin_user": {"name": self.admin_username,
+                           "password": self.admin_password},
+            "cloud_user": {"name": self.cloud_username,
+                           "password": self.cloud_user_password}
+        }
+        return grid_connection
 
     def _discovered_config(self, gm_member):
         return_fields = ['extattrs']
