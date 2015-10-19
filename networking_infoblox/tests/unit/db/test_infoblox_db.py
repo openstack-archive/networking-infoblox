@@ -13,9 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from datetime import datetime
+from oslo_db import exception as db_exc
 from oslo_serialization import jsonutils
 
 from neutron import context
+from neutron.db import models_v2
 from neutron.tests.unit import testlib_api
 
 from networking_infoblox.neutron.common import constants as const
@@ -159,13 +162,13 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                         'member_ip': '10.10.1.12',
                         'member_ipv6': None,
                         'member_type': 'REGULAR',
-                        'member_status': 'WORKING'},
+                        'member_status': 'ON'},
                        {'member_id': 'M_2000',
                         'member_name': 'Member 2000',
                         'member_ip': '10.10.1.22',
                         'member_ipv6': 'fd44:acb:5df6:1083::22',
                         'member_type': 'CPM',
-                        'member_status': 'WORKING'}]
+                        'member_status': 'ON'}]
 
         # expects no member
         db_members = infoblox_db.get_members(self.ctx.session)
@@ -218,32 +221,51 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
 
         infoblox_db.remove_grids(self.ctx.session, [self.grid_id])
 
-    def _create_network_views(self, network_view_list, grid_id):
-        for network_view in network_view_list:
+    def _create_network_views(self, network_view_dict):
+        for network_view in network_view_dict:
             infoblox_db.add_network_view(self.ctx.session,
                                          network_view,
-                                         grid_id)
+                                         self.grid_id,
+                                         network_view_dict[network_view])
 
-    def test_mapping_management_network_views(self):
+    def _create_simple_members(self):
+        for i in range(1, 6):
+            member_id = "mid%d" % i
+            member_name = 'member%d.test.com' % i
+            member_ipv4 = "10.10.1.%d" % i
+            member_type = "GM" if i == 1 else "CPM"
+            infoblox_db.add_member(self.ctx.session, member_id, self.grid_id,
+                                   member_name, member_ipv4, None, member_type,
+                                   'ON')
+
+    def test_network_view_management(self):
         # prepare grid
         self._create_default_grid()
+
+        # prepare members
+        self._create_simple_members()
+        db_members = infoblox_db.get_members(self.ctx.session)
+        gm_member = utils.find_one_in_list('member_type', 'GM', db_members)
 
         # should be no network views
         db_network_views = infoblox_db.get_network_views(self.ctx.session)
         self.assertEqual(0, len(db_network_views))
 
         # test network view additions
-        netview_list = ['default', 'hs-view-1', 'hs-view-2', 'hs-view-3']
-        self._create_network_views(netview_list, self.grid_id)
+        netview_dict = {'default': gm_member.member_id,
+                        'hs-view-1': gm_member.member_id,
+                        'hs-view-2': gm_member.member_id,
+                        'hs-view-3': gm_member.member_id}
+        self._create_network_views(netview_dict)
 
         db_network_views = infoblox_db.get_network_views(self.ctx.session)
         actual_rows = utils.get_values_from_records('network_view',
                                                     db_network_views)
-        self.assertEqual(netview_list, actual_rows)
+        self.assertEqual(netview_dict.keys(), actual_rows)
 
         # test network view removals
         # - remove 'hs-view-1', 'hs-view-2'
-        removing_list = [netview_list[1], netview_list[2]]
+        removing_list = [netview_dict['hs-view-1'], netview_dict['hs-view-2']]
         infoblox_db.remove_network_views_by_names(self.ctx.session,
                                                   removing_list,
                                                   self.grid_id)
@@ -252,7 +274,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         actual_rows = utils.get_values_from_records('network_view',
                                                     db_network_views)
         actual_set = set(actual_rows)
-        expected_set = set(netview_list).difference(removing_list)
+        expected_set = set(netview_dict.keys()).difference(removing_list)
         self.assertEqual(expected_set, actual_set)
 
         # - remove 'hs-view-3'
@@ -272,9 +294,14 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         # prepare grid
         self._create_default_grid()
 
+        # prepare members
+        self._create_simple_members()
+        db_members = infoblox_db.get_members(self.ctx.session)
+        gm_member = utils.find_one_in_list('member_type', 'GM', db_members)
+
         # prepare network views
-        netview_list = ['default']
-        self._create_network_views(netview_list, self.grid_id)
+        netview_dict = {'default': gm_member.member_id}
+        self._create_network_views(netview_dict)
 
         db_network_views = infoblox_db.get_network_views(self.ctx.session)
         netview_default_row = utils.find_one_in_list('network_view',
@@ -356,23 +383,13 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         self._create_default_grid()
 
         # prepare grid members
-        member_list = [{'member_id': 'M_1000',
-                        'member_name': 'Member 1000',
-                        'member_ip': '10.10.1.12',
-                        'member_ipv6': None,
-                        'member_type': 'REGULAR',
-                        'member_status': 'WORKING'},
-                       {'member_id': 'M_2000',
-                        'member_name': 'Member 2000',
-                        'member_ip': '10.10.1.22',
-                        'member_ipv6': 'fd44:acb:5df6:1083::22',
-                        'member_type': 'CPM',
-                        'member_status': 'WORKING'}]
-        self._create_members(member_list, self.grid_id)
+        self._create_simple_members()
+        db_members = infoblox_db.get_members(self.ctx.session)
+        gm_member = utils.find_one_in_list('member_type', 'GM', db_members)
 
         # prepare network views
-        network_view_list = ['default']
-        self._create_network_views(network_view_list, self.grid_id)
+        netview_dict = {'default': gm_member.member_id}
+        self._create_network_views(netview_dict)
 
         # get network view id
         db_network_views = infoblox_db.get_network_views(self.ctx.session)
@@ -382,46 +399,96 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         netview_id = netview_default_row.id
 
         # should be no mapping members
-        db_members = infoblox_db.get_mapping_members(self.ctx.session)
-        self.assertEqual(0, len(db_members))
+        db_mapping_members = infoblox_db.get_mapping_members(self.ctx.session)
+        self.assertEqual(0, len(db_mapping_members))
 
         # test mapping member additions
         expected_rows = []
-        member_id = member_list[0]['member_id']
+        member_id = db_members[0]['member_id']
         relation = const.MAPPING_RELATION_DELEGATED
         infoblox_db.add_mapping_member(self.ctx.session, netview_id, member_id,
                                        relation)
         expected_rows.append(netview_id + ':' + member_id + ':' + relation)
 
-        member_id = member_list[1]['member_id']
+        member_id = db_members[1]['member_id']
         relation = const.MAPPING_RELATION_DELEGATED
         infoblox_db.add_mapping_member(self.ctx.session, netview_id, member_id,
                                        relation)
         expected_rows.append(netview_id + ':' + member_id + ':' + relation)
 
-        db_members = infoblox_db.get_mapping_members(self.ctx.session)
+        db_mapping_members = infoblox_db.get_mapping_members(self.ctx.session)
         actual_rows = utils.get_composite_values_from_records(
             ['network_view_id', 'member_id', 'mapping_relation'],
-            db_members, ':')
+            db_mapping_members, ':')
         self.assertEqual(expected_rows, actual_rows)
 
         # test mapping member update
-        member_id = member_list[0]['member_id']
+        member_id = db_members[0]['member_id']
         relation = const.MAPPING_RELATION_GM_OWNED
         infoblox_db.update_mapping_member(self.ctx.session, netview_id,
                                           member_id, relation)
         expected_rows[0] = netview_id + ':' + member_id + ':' + relation
 
-        db_members = infoblox_db.get_mapping_members(self.ctx.session)
+        db_mapping_members = infoblox_db.get_mapping_members(self.ctx.session)
         actual_rows = utils.get_composite_values_from_records(
             ['network_view_id', 'member_id', 'mapping_relation'],
-            db_members, ':')
+            db_mapping_members, ':')
         self.assertEqual(expected_rows, actual_rows)
 
         # test mapping member removals
-        member_id = member_list[0]['member_id']
+        member_id = db_members[0]['member_id']
         infoblox_db.remove_mapping_member(self.ctx.session, netview_id,
                                           member_id)
-        db_members = infoblox_db.get_mapping_members(self.ctx.session,
-                                                     member_id=member_id)
-        self.assertEqual([], db_members)
+        db_mapping_members = infoblox_db.get_mapping_members(
+            self.ctx.session, member_id=member_id)
+        self.assertEqual([], db_mapping_members)
+
+    def test_management_network(self):
+        # prepare data; network object is needed due to foreign key relation
+        fixed_ip = '192.168.1.1'
+        ip_version = 4
+        fixed_ip_ref = 'lMmQ3ZjkuM4Zj5Mi00Y2'
+        network = models_v2.Network(name="Test Netowrk", status="ON",
+                                    admin_state_up=True)
+        self.ctx.session.add(network)
+        self.ctx.session.flush()
+
+        mgmt_ip = infoblox_db.get_management_ip(self.ctx.session, network.id)
+        self.assertIsNone(mgmt_ip)
+
+        infoblox_db.add_management_ip(self.ctx.session, network.id, fixed_ip,
+                                      ip_version, fixed_ip_ref)
+        mgmt_ip = infoblox_db.get_management_ip(self.ctx.session, network.id)
+        self.assertEqual(network.id, mgmt_ip.network_id)
+        self.assertEqual(fixed_ip, mgmt_ip.ip_address)
+        self.assertEqual(ip_version, mgmt_ip.ip_version)
+        self.assertEqual(fixed_ip_ref, mgmt_ip.ip_address_ref)
+
+        infoblox_db.delete_management_ip(self.ctx.session, network.id)
+        mgmt_ip = infoblox_db.get_management_ip(self.ctx.session, network.id)
+        self.assertIsNone(mgmt_ip)
+
+    def test_grid_operations(self):
+        # 'last_sync_time' operation type does not exist so it will add it
+        last_sync_time = infoblox_db.get_last_sync_time(self.ctx.session)
+        self.assertIsNone(last_sync_time)
+
+        # 'last_sync_time' should exist now but its value should be None
+        last_sync_time = infoblox_db.get_last_sync_time(self.ctx.session)
+        self.assertIsNone(last_sync_time)
+
+        # attempt to add 'last_sync_time' operation type should fail with
+        # DBDuplicateEntry exception
+        try:
+            infoblox_db.add_operation_type(self.ctx.session,
+                                           'last_sync_time',
+                                           '')
+            self.ctx.session.flush()
+        except db_exc.DBDuplicateEntry as db_err:
+            self.assertIsInstance(db_err, db_exc.DBDuplicateEntry)
+
+        # test record_last_sync_time
+        current_time = datetime.utcnow().replace(microsecond=0)
+        infoblox_db.record_last_sync_time(self.ctx.session, current_time)
+        last_sync_time = infoblox_db.get_last_sync_time(self.ctx.session)
+        self.assertEqual(current_time, last_sync_time)
