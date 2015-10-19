@@ -122,19 +122,6 @@ def upgrade():
     )
 
     op.create_table(
-        'infoblox_network_view_allocations',
-        sa.Column('network_id', sa.String(length=36), nullable=False),
-        sa.Column('network_view_id', sa.String(length=36), nullable=False),
-        sa.ForeignKeyConstraint(['network_id'],
-                                ['networks.id'],
-                                ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['network_view_id'],
-                                ['infoblox_network_views.id'],
-                                ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('network_id')
-    )
-
-    op.create_table(
         'infoblox_management_networks',
         sa.Column('network_id', sa.String(length=36), nullable=False),
         sa.Column('ip_address', sa.String(length=64), nullable=False),
@@ -144,16 +131,4 @@ def upgrade():
                                 ['networks.id'],
                                 ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('network_id', 'ip_address')
-    )
-
-    op.create_table(
-        'infoblox_objects',
-        sa.Column('object_id', sa.String(length=255), nullable=False),
-        sa.Column('object_type', sa.String(length=48), nullable=False),
-        sa.Column('neutron_object_id', sa.String(length=255), nullable=False),
-        sa.Column('search_hash', sa.Integer(), nullable=False),
-        sa.PrimaryKeyConstraint('object_id'),
-        sa.Index(
-            'ix_infoblox_objects_search_hash',
-            'search_hash')
     )

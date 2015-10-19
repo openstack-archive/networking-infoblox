@@ -81,7 +81,7 @@ class NotificationService(service.Service):
             self.report_interval = report_interval
         else:
             self.report_interval = config.CONF.AGENT.report_interval
-        self.context = context.get_admin_context_without_session()
+        self.context = context.get_admin_context()
         self._init_agent_report_thread()
         self._init_notification_listener()
 

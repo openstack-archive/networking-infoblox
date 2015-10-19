@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from datetime import datetime
 from oslo_log import log as logging
 
 from networking_infoblox.neutron.db import infoblox_models as ib_models
@@ -145,19 +146,31 @@ def remove_members(session, member_ids):
 
 
 # Network Views
-def get_network_views(session, network_view=None, grid_id=None):
+def get_network_views(session, network_view=None, grid_id=None,
+                      authority_member_id=None):
     q = session.query(ib_models.InfobloxNetworkView)
     if network_view:
         q = q.filter(ib_models.InfobloxNetworkView.network_view ==
                      network_view)
+    if authority_member_id:
+        q = q.filter(ib_models.InfobloxNetworkView.authority_member_id ==
+                     authority_member_id)
     if grid_id:
         q = q.filter(ib_models.InfobloxNetworkView.grid_id == grid_id)
     return q.all()
 
 
-def add_network_view(session, network_view, grid_id):
-    network_view = ib_models.InfobloxNetworkView(network_view=network_view,
-                                                 grid_id=grid_id)
+def update_network_view(session, network_view, grid_id, authority_member_id):
+    session.query(ib_models.InfobloxNetworkView).\
+        filter_by(network_view=network_view, grid_id=grid_id).\
+        update({'authority_member_id': authority_member_id})
+
+
+def add_network_view(session, network_view, grid_id, authority_member_id):
+    network_view = ib_models.InfobloxNetworkView(
+        network_view=network_view,
+        grid_id=grid_id,
+        authority_member_id=authority_member_id)
     session.add(network_view)
     session.flush()
     return network_view
@@ -179,6 +192,47 @@ def remove_network_views_by_names(session, network_views, grid_id):
             q = q.filter(ib_models.InfobloxNetworkView.network_view.in_(
                          network_views))
             q.delete(synchronize_session=False)
+
+
+# Network View Mapped to Neutron
+def get_network_view_mapping(session, network_view_id=None, grid_id=None,
+                             network_id=None, subnet_id=None):
+    q = session.query(ib_models.InfobloxNetworkViewMapping)
+    if network_view_id:
+        q = q.filter(ib_models.InfobloxNetworkViewMapping.network_view_id ==
+                     network_view_id)
+    if network_id:
+        q = q.filter(ib_models.InfobloxNetworkViewMapping.network_id ==
+                     network_id)
+    if subnet_id:
+        q = q.filter(ib_models.InfobloxNetworkViewMapping.subnet_id ==
+                     subnet_id)
+    if grid_id:
+        sub_qry = session.query(ib_models.InfobloxNetworkView.id)
+        sub_qry = sub_qry.filter(ib_models.InfobloxNetworkView.grid_id ==
+                                 grid_id)
+        q = q.filter(ib_models.InfobloxNetworkViewMapping.network_view_id.in_(
+                     sub_qry))
+    return q.all()
+
+
+def associate_network_view(session, network_view_id, network_id, subnet_id):
+    q = session.query(ib_models.InfobloxNetworkViewMapping)
+    network_view_mapping = q.filter_by(network_id=network_id,
+                                       subnet_id=subnet_id).first()
+    if not network_view_mapping:
+        network_view_mapping = ib_models.InfobloxNetworkViewMapping(
+            network_view_id=network_view_id,
+            network_id=network_id,
+            subnet_id=subnet_id)
+        session.add(network_view_mapping)
+
+
+def dissociate_network_view(session, network_id, subnet_id):
+    with session.begin(subtransactions=True):
+        q = session.query(ib_models.InfobloxNetworkViewMapping)
+        q = q.filter_by(network_id=network_id, subnet_id=subnet_id)
+        q.delete(synchronize_session=False)
 
 
 # Mapping Conditions
@@ -302,3 +356,56 @@ def remove_mapping_member(session, network_view_id, member_id):
         q = session.query(ib_models.InfobloxMappingMember)
         q = q.filter_by(network_view_id=network_view_id, member_id=member_id)
         q.delete(synchronize_session=False)
+
+
+# Management Network
+def add_management_ip(session, network_id, fixed_ip, ip_version,
+                      fixed_ip_ref):
+    mgmt_ip = ib_models.InfobloxManagementNetwork(
+        network_id=network_id,
+        ip_address=fixed_ip,
+        ip_version=ip_version,
+        ip_address_ref=fixed_ip_ref)
+    session.add(mgmt_ip)
+    return mgmt_ip
+
+
+def delete_management_ip(session, network_id):
+    q = session.query(ib_models.InfobloxManagementNetwork)
+    q.filter_by(network_id=network_id).delete()
+
+
+def get_management_ip(session, network_id):
+    q = session.query(ib_models.InfobloxManagementNetwork)
+    return q.filter_by(network_id=network_id).first()
+
+
+# Operational data
+def add_operation_type(session, op_type, op_value):
+    operation = ib_models.InfobloxOperation(
+        op_type=op_type,
+        op_value=op_value)
+    session.add(operation)
+    return operation
+
+
+def get_last_sync_time(session):
+    q = session.query(ib_models.InfobloxOperation)
+    op_row = q.filter_by(op_type='last_sync_time').first()
+    if op_row is None:
+        add_operation_type(session, op_type='last_sync_time', op_value='')
+        return None
+    if op_row.op_value == '':
+        return None
+    return datetime.strptime(op_row.op_value, "%Y-%m-%d %H:%M:%S")
+
+
+def record_last_sync_time(session, sync_time=None):
+    if sync_time is None:
+        sync_time_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        sync_time_str = sync_time.strftime("%Y-%m-%d %H:%M:%S")
+
+    session.query(ib_models.InfobloxOperation).\
+        filter_by(op_type='last_sync_time').\
+        update({'op_value': sync_time_str})

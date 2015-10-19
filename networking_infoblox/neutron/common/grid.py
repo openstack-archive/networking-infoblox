@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from datetime import datetime
+from datetime import timedelta
 from oslo_log import log as logging
 
 from infoblox_client import connector
@@ -40,6 +42,7 @@ class GridManager(object):
         self.grid_config = self._create_grid_configuration(context)
         self.member = grid_member.GridMemberManager(self.grid_config)
         self.mapping = grid_mapping.GridMappingManager(self.grid_config)
+        self.last_sync_time = None
 
     def sync(self):
         """Synchronize members, config, and mapping between NIOS and neutron.
@@ -47,9 +50,23 @@ class GridManager(object):
         First sync members, then config, and lastly mapping because config
         sync needs GM info and mapping needs grid config.
         """
-        self.member.sync()
-        self.grid_config.sync()
-        self.mapping.sync()
+        session = self.grid_config.context.session
+        allow_sync = False
+        if self.grid_config.grid_sync_support:
+            self.last_sync_time = dbi.get_last_sync_time(session)
+            if not self.last_sync_time:
+                allow_sync = True
+            elif (datetime.utcnow() - self.last_sync_time >
+                    timedelta(
+                        seconds=self.grid_config.grid_sync_minimum_wait_time)):
+                allow_sync = True
+
+        if allow_sync:
+            self.member.sync()
+            self.grid_config.sync()
+            self.mapping.sync()
+            self.last_sync_time = datetime.utcnow().replace(microsecond=0)
+            dbi.record_last_sync_time(session, self.last_sync_time)
 
     def get_config(self):
         """Gets grid configuration.
@@ -59,14 +76,17 @@ class GridManager(object):
         self.grid_config.sync()
         return self.grid_config
 
-    def _create_grid_configuration(self, context):
+    @staticmethod
+    def _create_grid_configuration(context):
         grid_conf = GridConfiguration(context)
         grid_conf.grid_id = cfg.CONF.infoblox.cloud_data_center_id
         grid_opts = cfg.get_infoblox_grid_opts(grid_conf.grid_id)
         grid_conf.grid_name = grid_opts['data_center_name']
         grid_conf.grid_master_host = grid_opts['grid_master_host']
-        grid_conf.admin_username = grid_opts['admin_user_name']
+        grid_conf.admin_user_name = grid_opts['admin_user_name']
         grid_conf.admin_password = grid_opts['admin_password']
+        grid_conf.cloud_user_name = grid_opts['cloud_user_name']
+        grid_conf.cloud_user_password = grid_opts['cloud_user_password']
         grid_conf.wapi_version = grid_opts['wapi_version']
         grid_conf.ssl_verify = grid_opts['ssl_verify']
         grid_conf.http_request_timeout = grid_opts['http_request_timeout']
@@ -76,7 +96,7 @@ class GridManager(object):
         # create connector to GM
         admin_opts = {
             'host': grid_conf.grid_master_host,
-            'username': grid_conf.admin_username,
+            'username': grid_conf.admin_user_name,
             'password': grid_conf.admin_password,
             'wapi_version': grid_conf.wapi_version,
             'ssl_verify': grid_conf.ssl_verify,
@@ -90,6 +110,10 @@ class GridManager(object):
 class GridConfiguration(object):
 
     property_to_ea_mapping = {
+        'grid_sync_support':
+            const.EA_GRID_CONFIG_GRID_SYNC_SUPPORT,
+        'grid_sync_minimum_wait_time':
+            const.EA_GRID_CONFIG_GRID_SYNC_MINIMUM_WAIT_TIME,
         'default_network_view_scope':
             const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE,
         'default_network_view': const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW,
@@ -97,7 +121,8 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN,
         'default_domain_name_pattern':
             const.EA_GRID_CONFIG_DEFAULT_DOMAIN_NAME_PATTERN,
-        'default_ns_group': const.EA_GRID_CONFIG_DEFAULT_NS_GROUP,
+        'ns_group': const.EA_GRID_CONFIG_NS_GROUP,
+        'network_template': const.EA_GRID_CONFIG_NETWORK_TEMPLATE,
         'admin_network_deletion': const.EA_GRID_CONFIG_ADMIN_NETWORK_DELETION,
         'ip_allocation_strategy': const.EA_GRID_CONFIG_IP_ALLOCATION_STRATEGY,
         'dns_record_binding_types':
@@ -109,7 +134,8 @@ class GridConfiguration(object):
         'dhcp_replay_management_network_view':
             const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK_VIEW,
         'dhcp_replay_management_network':
-            const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK
+            const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK,
+        'dhcp_support': const.EA_GRID_CONFIG_DHCP_SUPPORT
     }
 
     def __init__(self, context):
@@ -121,9 +147,9 @@ class GridConfiguration(object):
         self.grid_master_host = None
 
         # grid connection from neutron conf
-        self.admin_username = None
+        self.admin_user_name = None
         self.admin_password = None
-        self.cloud_username = None
+        self.cloud_user_name = None
         self.cloud_user_password = None
         self.ssl_verify = False
         self.http_request_timeout = 120
@@ -132,16 +158,19 @@ class GridConfiguration(object):
 
         # connector object to GM
         self.gm_connector = None
-
+        self.wapi_major_version = None
         self._wapi_version = None
         self._is_cloud_wapi = False
 
         # default settings from nios grid master
+        self.grid_sync_support = True
+        self.grid_sync_minimum_wait_time = 60
         self.default_network_view_scope = const.NETWORK_VIEW_SCOPE_SINGLE
         self.default_network_view = 'default'
         self.default_host_name_pattern = 'host-{ip_address}'
         self.default_domain_name_pattern = '{subnet_id}.cloud.global.com'
-        self.default_ns_group = None
+        self.ns_group = None
+        self.network_template = None
         self.admin_network_deletion = False
         self.ip_allocation_strategy = const.IP_ALLOCATION_STRATEGY_HOST_RECORD
         self.dns_record_binding_types = []
@@ -149,6 +178,7 @@ class GridConfiguration(object):
         self.dns_record_removable_types = []
         self.dhcp_replay_management_network_view = None
         self.dhcp_replay_management_network = None
+        self.dhcp_support = False
 
     @property
     def wapi_version(self):
@@ -159,6 +189,7 @@ class GridConfiguration(object):
         self._wapi_version = value
         if value:
             self._is_cloud_wapi = connector.Connector.is_cloud_wapi(value)
+            self.wapi_major_version = utils.get_major_version(value)
 
     @property
     def is_cloud_wapi(self):
@@ -183,16 +214,16 @@ class GridConfiguration(object):
             "http_pool_connections": self.http_pool_connections,
             "http_pool_maxsize": self.http_pool_maxsize,
             "http_request_timeout": self.http_request_timeout,
-            "admin_user": {"name": self.admin_username,
+            "admin_user": {"name": self.admin_user_name,
                            "password": self.admin_password},
-            "cloud_user": {"name": self.cloud_username,
+            "cloud_user": {"name": self.cloud_user_name,
                            "password": self.cloud_user_password}
         }
         return grid_connection
 
     def _discover_config(self, gm_member):
         return_fields = ['extattrs']
-        if self._grid_config.is_cloud_wapi:
+        if self.wapi_major_version >= 2:
             return_fields.append('ipv6_setting')
 
         obj_type = "member/%s:%s" % (gm_member['member_id'],
@@ -202,9 +233,9 @@ class GridConfiguration(object):
         return config
 
     def _update_fields(self, extattr):
-        for property in self.property_to_ea_mapping:
-            self._update_from_ea(property,
-                                 self.property_to_ea_mapping[property],
+        for pm in self.property_to_ea_mapping:
+            self._update_from_ea(pm,
+                                 self.property_to_ea_mapping[pm],
                                  extattr)
 
     def _update_from_ea(self, field, ea_name, extattrs):
