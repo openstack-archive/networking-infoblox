@@ -19,11 +19,12 @@ import six
 from oslo_serialization import jsonutils
 
 from neutron import context
-from neutron.tests.unit import testlib_api
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
+
+from neutron.tests.unit import testlib_api
 
 
 class TestUtils(testlib_api.SqlTestCase):
@@ -69,6 +70,7 @@ class TestUtils(testlib_api.SqlTestCase):
         grid_1_name = 'test grid 1'
         grid_2_id = 200
         grid_2_name = 'test grid 2'
+        dbi.remove_grids(self.ctx.session, [grid_1_id, grid_2_id])
         dbi.add_grid(self.ctx.session, grid_1_id, grid_1_name, '{}', 'ON')
         dbi.add_grid(self.ctx.session, grid_2_id, grid_2_name, '{}', 'OFF')
 
@@ -388,34 +390,37 @@ class TestUtils(testlib_api.SqlTestCase):
         actual = utils.find_one_in_list('key2', 'val22', search_list)
         self.assertEqual(expected, actual)
 
-    def test_find_one_in_list_by_condition(self):
+    def test_find_in_list_by_condition(self):
         self.assertRaises(ValueError,
-                          utils.find_one_in_list_by_condition, None, None)
+                          utils.find_in_list_by_condition, None, None)
         self.assertRaises(ValueError,
-                          utils.find_one_in_list_by_condition, 'key', [])
+                          utils.find_in_list_by_condition, 'key', [])
         self.assertEqual(None,
-                         utils.find_one_in_list_by_condition({'key': 'val'},
-                                                             []))
+                         utils.find_in_list_by_condition({'key': 'val'}, []))
 
         search_list = [{'key1': 'val1', 'key2': 'val2', 'key3': 'val3'},
-                       {'key1': 'val11', 'key2': 'val22', 'key3': 'val33'}]
+                       {'key1': 'val11', 'key2': 'val22', 'key3': 'val33'},
+                       {'key1': 'val1', 'key2': 'val2', 'key3': 'val333'}]
 
         search_condition = {'key2': 'val33'}
-        expected = None
-        actual = utils.find_one_in_list_by_condition(search_condition,
-                                                     search_list)
+        expected = []
+        actual = utils.find_in_list_by_condition(search_condition, search_list)
         self.assertEqual(expected, actual)
 
         search_condition = {'key2': 'val22'}
         expected = {'key1': 'val11', 'key2': 'val22', 'key3': 'val33'}
-        actual = utils.find_one_in_list_by_condition(search_condition,
-                                                     search_list)
-        self.assertEqual(expected, actual)
+        actual = utils.find_in_list_by_condition(search_condition, search_list)
+        self.assertEqual(expected, actual[0])
 
         search_condition = {'key1': 'val1', 'key3': 'val3'}
         expected = {'key1': 'val1', 'key2': 'val2', 'key3': 'val3'}
-        actual = utils.find_one_in_list_by_condition(search_condition,
-                                                     search_list)
+        actual = utils.find_in_list_by_condition(search_condition, search_list)
+        self.assertEqual(expected, actual[0])
+
+        search_condition = {'key1': 'val1', 'key2': 'val2'}
+        expected = [{'key1': 'val1', 'key2': 'val2', 'key3': 'val3'},
+                    {'key1': 'val1', 'key2': 'val2', 'key3': 'val333'}]
+        actual = utils.find_in_list_by_condition(search_condition, search_list)
         self.assertEqual(expected, actual)
 
     def test_find_in_list(self):
@@ -441,6 +446,28 @@ class TestUtils(testlib_api.SqlTestCase):
                        {'key': 'val3'}]
         expected = [{'key': 'val1'}, {'key': 'val3'}]
         self.assertEqual(expected, utils.find_in_list(key, value, search_list))
+
+    def test_find_key_from_list(self):
+        self.assertRaises(ValueError, utils.find_key_from_list, None, None)
+        self.assertRaises(ValueError, utils.find_key_from_list, 'ley', {})
+        self.assertEqual(None, utils.find_key_from_list('key', []))
+        self.assertEqual([], utils.find_key_from_list('key', ['val']))
+
+        key = 'key1'
+        search_list = [{'key': 'val'}]
+        self.assertEqual([], utils.find_key_from_list(key, search_list))
+
+        key = 'key'
+        search_list = [{'key': 'val1'}]
+        expected = [{'key': 'val1'}]
+        self.assertEqual(expected, utils.find_key_from_list(key, search_list))
+
+        key = 'key'
+        search_list = [{'key': 'val1'},
+                       {'key': 'val2'},
+                       {'key2': 'val3'}]
+        expected = [{'key': 'val1'}, {'key': 'val2'}]
+        self.assertEqual(expected, utils.find_key_from_list(key, search_list))
 
     def test_merge_list(self):
         self.assertRaises(ValueError, utils.merge_list, None)
@@ -564,3 +591,12 @@ class TestUtils(testlib_api.SqlTestCase):
         expected = 'create_instance_sync'
         self.assertEqual(expected,
                          utils.get_notification_handler_name(event_type))
+
+    def test_get_major_version(self):
+        self.assertRaises(ValueError, utils.get_major_version, None)
+        self.assertRaises(ValueError, utils.get_major_version, [])
+        self.assertRaises(ValueError, utils.get_major_version, '')
+        self.assertEqual(1, utils.get_major_version('1.2'))
+        self.assertEqual(1, utils.get_major_version('1.4.1'))
+        self.assertEqual(2, utils.get_major_version('2.2'))
+        self.assertIsNone(utils.get_major_version('2.'))
