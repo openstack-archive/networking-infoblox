@@ -16,7 +16,6 @@
 import mock
 
 from neutron import context
-from neutron.tests.unit import testlib_api
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import grid
@@ -24,7 +23,9 @@ from networking_infoblox.neutron.common import mapping
 from networking_infoblox.neutron.common import member
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
+
 from networking_infoblox.tests import base
+from neutron.tests.unit import testlib_api
 
 
 DELIMITER = '^'
@@ -42,7 +43,7 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.test_grid_config.grid_id = 100
         self.test_grid_config.grid_name = "Test Grid 1"
         self.test_grid_config.grid_master_host = '192.168.1.7'
-        self.test_grid_config.admin_username = 'admin'
+        self.test_grid_config.admin_user_name = 'admin'
         self.test_grid_config.admin_password = 'infoblox'
         self.test_grid_config.wapi_version = '2.2'
         self.member_mgr = member.GridMemberManager(self.test_grid_config)
