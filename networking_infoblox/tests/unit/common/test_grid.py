@@ -23,7 +23,9 @@ from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import member
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
+
 from networking_infoblox.tests import base
+from networking_infoblox.tests.unit import grid_sync_stub
 
 
 class GridTestCase(base.TestCase, testlib_api.SqlTestCase):
@@ -103,3 +105,52 @@ class GridTestCase(base.TestCase, testlib_api.SqlTestCase):
                                       config_json)
         self.assertEqual(expected,
                          self.test_grid_config.dns_record_binding_types)
+
+    def test_grid_sync_frequency_check(self):
+        # prepare grid manager for sync
+        stub = grid_sync_stub.GridSyncStub(self.ctx, self.connector_fixture)
+        stub.prepare_grid_manager(wapi_version='1.8')
+        grid_mgr = stub.get_grid_manager()
+
+        # test for no sync
+        grid_mgr.grid_config.grid_sync_support = False
+        grid_mgr.sync()
+        assert not grid_mgr.member._discover_members.called
+        assert not grid_mgr.grid_config._discover_config.called
+        assert not grid_mgr.mapping._discover_network_views.called
+        assert not grid_mgr.mapping._discover_networks.called
+        last_sync_time = dbi.get_last_sync_time(self.ctx.session)
+        self.assertIsNone(last_sync_time)
+
+        # test for the first sync; expects sync
+        grid_mgr.grid_config.grid_sync_support = True
+        grid_mgr.sync()
+        assert grid_mgr.member._discover_members.called_once
+        assert grid_mgr.grid_config._discover_config.called_once
+        assert grid_mgr.mapping._discover_network_views.called_once
+        assert grid_mgr.mapping._discover_networks.called_once
+        sync_time_from_second_sync = dbi.get_last_sync_time(self.ctx.session)
+        self.assertEqual(sync_time_from_second_sync, grid_mgr.last_sync_time)
+
+        # test for the second sync; expects no sync due to min wait time
+        grid_mgr.grid_config.grid_sync_support = True
+        grid_mgr.grid_config.grid_sync_minimum_wait_time = 10
+        grid_mgr.sync()
+        assert grid_mgr.member._discover_members.called_once
+        assert grid_mgr.grid_config._discover_config.called_once
+        assert grid_mgr.mapping._discover_network_views.called_once
+        assert grid_mgr.mapping._discover_networks.called_once
+        # should be the same as last_sync_time from the first sync
+        # to prove that dicovery methods are not called in this test case.
+        self.assertEqual(sync_time_from_second_sync, grid_mgr.last_sync_time)
+
+        # test for the third sync; expects sync
+        grid_mgr.grid_config.grid_sync_support = True
+        grid_mgr.grid_config.grid_sync_minimum_wait_time = 0
+        grid_mgr.sync()
+        assert grid_mgr.member._discover_members.called_once
+        assert grid_mgr.grid_config._discover_config.called_once
+        assert grid_mgr.mapping._discover_network_views.called_once
+        assert grid_mgr.mapping._discover_networks.called_once
+        last_sync_time = dbi.get_last_sync_time(self.ctx.session)
+        self.assertEqual(last_sync_time, grid_mgr.last_sync_time)

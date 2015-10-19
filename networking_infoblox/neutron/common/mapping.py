@@ -89,8 +89,6 @@ class GridMappingManager(object):
         infoblox_network_views and infoblox_mapping_conditions.
 
         :param discovered_netviews: discovered network view json
-        :param discovered_delegations: delegation members should be populated
-        by this method and used by _sync_network_mapping
         :return: None
         """
         session = self._context.session
@@ -112,20 +110,31 @@ class GridMappingManager(object):
             if netview_row:
                 netview_id = netview_row.id
 
-            # add a new network view
-            if netview_name not in persisted_netview_names:
-                new_netview = dbi.add_network_view(session, netview_name,
-                                                   self._grid_id)
-                netview_id = new_netview.id
-
-            # update mapping conditions for the current network view
-            self._update_mapping_conditions(netview, netview_id)
+            # authority member is default to GM
+            gm_row = utils.find_one_in_list('member_type',
+                                            const.MEMBER_TYPE_GRID_MASTER,
+                                            self.db_members)
+            authority_member_id = gm_row.member_id
 
             # get delegation member if cloud platform is supported
             delegated_member = self._get_delegated_member(netview)
             if delegated_member:
+                authority_member_id = delegated_member.member_id
                 discovered_delegations[netview_name] = (
                     delegated_member.member_id)
+
+            # update or add a network view
+            if netview_name in persisted_netview_names:
+                dbi.update_network_view(session, netview_id, self._grid_id,
+                                        authority_member_id)
+            else:
+                new_netview = dbi.add_network_view(session, netview_name,
+                                                   self._grid_id,
+                                                   authority_member_id)
+                netview_id = new_netview.id
+
+            # update mapping conditions for the current network view
+            self._update_mapping_conditions(netview, netview_id)
 
         # we have added new network views. now let's remove persisted
         # network views not found from discovery
