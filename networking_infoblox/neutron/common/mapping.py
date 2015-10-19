@@ -89,8 +89,6 @@ class GridMappingManager(object):
         infoblox_network_views and infoblox_mapping_conditions.
 
         :param discovered_netviews: discovered network view json
-        :param discovered_delegations: delegation members should be populated
-        by this method and used by _sync_network_mapping
         :return: None
         """
         session = self._context.session

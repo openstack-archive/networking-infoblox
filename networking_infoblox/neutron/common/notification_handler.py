@@ -17,8 +17,11 @@ from oslo_log import log as logging
 import oslo_messaging
 from oslo_utils import encodeutils
 
+from networking_infoblox.neutron.common import context
+from networking_infoblox.neutron.common import dhcp
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import utils
+from networking_infoblox.neutron.db import infoblox_db as dbi
 
 
 LOG = logging.getLogger(__name__)
@@ -28,10 +31,29 @@ class IpamEventHandler(object):
 
     traceable = True
 
-    def __init__(self, context, plugin=None, grid_mgr=None):
-        self.context = context
+    def __init__(self, neutron_context, plugin=None, grid_manager=None):
+        self.context = neutron_context
         self.plugin = plugin
-        self.grid_mgr = grid_mgr if grid_mgr else grid.GridManager(context)
+        self.grid_mgr = (grid_manager if grid_manager else
+                         grid.GridManager(self.context))
+        self.grid_mgr.sync()
+
+        self.grid_config = self.grid_mgr.grid_config
+        self.grid_id = self.grid_config.grid_id
+
+        self._cached_grid_members = None
+        self._cached_network_views = None
+        self._cached_mapping_conditions = None
+
+    def _resync(self):
+        self.grid_mgr.sync()
+
+        self._cached_grid_members = dbi.get_members(
+            self.context.session, grid_id=self.grid_id)
+        self._cached_network_views = dbi.get_network_views(
+            self.context.session, grid_id=self.grid_id)
+        self._cached_mapping_conditions = dbi.get_mapping_conditions(
+            self.context.session, grid_id=self.grid_id)
 
     def process(self, ctxt, publisher_id, event_type, payload, metadata):
         self.ctxt = ctxt
@@ -47,26 +69,36 @@ class IpamEventHandler(object):
             LOG.error(encodeutils.exception_to_unicode(e))
 
     def create_network_alert(self, payload):
-        """Notifies that new networks are about to be created."""
+        """Notifies that new networks are about to be created.
+
+        Upon alert, trigger grid sync and record tenant names
+        """
         if 'networks' in payload:
             networks = payload.get('networks')
         else:
             networks = [payload.get('network')]
 
-        for network in networks:
-            if self.traceable:
+        if self.traceable:
+            for network in networks:
                 LOG.debug("network: %s" % network)
 
+        self._resync()
+
     def create_subnet_alert(self, payload):
-        """Notifies that new subnets are about to be created."""
+        """Notifies that new subnets are about to be created.
+
+        Upon alert, trigger grid sync and record tenant names
+        """
         if 'subnets' in payload:
             subnets = payload.get('subnets')
         else:
             subnets = [payload.get('subnet')]
 
-        for subnet in subnets:
-            if self.traceable:
+        if self.traceable:
+            for subnet in subnets:
                 LOG.debug("subnet: %s" % subnet)
+
+        self._resync()
 
     def create_network_sync(self, payload):
         """Notifies that new networks have been created."""
@@ -79,12 +111,26 @@ class IpamEventHandler(object):
             if self.traceable:
                 LOG.debug("network: %s" % network)
 
+            ib_context = context.InfobloxContext(self.context, self.user_id,
+                                                 network, None,
+                                                 self.grid_config)
+            ib_context.update()
+            dhcp_driver = dhcp.DhcpAsyncDriver(ib_context)
+            dhcp_driver.create_network_sync()
+
     def update_network_sync(self, payload):
         """Notifies that the network property has been updated."""
         network = payload.get('network')
 
         if self.traceable:
             LOG.debug("network: %s" % network)
+
+        ib_context = context.InfobloxContext(self.context, self.user_id,
+                                             network, None,
+                                             self.grid_config)
+        ib_context.update()
+        dhcp_driver = dhcp.DhcpAsyncDriver(ib_context)
+        dhcp_driver.update_network_sync()
 
     def delete_network_sync(self, payload):
         """Notifies that the network has been deleted."""
@@ -96,17 +142,47 @@ class IpamEventHandler(object):
         # At this point, NIOS subnets that belong to the networks
         # should have been removed; check if still exists and remove them
         # if necessary.
+        ib_context = context.InfobloxContext(self.context, self.user_id,
+                                             None, None, self.grid_config)
+        dhcp_driver = dhcp.DhcpAsyncDriver(ib_context)
+        dhcp_driver.update_network_sync()
+
+        self._resync()
 
     def create_subnet_sync(self, payload):
-        """Notifies that new subnets have been created."""
+        """Notifies that new subnets have been created.
+
+        We have two ways to get physical network info.
+        1. Create/update network sync can get this info and cache it in DB.
+        2. Call plugin.get_network() directly
+
+        If we choose 2, then we can actually do this in ipam driver but not
+        sure if this is acceptable by community. We can do this in the
+        notification handler.
+        """
         if 'subnets' in payload:
             subnets = payload.get('subnets')
         else:
             subnets = [payload.get('subnet')]
 
+        # get network from plugin so that physical network info is available.
+        network_id = subnets[0].get('network_id')
+        network = self.plugin.get_network(self.context, network_id)
+
         for subnet in subnets:
             if self.traceable:
                 LOG.debug("subnet: %s" % subnet)
+
+            ib_context = context.InfobloxContext(
+                self.context, self.user_id, network, subnet, self.grid_config,
+                self._cached_grid_members, self._cached_network_views,
+                self._cached_mapping_conditions)
+            ib_context.update()
+
+            dhcp_driver = dhcp.DhcpSyncDriver(ib_context)
+            dhcp_driver.create_subnet()
+
+        self._resync()
 
     def update_subnet_sync(self, payload):
         """Notifies that the subnet has been updated."""
@@ -124,6 +200,8 @@ class IpamEventHandler(object):
 
         # At this point, NIOS subnets should have been removed.
         # Check if still exists and remove them if necessary.
+
+        self._resync()
 
     def create_port_sync(self, payload):
         """Notifies that new ports have been created."""
