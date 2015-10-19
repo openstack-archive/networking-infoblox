@@ -226,3 +226,20 @@ class InfobloxObject(model_base.BASEV2):
             'search_hash'),
         model_base.BASEV2.__table_args__
     )
+
+
+class InfobloxOperation(model_base.BASEV2, models_v2.HasId):
+    """Operational data like last sync time."""
+    __tablename__ = 'infoblox_operations'
+
+    op_type = sa.Column(sa.String(48), nullable=False)
+    op_value = sa.Column(sa.String(255), nullable=False)
+    __table_args__ = (
+        sa.UniqueConstraint(
+            'op_type',
+            name='uniq_infoblox_operations_op_type'),
+        model_base.BASEV2.__table_args__
+    )
+
+    def __repr__(self):
+        return "op_type: %s, op_value: %s" % (self.op_type, self.op_value)

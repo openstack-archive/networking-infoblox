@@ -157,3 +157,14 @@ def upgrade():
             'ix_infoblox_objects_search_hash',
             'search_hash')
     )
+
+    op.create_table(
+        'infoblox_operations',
+        sa.Column('id', sa.String(length=36), nullable=False),
+        sa.Column('op_type', sa.String(length=48), nullable=False),
+        sa.Column('op_value', sa.String(length=255), nullable=False),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint(
+            'op_type',
+            name='uniq_infoblox_operations_op_type')
+    )

@@ -21,13 +21,14 @@ import time
 
 from oslo_config import cfg
 
-from neutron.common import config as common_config
 from neutron import context
 
-from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import notification
+from networking_infoblox.neutron.common import notification_handler
 from networking_infoblox.neutron.common import utils
+
 from networking_infoblox.tests import base
+from networking_infoblox.tests.unit import grid_sync_stub
 
 
 class NotificationTestCase(base.RpcTestCase):
@@ -43,28 +44,16 @@ class NotificationTestCase(base.RpcTestCase):
     def setUp(self):
         super(NotificationTestCase, self).setUp()
         self.ctx = context.get_admin_context()
-        self._setup_grid_config()
+        stub = grid_sync_stub.GridSyncStub(self.ctx, self.connector_fixture)
+        stub.prepare_grid_manager(wapi_version='2.2')
+        self.grid_mgr = stub.get_grid_manager()
+        self._setup_config()
+        self.event_handler = notification_handler.IpamEventHandler(
+            self.ctx, None, self.grid_mgr)
 
-    def _setup_grid_config(self):
-        # config init is needed to initialize transport and config loading
-        common_config.init([])
-
-        # register infoblox stanza
-        config.register_infoblox_ipam_opts(cfg.CONF)
-        cfg.CONF.set_override("cloud_data_center_id", '1000', 'infoblox')
-        cfg.CONF.set_override("ipam_agent_workers", '1', 'infoblox')
-
-        # register infoblox data center stanza
-        data_center_id = cfg.CONF.infoblox.cloud_data_center_id
-        config.register_infoblox_grid_opts(cfg.CONF, data_center_id)
-        data_center = 'infoblox-dc:%s' % data_center_id
-        cfg.CONF.set_override('grid_master_host', '192.168.1.21', data_center)
-        cfg.CONF.set_override('data_center_name', 'admin', data_center)
-        cfg.CONF.set_override('admin_user_name', 'admin', data_center)
-        cfg.CONF.set_override('admin_password', 'infoblox', data_center)
-        cfg.CONF.set_override('cloud_user_name', 'cloud', data_center)
-        cfg.CONF.set_override('cloud_user_password', 'cloud', data_center)
-        cfg.CONF.set_override('wapi_version', '2.2', data_center)
+    def _setup_config(self):
+        cfg.CONF.set_override('core_plugin',
+                              'neutron.plugins.ml2.plugin.Ml2Plugin')
 
     def test_notification_endpoint_with_notification_handler(self):
         msg_context = {}
@@ -73,6 +62,7 @@ class NotificationTestCase(base.RpcTestCase):
         metadata = {}
 
         endpoint = notification.NotificationEndpoint(self.ctx)
+        endpoint.handler = self.event_handler
 
         # go through each event type and verify that each event handler is
         # called from notification handler

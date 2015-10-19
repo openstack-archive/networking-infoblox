@@ -153,12 +153,6 @@ class GridMemberManager(object):
                               member_status=const.MEMBER_STATUS_OFF)
         session.flush()
 
-    def reserve_authority_member(self, ib_context):
-        pass
-
-    def reserve_service_member(self):
-        pass
-
     def _discover_members(self):
         return_fields = ['node_info', 'host_name', 'vip_setting']
         if self._grid_config.is_cloud_wapi:
@@ -213,9 +207,9 @@ class GridMemberManager(object):
         member_type = const.MEMBER_TYPE_REGULAR_MEMBER
         found_cloud_license = False
         if self._grid_config.is_cloud_wapi and member_licenses:
-            for license in member_licenses:
-                if license['hwid'] == member_hwid and \
-                        license['type'] == const.MEMBER_LICENSE_TYPE_CLOUD_API:
+            for ml in member_licenses:
+                if (ml['hwid'] == member_hwid and
+                        ml['type'] == const.MEMBER_LICENSE_TYPE_CLOUD_API):
                     found_cloud_license = True
                     break
             if found_cloud_license:
