@@ -17,6 +17,8 @@ from oslo_log import log as logging
 import oslo_messaging
 from oslo_utils import encodeutils
 
+from neutron import manager
+
 from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import ipam
@@ -33,7 +35,7 @@ class IpamEventHandler(object):
 
     def __init__(self, neutron_context, plugin=None, grid_manager=None):
         self.context = neutron_context
-        self.plugin = plugin
+        self.plugin = plugin if plugin else manager.NeutronManager.get_plugin()
         self.grid_mgr = (grid_manager if grid_manager else
                          grid.GridManager(self.context))
         self.grid_mgr.sync()

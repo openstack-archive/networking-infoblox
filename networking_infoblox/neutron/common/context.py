@@ -15,10 +15,13 @@
 
 from oslo_log import log as logging
 
+from neutron.i18n import _LI
+
 from infoblox_client import connector
 from infoblox_client import object_manager as obj_mgr
 
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
@@ -75,6 +78,10 @@ class InfobloxContext(object):
 
     def update(self):
         """Finds mapping and load managers that can interact with NIOS grid."""
+        if not self.network and self.subnet:
+            network_id = self.subnet.get('network_id')
+            self.network = self.get_network(network_id)
+
         if self.network:
             if self.subnet:
                 self._find_mapping()
@@ -88,7 +95,55 @@ class InfobloxContext(object):
         CPM.
         :return: None
         """
-        pass
+        session = self.context.session
+        network_view = self.mapping.network_view
+        authority_member = None
+
+        # 1 . get next available member
+        if self.grid_config.dhcp_support is False:
+            authority_member = dbi.get_next_authority_member_for_ipam(
+                session, self.grid_id)
+        else:
+            authority_member = dbi.get_next_authority_member_for_dhcp(
+                session, self.grid_id)
+
+        if not authority_member:
+            raise exc.InfobloxCannotReserveAuthorityMember(
+                network_view=network_view)
+
+        # 2. create network view mapping and update mapping properties
+        db_network_view = dbi.add_network_view(session, network_view,
+                                               self.grid_id,
+                                               authority_member.member_id)
+        self.mapping.network_view_id = db_network_view.id
+        self.mapping.authority_member = authority_member
+
+        # 3. change connector if authority member is CPM because currently
+        # gm_connector is used
+        if authority_member.member_type == const.MEMBER_TYPE_CP_MEMBER:
+            self._load_managers()
+
+    def get_network(self, network_id):
+        session = self.context.session
+        db_network = dbi.get_network(session, network_id)
+        network = {'id': db_network['id'],
+                   'name': db_network['name'],
+                   'tenant_id': db_network['tenant_id'],
+                   'admin_state_up': db_network['admin_state_up'],
+                   'status': db_network['status']}
+
+        # 'shared' attribute for a network reflects if the network
+        # is shared to the calling tenant via an RBAC entry.
+        shared = False
+        matches = ('*', network['tenant_id'])
+        for entry in db_network.rbac_entries:
+            if (entry.action == 'access_as_shared' and
+                    entry.target_tenant in matches):
+                shared = True
+                break
+        network['shared'] = shared
+        network['external'] = dbi.is_network_external(session, network_id)
+        return network
 
     def _load_managers(self):
         self.connector = self._get_connector()
@@ -136,3 +191,213 @@ class InfobloxContext(object):
             'http_request_timeout': grid_connection['http_request_timeout']
         }
         return connector.Connector(opts)
+
+    @staticmethod
+    def _get_tenant_name(tenant_id):
+        # TODO(hhwang): We need to store tenant names and retrieve here.
+        return 'Test tenant'
+
+    def _get_address_scope(self, subnetpool_id):
+        session = self.context.session
+        address_scope_id = None
+        address_scope_name = None
+
+        db_address_scope = dbi.get_address_scope_by_subnetpool_id(
+            session, subnetpool_id)
+        if db_address_scope:
+            address_scope_id = db_address_scope.id
+            address_scope_name = db_address_scope.name
+
+        return address_scope_id, address_scope_name
+
+    def _find_mapping(self):
+        session = self.context.session
+        netview_id = None
+        netview_name = None
+
+        # 1. First check if mapping already exists
+        network_id = self.subnet.get('network_id')
+        subnet_id = self.subnet.get('id')
+        netview_mapping = dbi.get_network_view_mapping(
+            session, network_id=network_id, subnet_id=subnet_id)
+        if netview_mapping:
+            netview_id = netview_mapping[0].network_view_idself.subnet.id
+            netview_row = utils.find_one_in_list(
+                'network_view_id', netview_id,
+                self.discovered_network_views)
+            netview_name = netview_row.network_view
+            self.mapping.network_view_id = netview_id
+            self.mapping.network_view = netview_name
+            self.mapping.authority_member = netview_row.authority_member_id
+            LOG.info(_LI("Network view %{netview) mapping found for "
+                         "network %(network) and subnet %(subnet)"),
+                     dict(netview=netview_name, network=network_id,
+                          subnet=subnet_id))
+            return
+
+        # 2. No mapping so find mapping
+        mapping_attrs = self._get_mapping_attributes()
+        matching_netviews = []
+
+        # 1. find mapping matches on common cases
+        mapping_filters = self._get_scalar_mappping_filters(mapping_attrs)
+        for mf in mapping_filters:
+            if mf.values()[0] is None:
+                continue
+            matches = utils.find_in_list_by_condition(
+                mf, self.discovered_mapping_conditions)
+            if matches:
+                netview_ids = [m.network_view_id for m in matches]
+                matching_netviews.append(set(netview_ids))
+
+        # 2. find matches for tenant cidrs
+        mapping_filters = self._get_tenant_cidr_mappping_filters()
+        for mf in mapping_filters:
+            matches = utils.find_in_list_by_condition(
+                mf, self.discovered_mapping_conditions)
+            if matches:
+                netview_ids = [m.network_view_id for m in matches]
+                matching_netviews.append(set(netview_ids))
+
+        # 3. find network view id and name pair
+        if matching_netviews:
+            matching_netview_ids = list(set.intersection(*matching_netviews))
+            # if multiple netview ids return, pick the first one
+            netview_id = matching_netview_ids[0]
+            netview_row = utils.find_one_in_list('id', netview_id,
+                                                 self.discovered_network_views)
+            netview_name = netview_row.network_view
+        else:
+            # no matching found; use default network view scope
+            netview_scope = self.grid_config.default_network_view_scope
+            netview_name = self._get_network_view_by_scope(netview_scope,
+                                                           mapping_attrs)
+            netview_row = utils.find_one_in_list('network_view', netview_name,
+                                                 self.discovered_network_views)
+            if netview_row:
+                netview_id = netview_row.id
+
+        self.mapping.network_view_id = netview_id
+        self.mapping.network_view = netview_name
+        if self.mapping.network_view_id:
+            self.mapping.authority_member = self._get_authority_member()
+
+    def _get_authority_member(self):
+        netview_id = self.mapping.network_view_id
+        netview_row = utils.find_one_in_list('id', netview_id,
+                                             self._discovered_network_views)
+        member = utils.find_one_in_list('member_id',
+                                        netview_row.authority_member_id,
+                                        self.discovered_grid_members)
+        return member
+
+    def _get_mapping_attributes(self):
+        subnet_id = self.subnet.get('id')
+        subnet_name = self.subnet.get('name')
+        subnet_cidr = self.subnet.get('cidr')
+        subnetpool_id = self.subnet.get('subnetpool_id')
+        network_id = self.network.get('id')
+        network_name = self.network.get('name')
+        tenant_id = self.network.get('tenant_id')
+        tenant_name = self._get_tenant_name(tenant_id)
+        address_scope_id, address_scope_name = self._get_address_scope(
+            subnetpool_id)
+
+        attrs = {'subnet_id': subnet_id,
+                 'subnet_name': subnet_name,
+                 'subnet_cidr': subnet_cidr,
+                 'subnetpool_id': subnetpool_id,
+                 'network_id': network_id,
+                 'network_name': network_name,
+                 'tenant_id': tenant_id,
+                 'tenant_name': tenant_name,
+                 'address_scope_id': address_scope_id,
+                 'address_scope_name': address_scope_name}
+        return attrs
+
+    @staticmethod
+    def _get_scalar_mappping_filters(attrs):
+        address_scope_name_filter = {
+            const.MAPPING_CONDITION_KEY_NAME:
+                const.EA_MAPPING_ADDRESS_SCOPE_NAME,
+            const.MAPPING_CONDITION_VALUE_NAME: attrs['address_scope_name']
+        }
+        address_scope_id_filter = {
+            const.MAPPING_CONDITION_KEY_NAME:
+                const.EA_MAPPING_ADDRESS_SCOPE_ID,
+            const.MAPPING_CONDITION_VALUE_NAME: attrs['address_scope_id']
+        }
+        tenant_name_filter = {
+            const.MAPPING_CONDITION_KEY_NAME: const.EA_MAPPING_TENANT_NAME,
+            const.MAPPING_CONDITION_VALUE_NAME: attrs['tenant_name']
+        }
+        tenant_id_filter = {
+            const.MAPPING_CONDITION_KEY_NAME: const.EA_MAPPING_TENANT_ID,
+            const.MAPPING_CONDITION_VALUE_NAME: attrs['tenant_id']
+        }
+        network_name_filter = {
+            const.MAPPING_CONDITION_KEY_NAME: const.EA_MAPPING_NETWORK_NAME,
+            const.MAPPING_CONDITION_VALUE_NAME: attrs['network_name']
+        }
+        network_id_filter = {
+            const.MAPPING_CONDITION_KEY_NAME: const.EA_MAPPING_NETWORK_ID,
+            const.MAPPING_CONDITION_VALUE_NAME: attrs['network_id']
+        }
+        subnet_id_filter = {
+            const.MAPPING_CONDITION_KEY_NAME: const.EA_MAPPING_SUBNET_ID,
+            const.MAPPING_CONDITION_VALUE_NAME: attrs['subnet_id']
+        }
+        subnet_cidr_filter = {
+            const.MAPPING_CONDITION_KEY_NAME: const.EA_MAPPING_SUBNET_CIDR,
+            const.MAPPING_CONDITION_VALUE_NAME: attrs['subnet_cidr']
+        }
+
+        filters = [address_scope_name_filter,
+                   address_scope_id_filter,
+                   tenant_name_filter,
+                   tenant_id_filter,
+                   network_name_filter,
+                   network_id_filter,
+                   subnet_id_filter,
+                   subnet_cidr_filter]
+        return filters
+
+    def _get_tenant_cidr_mappping_filters(self):
+        session = self.context.session
+        tenant_id = self.network.get('tenant_id')
+
+        db_tenant_subnets = dbi.get_subnets_by_tenant_id(session, tenant_id)
+        tenant_subent_cidrs = utils.get_values_from_records('cidr',
+                                                            db_tenant_subnets)
+        filters = [
+            {const.MAPPING_CONDITION_KEY_NAME: const.EA_MAPPING_TENANT_CIDR,
+             const.MAPPING_CONDITION_VALUE_NAME: cidr}
+            for cidr in tenant_subent_cidrs]
+        return filters
+
+    def _get_network_view_by_scope(self, netview_scope, neutron_objs):
+        netview_name = 'default'
+
+        if netview_scope == const.NETWORK_VIEW_SCOPE_SINGLE:
+            netview_name = self.grid_config.default_network_view
+        else:
+            object_id = None
+            object_name = None
+
+            if netview_scope == const.NETWORK_VIEW_SCOPE_SUBNET:
+                object_id = neutron_objs['subnet_id']
+                object_name = neutron_objs['subnet_name']
+            elif netview_scope == const.NETWORK_VIEW_SCOPE_NETWORK:
+                object_id = neutron_objs['network_id']
+                object_name = neutron_objs['network_name']
+            elif netview_scope == const.NETWORK_VIEW_SCOPE_TENANT:
+                object_id = neutron_objs['tenant_id']
+                object_name = neutron_objs['tenant_name']
+            elif netview_scope == const.NETWORK_VIEW_SCOPE_ADDRESS_SCOPE:
+                object_id = neutron_objs['address_scope_id']
+                object_name = neutron_objs['address_scope_name']
+
+            if object_id:
+                netview_name = utils.generate_network_view_name(object_id,
+                                                                object_name)
+        return netview_name

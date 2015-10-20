@@ -599,3 +599,14 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual(1, utils.get_major_version('1.4.1'))
         self.assertEqual(2, utils.get_major_version('2.2'))
         self.assertIsNone(utils.get_major_version('2.'))
+
+    def test_generate_network_view_name(self):
+        self.assertRaises(ValueError, utils.generate_network_view_name, None)
+        self.assertRaises(ValueError, utils.generate_network_view_name, [])
+        self.assertRaises(ValueError, utils.generate_network_view_name, '')
+        self.assertRaises(ValueError, utils.generate_network_view_name, '', '')
+        self.assertRaises(ValueError, utils.generate_network_view_name, '5', 8)
+        self.assertEqual('123', utils.generate_network_view_name('123', []))
+        self.assertEqual('1234', utils.generate_network_view_name('1234', ''))
+        self.assertEqual('1234', utils.generate_network_view_name('1234'))
+        self.assertEqual('hi-23', utils.generate_network_view_name('23', 'hi'))
