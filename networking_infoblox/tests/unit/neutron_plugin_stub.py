@@ -20,6 +20,9 @@ from neutron.api.v2 import attributes
 from neutron.db import address_scope_db
 
 
+DB_PLUGIN_KLASS = 'neutron.db.db_base_plugin_v2.NeutronDbPluginV2'
+
+
 class NeutronPluginStub(object):
 
     def __init__(self, context, plugin):

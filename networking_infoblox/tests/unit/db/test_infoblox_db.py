@@ -492,3 +492,61 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         infoblox_db.record_last_sync_time(self.ctx.session, current_time)
         last_sync_time = infoblox_db.get_last_sync_time(self.ctx.session)
         self.assertEqual(current_time, last_sync_time)
+
+    def test_authority_member_reservation_for_ipam(self):
+        # prepare grid
+        self._create_default_grid()
+
+        # prepare grid members
+        member_list = [{'member_id': 'm1',
+                        'member_name': 'm1.com',
+                        'member_ip': '10.10.1.1',
+                        'member_ipv6': None,
+                        'member_type': 'GM',
+                        'member_status': 'ON'},
+                       {'member_id': 'm2',
+                        'member_name': 'm2.com',
+                        'member_ip': '10.10.1.2',
+                        'member_ipv6': 'fd44:acb:5df6:1083::22',
+                        'member_type': 'CPM',
+                        'member_status': 'ON'},
+                       {'member_id': 'm3',
+                        'member_name': 'm3.com',
+                        'member_ip': '10.10.1.3',
+                        'member_ipv6': None,
+                        'member_type': 'CPM',
+                        'member_status': 'ON'},
+                       {'member_id': 'm4',
+                        'member_name': 'm4.com',
+                        'member_ip': '10.10.1.4',
+                        'member_ipv6': None,
+                        'member_type': 'REGULAR',
+                        'member_status': 'ON'},
+                       {'member_id': 'm5',
+                        'member_name': 'm5.com',
+                        'member_ip': '10.10.1.5',
+                        'member_ipv6': None,
+                        'member_type': 'CPM',
+                        'member_status': 'OFF'},
+                       {'member_id': 'm6',
+                        'member_name': 'm6.com',
+                        'member_ip': '10.10.1.6',
+                        'member_ipv6': None,
+                        'member_type': 'CPM',
+                        'member_status': 'ON'}]
+        self._create_members(member_list, self.grid_id)
+
+        # prepare network views
+        netview_dict = {'default': 'm1',
+                        'hs-view-1': 'm2',
+                        'hs-view-2': 'm2',
+                        'hs-view-3': 'm3'}
+        self._create_network_views(netview_dict)
+
+        # test for network view owning member (authority member)
+        # the authority member must has the least number of network views
+        authority_member = infoblox_db.get_next_authority_member_for_ipam(
+            self.ctx.session, self.grid_id)
+        # expect m6 since m6 owns the least number of network views
+        expected = 'm6'
+        self.assertEqual(expected, authority_member.member_id)

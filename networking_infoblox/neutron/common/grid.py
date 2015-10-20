@@ -34,15 +34,14 @@ LOG = logging.getLogger(__name__)
 class GridManager(object):
 
     grid_config = None
-    connector = None
     member = None
     mapping = None
+    last_sync_time = None
 
     def __init__(self, context):
         self.grid_config = self._create_grid_configuration(context)
         self.member = grid_member.GridMemberManager(self.grid_config)
         self.mapping = grid_mapping.GridMappingManager(self.grid_config)
-        self.last_sync_time = None
 
     def sync(self):
         """Synchronize members, config, and mapping between NIOS and neutron.
