@@ -17,6 +17,8 @@ from oslo_log import log as logging
 import oslo_messaging
 from oslo_utils import encodeutils
 
+from neutron import manager
+
 from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import ipam
@@ -33,7 +35,7 @@ class IpamEventHandler(object):
 
     def __init__(self, neutron_context, plugin=None, grid_manager=None):
         self.context = neutron_context
-        self.plugin = plugin
+        self.plugin = plugin if plugin else manager.NeutronManager.get_plugin()
         self.grid_mgr = (grid_manager if grid_manager else
                          grid.GridManager(self.context))
         self.grid_mgr.sync()
@@ -115,7 +117,7 @@ class IpamEventHandler(object):
                                                  network, None,
                                                  self.grid_config)
             ib_context.update()
-            ipam_controller = ipam.IpamAsyncDriver(ib_context)
+            ipam_controller = ipam.IpamAsyncController(ib_context)
             ipam_controller.create_network_sync()
 
     def update_network_sync(self, payload):
@@ -129,7 +131,7 @@ class IpamEventHandler(object):
                                              network, None,
                                              self.grid_config)
         ib_context.update()
-        ipam_controller = ipam.IpamAsyncDriver(ib_context)
+        ipam_controller = ipam.IpamAsyncController(ib_context)
         ipam_controller.update_network_sync()
 
     def delete_network_sync(self, payload):
@@ -144,7 +146,7 @@ class IpamEventHandler(object):
         # if necessary.
         ib_context = context.InfobloxContext(self.context, self.user_id,
                                              None, None, self.grid_config)
-        ipam_controller = ipam.IpamAsyncDriver(ib_context)
+        ipam_controller = ipam.IpamAsyncController(ib_context)
         ipam_controller.update_network_sync()
 
         self._resync()
@@ -179,8 +181,8 @@ class IpamEventHandler(object):
                 self._cached_mapping_conditions)
             ib_context.update()
 
-            ipam_controller = ipam.IpamAsyncDriver(ib_context)
-            ipam_controller.create_subnet()
+            ipam_controller = ipam.IpamAsyncController(ib_context)
+            ipam_controller.create_subnet_sync()
 
         self._resync()
 
