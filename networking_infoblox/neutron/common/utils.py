@@ -465,3 +465,15 @@ def get_major_version(wapi_version):
     if version_match:
         return int(version_match.group(1))
     return None
+
+
+def generate_network_view_name(object_id, object_name=None):
+    if not object_id or not isinstance(object_id, six.string_types):
+        raise ValueError("object_id cannot be empty and must a string.")
+
+    if object_name and not isinstance(object_name, six.string_types):
+        raise ValueError("object name must be a string.")
+
+    netview_name = ("{}-{}".format(object_name, object_id)
+                    if object_name else object_id)
+    return netview_name

@@ -25,3 +25,12 @@ class InfobloxNeutronException(exceptions.NeutronException):
 
 class InfobloxCannotFindMember(exceptions.NeutronException):
     message = ("Cannot find the member: '%(member)s'")
+
+
+class InfobloxCannotReserveAuthorityMember(exceptions.NeutronException):
+    message = ("Cannot reserve the authority member for network view: "
+               "%s(network_view)s")
+
+
+class InfobloxPrivateSubnetAlreadyExist(exceptions.Conflict):
+    message = ("Network with the same CIDR already exists on NIOS.")
