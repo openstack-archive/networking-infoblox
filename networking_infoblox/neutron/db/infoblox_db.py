@@ -16,6 +16,16 @@
 from datetime import datetime
 from oslo_log import log as logging
 
+from sqlalchemy import func
+from sqlalchemy.orm import exc
+
+from neutron.common import exceptions as n_exc
+
+from neutron.db import address_scope_db
+from neutron.db import external_net_db
+from neutron.db import models_v2
+
+from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.db import infoblox_models as ib_models
 
 
@@ -358,6 +368,31 @@ def remove_mapping_member(session, network_view_id, member_id):
         q.delete(synchronize_session=False)
 
 
+# Member reservation
+def get_next_authority_member_for_ipam(session, grid_id):
+    q = (session.query(
+        ib_models.InfobloxGridMember,
+        ib_models.InfobloxGridMember.member_id,
+        func.count(ib_models.InfobloxNetworkView.id).label('count')).
+        outerjoin(ib_models.InfobloxNetworkView,
+                  ib_models.InfobloxNetworkView.authority_member_id ==
+                  ib_models.InfobloxGridMember.member_id).
+        filter(ib_models.InfobloxGridMember.grid_id == grid_id,
+               ib_models.InfobloxGridMember.member_status ==
+               const.MEMBER_STATUS_ON,
+               ib_models.InfobloxGridMember.member_type !=
+               const.MEMBER_TYPE_REGULAR_MEMBER).
+        group_by(ib_models.InfobloxNetworkView.authority_member_id).
+        order_by('count'))
+    res = q.first()
+    authority_member = res[0]
+    return authority_member
+
+
+def get_next_authority_member_for_dhcp(session, grid_id):
+    raise NotImplementedError()
+
+
 # Management Network
 def add_management_ip(session, network_id, fixed_ip, ip_version,
                       fixed_ip_ref):
@@ -409,3 +444,36 @@ def record_last_sync_time(session, sync_time=None):
     session.query(ib_models.InfobloxOperation).\
         filter_by(op_type='last_sync_time').\
         update({'op_value': sync_time_str})
+
+
+# Neutron general queries
+def get_subnets_by_network_id(session, network_id):
+    q = session.query(models_v2.Subnet)
+    return q.filter_by(network_id=network_id).all()
+
+
+def get_subnets_by_tenant_id(session, tenant_id):
+    q = session.query(models_v2.Subnet)
+    return q.filter_by(tenant_id=tenant_id).all()
+
+
+def get_address_scope_by_subnetpool_id(session, subnetpool_id):
+    sub_qry = session.query(models_v2.SubnetPool.address_scope_id)
+    sub_qry = sub_qry.filter(models_v2.SubnetPool.id == subnetpool_id)
+    q = session.query(address_scope_db.AddressScope)
+    q = q.filter(address_scope_db.AddressScope.id.in_(sub_qry))
+    return q.all()
+
+
+def get_network(session, network_id):
+    q = session.query(models_v2.Network)
+    try:
+        network = q.filter_by(id=network_id).one()
+    except exc.NoResultFound:
+        raise n_exc.NetworkNotFound(net_id=network_id)
+    return network
+
+
+def is_network_external(session, network_id):
+    q = session.query(external_net_db.ExternalNetwork)
+    return q.filter_by(network_id=network_id).count() > 0
