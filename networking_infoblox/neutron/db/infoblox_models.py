@@ -230,7 +230,6 @@ class InfobloxObject(model_base.BASEV2):
     object_type = sa.Column(sa.String(48), nullable=False)
     neutron_object_id = sa.Column(sa.String(length=255), nullable=False)
     search_hash = sa.Column(sa.Integer(), nullable=False)
-
     __table_args__ = (
         sa.Index(
             'ix_infoblox_objects_search_hash',

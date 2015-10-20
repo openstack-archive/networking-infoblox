@@ -19,7 +19,7 @@ from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
 
-class DnsDriver(object):
+class DnsController(object):
 
     def __init__(self):
         pass
