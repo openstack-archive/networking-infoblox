@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.common import constants as const
 from neutron.ipam import requests
 
 
@@ -29,10 +28,5 @@ class InfobloxAddressRequestFactory(requests.AddressRequestFactory):
 
     @classmethod
     def get_request(cls, context, port, ip_dict):
-        router_port = (
-            port.get('device_owner') in const.ROUTER_INTERFACE_OWNERS)
-        if router_port and ip_dict.get('ip_address'):
-            return RouterGatewayAddressRequest(ip_dict['ip_address'])
-        else:
-            return super(InfobloxAddressRequestFactory, cls).get_request(
-                context, port, ip_dict)
+        return super(InfobloxAddressRequestFactory, cls).get_request(
+            context, port, ip_dict)
