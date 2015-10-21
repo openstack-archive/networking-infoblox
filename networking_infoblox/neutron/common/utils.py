@@ -22,9 +22,11 @@ import re
 import six
 import urllib
 
+from infoblox_client import connector as conn
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
+from networking_infoblox.neutron.common import config as cfg
 from networking_infoblox.neutron.common import constants as const
 
 
@@ -478,3 +480,22 @@ def generate_network_view_name(object_id, object_name=None):
     netview_name = ("{}-{}".format(object_name, object_id)
                     if object_name else object_id)
     return netview_name
+
+
+def get_connector():
+    grid_id = cfg.CONF.infoblox.cloud_data_center_id
+    grid_opts = cfg.get_infoblox_grid_opts(grid_id)
+    # map connector opions to config
+    # None as value means no name change needed
+    mapping = {'host': 'grid_master_host',
+               'username': 'admin_user_name',
+               'password': 'admin_password',
+               'wapi_version': None,
+               'ssl_verify': None,
+               'http_pool_connections': None,
+               'http_pool_maxsize': None,
+               'http_request_timeout': None}
+    opts = {field: grid_opts[mapping[field]]
+            if mapping[field] else grid_opts[field]
+            for field in mapping}
+    return conn.Connector(opts)
