@@ -88,3 +88,6 @@ def get_infoblox_grid_opts(data_center_id):
     for opt in data_center_opts:
         grid_info[opt.name] = CONF[data_center][opt.name]
     return grid_info
+
+register_infoblox_ipam_opts(cfg.CONF)
+register_infoblox_grid_opts(cfg.CONF, cfg.CONF.infoblox.cloud_data_center_id)
