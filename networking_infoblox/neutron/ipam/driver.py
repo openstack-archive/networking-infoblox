@@ -13,12 +13,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from infoblox_client import connector as conn
+from infoblox_client import objects
 from neutron.ipam import driver
+from neutron.ipam import exceptions as ipam_exc
+from neutron.ipam import requests as ipam_req
+from neutron.ipam import subnet_alloc
+from neutron import manager
 
+from networking_infoblox.neutron.common import config as cfg
 from networking_infoblox.neutron.ipam import requests
 
 
-class InfobloxPool(driver.Pool):
+class InfobloxPool(subnet_alloc.SubnetAllocator):
     """Infoblox Pool
 
     InfobloxPool is responsible for subnet management in Infoblox backend.
@@ -30,7 +37,54 @@ class InfobloxPool(driver.Pool):
         :param subnet_id: Neutron subnet identifier
         :returns: a InfobloxSubnet instance
         """
-        return InfobloxSubnet()
+        network_view = 'default'
+        neutron_subnet = self._fetch_subnet(self._context, subnet_id)
+        subnet_request = self._request_from_subnet(neutron_subnet)
+        connector = self._get_connector()
+
+        infoblox_network = objects.Network.search(
+            connector,
+            network_view=network_view,
+            network=neutron_subnet['cidr'])
+
+        if infoblox_network:
+            return InfobloxSubnet(subnet_request, infoblox_network)
+
+    @staticmethod
+    def _get_connector():
+        grid_id = cfg.CONF.infoblox.cloud_data_center_id
+        grid_opts = cfg.get_infoblox_grid_opts(grid_id)
+        # map connector opions to config
+        # None as value means no name change needed
+        mapping = {'host': 'grid_master_host',
+                   'username': 'admin_user_name',
+                   'password': 'admin_password',
+                   'wapi_version': None,
+                   'ssl_verify': None,
+                   'http_pool_connections': None,
+                   'http_pool_maxsize': None,
+                   'http_request_timeout': None}
+        opts = {field: grid_opts[mapping[field]]
+                if mapping[field] else grid_opts[field]
+                for field in mapping}
+        return conn.Connector(opts)
+
+    def _request_from_subnet(self, neutron_subnet):
+        alloc_pools = None
+        if neutron_subnet.get('allocation_pools'):
+            alloc_pools = [netaddr.IPRange(pool['first_ip'], pool['last_ip'])
+                           for pool in neutron_subnet['allocation_pools']]
+        return ipam_req.SpecificSubnetRequest(
+            neutron_subnet['tenant_id'],
+            neutron_subnet['id'],
+            neutron_subnet['cidr'],
+            neutron_subnet['gateway_ip'],
+            alloc_pools)
+
+    @classmethod
+    def _fetch_subnet(cls, context, id):
+        plugin = manager.NeutronManager.get_plugin()
+        return plugin._get_subnet(context, id)
 
     def allocate_subnet(self, subnet_request):
         """Create an IPAM subnet from the subnet request which contains cidr
@@ -39,7 +93,22 @@ class InfobloxPool(driver.Pool):
         :param subnet_request: instance of SubnetRequest child
         :returns: a InfobloxSubnet instance
         """
-        return InfobloxSubnet()
+        if self._subnetpool:
+            subnet = super(InfobloxPool, self).allocate_subnet(subnet_request)
+            subnet_request = subnet.get_details()
+
+        # SubnetRequest must be an instance of SpecificSubnet
+        if not isinstance(subnet_request, ipam_req.SpecificSubnetRequest):
+            raise ipam_exc.InvalidSubnetRequestType(
+                subnet_type=type(subnet_request))
+
+        # Simplified for now, without creating network_view and ip_ranges
+        connector = self._get_connector()
+        infoblox_network = objects.Network.create(
+            connector,
+            network_view='default',
+            network=subnet_request.subnet_cidr)
+        return InfobloxSubnet(subnet_request, infoblox_network)
 
     def update_subnet(self, subnet_request):
         """Update IPAM Subnet
@@ -49,13 +118,21 @@ class InfobloxPool(driver.Pool):
         """
         pass
 
-    def remove_subnet(self, subnet):
+    def remove_subnet(self, subnet_id):
         """Remove IPAM Subnet
 
         Makes wapi call to remove subnet from Infoblox NIOS with all
         objects inside
         """
-        pass
+        network_view = 'default'
+        neutron_subnet = self._fetch_subnet(self._context, subnet_id)
+        connector = self._get_connector()
+
+        infoblox_network = objects.Network.search(
+            connector,
+            network_view=network_view,
+            network=neutron_subnet['cidr'])
+        infoblox_network.delete(connector)
 
     def get_address_request_factory(self):
         """Returns InfobloxAddressRequestFactory"""
@@ -64,6 +141,17 @@ class InfobloxPool(driver.Pool):
 
 class InfobloxSubnet(driver.Subnet):
     """Infoblox IPAM subnet"""
+
+    def __init__(self, subnet_details, infoblox_network):
+        """"""
+        self._validate_subnet_data(subnet_details)
+        self._subnet_details = subnet_details
+        self._infoblox_network = infoblox_network
+
+    def _validate_subnet_data(self, subnet_details):
+        if not isinstance(subnet_details, ipam_req.SpecificSubnetRequest):
+            raise ValueError("Subnet details should be passed"
+                             " as SpecificSubnetRequest")
 
     def allocate(self, address_request):
         """Allocate an IP address based on the request passed in
@@ -88,4 +176,4 @@ class InfobloxSubnet(driver.Subnet):
 
         :returns: An instance of SpecificSubnetRequest with the subnet detail.
         """
-        pass
+        return self._subnet_details
