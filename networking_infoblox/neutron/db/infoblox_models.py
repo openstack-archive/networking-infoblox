@@ -85,16 +85,47 @@ class InfobloxNetworkView(model_base.BASEV2, models_v2.HasId):
 
     network_view = sa.Column(sa.String(255), nullable=False)
     grid_id = sa.Column(sa.Integer(), nullable=False)
+    authority_member_id = sa.Column(sa.String(length=32), nullable=False)
     __table_args__ = (
         sa.UniqueConstraint(
             'network_view', 'grid_id',
             name='uniq_infoblox_network_views_network_view_grid_id'),
+        sa.UniqueConstraint(
+            'network_view', 'authority_member_id',
+            name='uniq_infoblox_network_views_network_view_authority_member_id'
+        ),
         model_base.BASEV2.__table_args__
     )
 
     def __repr__(self):
-        return "network_view: %s, grid_id: %s" % (self.network_view,
-                                                  self.grid_id)
+        return "network_view: %s, grid_id: %s, authority_member_id: %s" % (
+            self.network_view, self.grid_id, self.authority_member_id)
+
+
+class InfobloxNetworkViewMapping(model_base.BASEV2):
+    """Network views that are mapping to Neutron networks.
+
+    This is needed to properly delete network views in NIOS on network
+    delete.
+    """
+
+    __tablename__ = 'infoblox_network_view_mapping'
+
+    network_view_id = sa.Column(sa.String(36),
+                                sa.ForeignKey("infoblox_network_views.id",
+                                              ondelete="CASCADE"),
+                                nullable=False,
+                                primary_key=True)
+    network_id = sa.Column(sa.String(36),
+                           sa.ForeignKey("networks.id",
+                                         ondelete="CASCADE"),
+                           nullable=False,
+                           primary_key=True)
+    subnet_id = sa.Column(sa.String(36),
+                          sa.ForeignKey("subnets.id",
+                                        ondelete="CASCADE"),
+                          nullable=False,
+                          primary_key=True)
 
 
 class InfobloxMappingCondition(model_base.BASEV2):
@@ -121,7 +152,7 @@ class InfobloxMappingCondition(model_base.BASEV2):
                  self.neutron_object_value))
 
 
-class InfobloxMappingMember(model_base.BASEV2, models_v2.HasId):
+class InfobloxMappingMember(model_base.BASEV2):
     """Network views owned by infoblox members."""
 
     __tablename__ = 'infoblox_mapping_members'
@@ -170,26 +201,6 @@ class InfobloxServiceMember(model_base.BASEV2):
                 (self.member_id, self.service, self.network_id))
 
 
-class InfobloxNetworkViewAllocation(model_base.BASEV2):
-    """Network views used in Neutron networks.
-
-    This is needed to properly delete network views in NIOS on network
-    delete.
-    """
-
-    __tablename__ = 'infoblox_network_view_allocations'
-
-    network_id = sa.Column(sa.String(36),
-                           sa.ForeignKey("networks.id",
-                                         ondelete="CASCADE"),
-                           nullable=False,
-                           primary_key=True)
-    network_view_id = sa.Column(sa.String(36),
-                                sa.ForeignKey("infoblox_network_views.id",
-                                              ondelete="CASCADE"),
-                                nullable=False)
-
-
 class InfobloxManagementNetwork(model_base.BASEV2):
     """Management network for DHCP relay interfaces.
 
@@ -226,3 +237,20 @@ class InfobloxObject(model_base.BASEV2):
             'search_hash'),
         model_base.BASEV2.__table_args__
     )
+
+
+class InfobloxOperation(model_base.BASEV2, models_v2.HasId):
+    """Operational data like last sync time."""
+    __tablename__ = 'infoblox_operations'
+
+    op_type = sa.Column(sa.String(48), nullable=False)
+    op_value = sa.Column(sa.String(255), nullable=False)
+    __table_args__ = (
+        sa.UniqueConstraint(
+            'op_type',
+            name='uniq_infoblox_operations_op_type'),
+        model_base.BASEV2.__table_args__
+    )
+
+    def __repr__(self):
+        return "op_type: %s, op_value: %s" % (self.op_type, self.op_value)

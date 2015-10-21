@@ -23,6 +23,7 @@ from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import member
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
+
 from networking_infoblox.tests import base
 
 
@@ -38,7 +39,7 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.test_grid_config.grid_id = 100
         self.test_grid_config.grid_name = "Test Grid 1"
         self.test_grid_config.grid_master_host = '192.168.1.7'
-        self.test_grid_config.admin_username = 'admin'
+        self.test_grid_config.admin_user_name = 'admin'
         self.test_grid_config.admin_password = 'infoblox'
         self.test_grid_config.wapi_version = '2.2'
 
@@ -59,9 +60,9 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
             "http_pool_maxsize": self.test_grid_config.http_pool_maxsize,
             "http_request_timeout":
                 self.test_grid_config.http_request_timeout,
-            "admin_user": {"name": self.test_grid_config.admin_username,
+            "admin_user": {"name": self.test_grid_config.admin_user_name,
                            "password": self.test_grid_config.admin_password},
-            "cloud_user": {"name": self.test_grid_config.cloud_username,
+            "cloud_user": {"name": self.test_grid_config.cloud_user_name,
                            "password":
                                self.test_grid_config.cloud_user_password}
         }
@@ -75,7 +76,7 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         new_active_grid_config.grid_id = 200
         new_active_grid_config.grid_name = "Test Grid 2"
         new_active_grid_config.grid_master_host = '192.168.1.8'
-        new_active_grid_config.admin_username = 'admin'
+        new_active_grid_config.admin_user_name = 'admin'
         new_active_grid_config.admin_password = 'infoblox'
         new_active_grid_config.wapi_version = '1.4.2'
         member_mgr = member.GridMemberManager(new_active_grid_config)
@@ -97,9 +98,9 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
             "http_pool_maxsize": new_active_grid_config.http_pool_maxsize,
             "http_request_timeout":
                 new_active_grid_config.http_request_timeout,
-            "admin_user": {"name": new_active_grid_config.admin_username,
+            "admin_user": {"name": new_active_grid_config.admin_user_name,
                            "password": new_active_grid_config.admin_password},
-            "cloud_user": {"name": new_active_grid_config.cloud_username,
+            "cloud_user": {"name": new_active_grid_config.cloud_user_name,
                            "password":
                                new_active_grid_config.cloud_user_password}
         }

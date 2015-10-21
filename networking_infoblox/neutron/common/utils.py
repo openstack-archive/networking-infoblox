@@ -290,8 +290,8 @@ def exists_in_sequence(sub_sequence_to_find, full_list_in_sequence):
     return any(full_list_in_sequence[pos:pos + len(sub_sequence_to_find)] ==
                sub_sequence_to_find for pos in
                range(0,
-                     len(full_list_in_sequence) - len(sub_sequence_to_find)
-                     + 1))
+                     len(full_list_in_sequence) -
+                     len(sub_sequence_to_find) + 1))
 
 
 def exists_in_list(list_to_find, full_list):
@@ -317,12 +317,11 @@ def find_one_in_list(search_key, search_value, search_list):
     if not search_key or not search_value or not search_list:
         return None
 
-    found_list = [m for m in search_list
-                  if m.get(search_key) == search_value]
+    found_list = [m for m in search_list if m.get(search_key) == search_value]
     return found_list[0] if found_list else None
 
 
-def find_one_in_list_by_condition(search_key_value_pairs, search_list):
+def find_in_list_by_condition(search_key_value_pairs, search_list):
     """Find one item that match given search key value pairs.
 
     :param search_key_value_pairs: dictionary that contains search key and
@@ -338,16 +337,16 @@ def find_one_in_list_by_condition(search_key_value_pairs, search_list):
     if not search_key_value_pairs or not search_list:
         return None
 
-    result = None
+    results = []
     for m in search_list:
-        found_counter = 0
+        match_failed = False
         for key in search_key_value_pairs:
-            if m.get(key) == search_key_value_pairs[key]:
-                found_counter += 1
-        if found_counter > 0 and found_counter == len(search_key_value_pairs):
-            result = m
-            break
-    return result
+            if not m.get(key) == search_key_value_pairs[key]:
+                match_failed = True
+                break
+        if not match_failed:
+            results.append(m)
+    return results
 
 
 def find_in_list(search_key, search_values, search_list):
@@ -367,8 +366,27 @@ def find_in_list(search_key, search_values, search_list):
     if not search_key or not search_values or not search_list:
         return None
 
+    found_list = [m for m in search_list if m.get(search_key) in search_values]
+    return found_list
+
+
+def find_key_from_list(search_key, search_list):
+    """Find items that contain a search key.
+
+    :param search_key: a key to search
+    :param search_list: list of dictionary objects to search
+    :return: list that matches criteria
+    """
+    valid = (isinstance(search_key, six.string_types) and
+             isinstance(search_list, list))
+    if not valid:
+        raise ValueError("Invalid argument was passed")
+
+    if not search_key or not search_list:
+        return None
+
     found_list = [m for m in search_list
-                  if m.get(search_key) in search_values]
+                  if isinstance(m, dict) and m.get(search_key)]
     return found_list
 
 
@@ -438,3 +456,13 @@ def get_notification_handler_name(event_type):
     event_sequence = 'alert' if sequence == 'start' else 'sync'
     handler_name = "%s_%s_%s" % (action, resource, event_sequence)
     return handler_name
+
+
+def get_major_version(wapi_version):
+    valid = wapi_version and isinstance(wapi_version, six.string_types)
+    if not valid:
+        raise ValueError("Invalid argument was passed")
+    version_match = re.search('(\d+)\.(\d+)', wapi_version)
+    if version_match:
+        return int(version_match.group(1))
+    return None
