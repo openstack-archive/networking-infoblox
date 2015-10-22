@@ -17,6 +17,8 @@ from datetime import datetime
 from datetime import timedelta
 from oslo_log import log as logging
 
+from neutron.i18n import _LI
+
 from infoblox_client import connector
 
 from networking_infoblox.neutron.common import config as cfg
@@ -80,6 +82,9 @@ class GridManager(object):
         grid_conf = GridConfiguration(context)
         grid_conf.grid_id = cfg.CONF.infoblox.cloud_data_center_id
         grid_opts = cfg.get_infoblox_grid_opts(grid_conf.grid_id)
+        if not grid_opts['grid_master_host']:
+            raise exc.InfobloxInvalidCloudDataCenter(
+                data_center_id=grid_conf.grid_id)
         grid_conf.grid_name = grid_opts['data_center_name']
         grid_conf.grid_master_host = grid_opts['grid_master_host']
         grid_conf.admin_user_name = grid_opts['admin_user_name']
@@ -203,8 +208,9 @@ class GridConfiguration(object):
             raise exc.InfobloxCannotFindMember(member="GM")
 
         discovered_config = self._discover_config(members[0])
-        if discovered_config and discovered_config.get('extattrs'):
+        if discovered_config:
             self._update_fields(discovered_config)
+            LOG.debug(_LI("grid config synced: %s"), self.__dict__)
 
     def get_grid_connection(self):
         grid_connection = {
@@ -225,11 +231,11 @@ class GridConfiguration(object):
         if self.wapi_major_version >= 2:
             return_fields.append('ipv6_setting')
 
-        obj_type = "member/%s:%s" % (gm_member['member_id'],
-                                     gm_member['member_name'])
+        obj_type = 'member'
+        payload = {'host_name': gm_member['member_name']}
         config = self.gm_connector.get_object(
-            obj_type, return_fields=return_fields)
-        return config
+            obj_type, payload=payload, return_fields=return_fields)
+        return config[0] if config and config[0].get('extattrs') else None
 
     def _update_fields(self, extattr):
         for pm in self.property_to_ea_mapping:

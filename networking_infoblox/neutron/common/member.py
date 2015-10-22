@@ -97,8 +97,8 @@ class GridMemberManager(object):
             # get member attributes
             member_name = member['host_name']
             member_ipv4 = member['vip_setting']['address']
-            member_ipv6 = member['ipv6_setting'].get('virtual_ip') \
-                if member.get('ipv6_setting') else None
+            member_ipv6 = (member['ipv6_setting'].get('virtual_ip')
+                           if member.get('ipv6_setting') else None)
             node_status = None
             for ns in member['node_info'][0]['service_status']:
                 if ns['service'] == 'NODE_STATUS':
