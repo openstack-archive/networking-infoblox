@@ -97,8 +97,8 @@ class GridMemberManager(object):
             # get member attributes
             member_name = member['host_name']
             member_ipv4 = member['vip_setting']['address']
-            member_ipv6 = member['ipv6_setting'].get('virtual_ip') \
-                if member.get('ipv6_setting') else None
+            member_ipv6 = (member['ipv6_setting'].get('virtual_ip')
+                           if member.get('ipv6_setting') else None)
             node_status = None
             for ns in member['node_info'][0]['service_status']:
                 if ns['service'] == 'NODE_STATUS':
@@ -112,6 +112,7 @@ class GridMemberManager(object):
                                                 member_name,
                                                 member_ipv4,
                                                 member_ipv6)
+            member_ref = member['_ref']
 
             # update the existing member or add a new member
             db_member = utils.find_one_in_list('member_name', member_name,
@@ -125,7 +126,8 @@ class GridMemberManager(object):
                                   member_ipv4,
                                   member_ipv6,
                                   member_type,
-                                  member_status)
+                                  member_status,
+                                  member_ref)
             else:
                 member_id = utils.get_hash(str(grid_id) + member_name)
                 dbi.add_member(session,
@@ -135,7 +137,8 @@ class GridMemberManager(object):
                                member_ipv4,
                                member_ipv6,
                                member_type,
-                               member_status)
+                               member_status,
+                               member_ref)
 
             discovered_member_ids.append(member_id)
 

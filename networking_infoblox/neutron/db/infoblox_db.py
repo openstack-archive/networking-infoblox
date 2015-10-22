@@ -113,21 +113,22 @@ def search_members(session, member_ids=None, member_names=None,
 
 
 def add_member(session, member_id, grid_id, member_name, member_ip,
-               member_ipv6, member_type, member_status):
+               member_ipv6, member_type, member_status, member_ref):
     member = ib_models.InfobloxGridMember(member_id=member_id,
                                           grid_id=grid_id,
                                           member_name=member_name,
                                           member_ip=member_ip,
                                           member_ipv6=member_ipv6,
                                           member_type=member_type,
-                                          member_status=member_status)
+                                          member_status=member_status,
+                                          member_ref=member_ref)
     session.add(member)
     return member
 
 
 def update_member(session, member_id, grid_id, member_name=None,
                   member_ip=None, member_ipv6=None, member_type=None,
-                  member_status=None):
+                  member_status=None, member_ref=None):
     update_data = dict()
     if member_name:
         update_data['member_name'] = member_name
@@ -139,6 +140,8 @@ def update_member(session, member_id, grid_id, member_name=None,
         update_data['member_type'] = member_type
     if member_status:
         update_data['member_status'] = member_status
+    if member_ref:
+        update_data['member_ref'] = member_ref
 
     if update_data:
         session.query(ib_models.InfobloxGridMember).\

@@ -54,6 +54,7 @@ class InfobloxGridMember(model_base.BASEV2):
     member_ipv6 = sa.Column(sa.String(64), nullable=True)
     member_type = sa.Column(sa.String(12), nullable=False)
     member_status = sa.Column(sa.String(16), nullable=False)
+    member_ref = sa.Column(sa.String(length=255), nullable=False)
     __table_args__ = (
         sa.UniqueConstraint(
             'grid_id', 'member_name',
@@ -72,10 +73,11 @@ class InfobloxGridMember(model_base.BASEV2):
 
     def __repr__(self):
         return ("member_id: %s, grid_id: %s, member_name: %s, member_ip: %s, "
-                "member_ipv6: %s, member_type: %s, member_status: %s" %
+                "member_ipv6: %s, member_type: %s, member_status: %s, "
+                "member_ref: %s" %
                 (self.member_id, self.grid_id, self.member_name,
                  self.member_ip, self.member_ipv6, self.member_type,
-                 self.member_status))
+                 self.member_status, self.member_ref))
 
 
 class InfobloxNetworkView(model_base.BASEV2, models_v2.HasId):

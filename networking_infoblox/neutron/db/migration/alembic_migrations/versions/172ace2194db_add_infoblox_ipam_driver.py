@@ -48,6 +48,7 @@ def upgrade():
         sa.Column('member_ipv6', sa.String(length=64), nullable=True),
         sa.Column('member_type', sa.String(length=12), nullable=False),
         sa.Column('member_status', sa.String(length=16), nullable=False),
+        sa.Column('member_ref', sa.String(length=255), nullable=False),
         sa.ForeignKeyConstraint(['grid_id'],
                                 ['infoblox_grids.grid_id'],
                                 ondelete='CASCADE'),

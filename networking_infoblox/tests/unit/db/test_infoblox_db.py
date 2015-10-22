@@ -151,7 +151,8 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                                    member['member_ip'],
                                    member['member_ipv6'],
                                    member['member_type'],
-                                   member['member_status'])
+                                   member['member_status'],
+                                   member['member_ref'])
 
     def test_member_management(self):
         # prepare grid
@@ -162,13 +163,15 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                         'member_ip': '10.10.1.12',
                         'member_ipv6': None,
                         'member_type': 'REGULAR',
-                        'member_status': 'ON'},
+                        'member_status': 'ON',
+                        'member_ref': 'member/b2kZSQ3:M_1000.com'},
                        {'member_id': 'M_2000',
                         'member_name': 'Member 2000',
                         'member_ip': '10.10.1.22',
                         'member_ipv6': 'fd44:acb:5df6:1083::22',
                         'member_type': 'CPM',
-                        'member_status': 'ON'}]
+                        'member_status': 'ON',
+                        'member_ref': 'member/b2kZSQ3:M_2000.com'}]
 
         # expects no member
         db_members = infoblox_db.get_members(self.ctx.session)
@@ -180,11 +183,11 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         db_members = infoblox_db.get_members(self.ctx.session)
         actual_member_rows = utils.get_composite_values_from_records(
             ['member_id', 'member_name', 'member_ip', 'member_ipv6',
-             'member_type', 'member_status'],
+             'member_type', 'member_status', 'member_ref'],
             db_members)
         expected_member_rows = utils.get_composite_values_from_records(
             ['member_id', 'member_name', 'member_ip', 'member_ipv6',
-             'member_type', 'member_status'],
+             'member_type', 'member_status', 'member_ref'],
             member_list)
         self.assertEqual(expected_member_rows, actual_member_rows)
 
@@ -236,7 +239,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
             member_type = "GM" if i == 1 else "CPM"
             infoblox_db.add_member(self.ctx.session, member_id, self.grid_id,
                                    member_name, member_ipv4, None, member_type,
-                                   'ON')
+                                   'ON', 'member-ref')
 
     def test_network_view_management(self):
         # prepare grid
@@ -503,37 +506,43 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                         'member_ip': '10.10.1.1',
                         'member_ipv6': None,
                         'member_type': 'GM',
-                        'member_status': 'ON'},
+                        'member_status': 'ON',
+                        'member_ref': 'member/b2kZSQ3:m1.com'},
                        {'member_id': 'm2',
                         'member_name': 'm2.com',
                         'member_ip': '10.10.1.2',
                         'member_ipv6': 'fd44:acb:5df6:1083::22',
                         'member_type': 'CPM',
-                        'member_status': 'ON'},
+                        'member_status': 'ON',
+                        'member_ref': 'member/b2kZSQ3:m2.com'},
                        {'member_id': 'm3',
                         'member_name': 'm3.com',
                         'member_ip': '10.10.1.3',
                         'member_ipv6': None,
                         'member_type': 'CPM',
-                        'member_status': 'ON'},
+                        'member_status': 'ON',
+                        'member_ref': 'member/b2kZSQ3:m3.com'},
                        {'member_id': 'm4',
                         'member_name': 'm4.com',
                         'member_ip': '10.10.1.4',
                         'member_ipv6': None,
                         'member_type': 'REGULAR',
-                        'member_status': 'ON'},
+                        'member_status': 'ON',
+                        'member_ref': 'member/b2kZSQ3:m4.com'},
                        {'member_id': 'm5',
                         'member_name': 'm5.com',
                         'member_ip': '10.10.1.5',
                         'member_ipv6': None,
                         'member_type': 'CPM',
-                        'member_status': 'OFF'},
+                        'member_status': 'OFF',
+                        'member_ref': 'member/b2kZSQ3:m5.com'},
                        {'member_id': 'm6',
                         'member_name': 'm6.com',
                         'member_ip': '10.10.1.6',
                         'member_ipv6': None,
                         'member_type': 'CPM',
-                        'member_status': 'ON'}]
+                        'member_status': 'ON',
+                        'member_ref': 'member/b2kZSQ3:m6.com'}]
         self._create_members(member_list, self.grid_id)
 
         # prepare network views

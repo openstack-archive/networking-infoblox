@@ -23,6 +23,10 @@ class InfobloxNeutronException(exceptions.NeutronException):
         super(InfobloxNeutronException, self).__init__(**kwargs)
 
 
+class InfobloxInvalidCloudDataCenter(exceptions.NeutronException):
+    message = ("Invalid cloud data center: '%(data_center_id)s'")
+
+
 class InfobloxCannotFindMember(exceptions.NeutronException):
     message = ("Cannot find the member: '%(member)s'")
 

@@ -80,6 +80,9 @@ class GridManager(object):
         grid_conf = GridConfiguration(context)
         grid_conf.grid_id = cfg.CONF.infoblox.cloud_data_center_id
         grid_opts = cfg.get_infoblox_grid_opts(grid_conf.grid_id)
+        if not grid_opts['grid_master_host']:
+            raise exc.InfobloxInvalidCloudDataCenter(
+                data_center_id=grid_conf.grid_id)
         grid_conf.grid_name = grid_opts['data_center_name']
         grid_conf.grid_master_host = grid_opts['grid_master_host']
         grid_conf.admin_user_name = grid_opts['admin_user_name']
@@ -225,10 +228,8 @@ class GridConfiguration(object):
         if self.wapi_major_version >= 2:
             return_fields.append('ipv6_setting')
 
-        obj_type = "member/%s:%s" % (gm_member['member_id'],
-                                     gm_member['member_name'])
         config = self.gm_connector.get_object(
-            obj_type, return_fields=return_fields)
+            gm_member['member_ref'], return_fields=return_fields)
         return config
 
     def _update_fields(self, extattr):
