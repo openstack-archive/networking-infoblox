@@ -115,8 +115,7 @@ class IpamEventHandler(object):
 
             ib_context = context.InfobloxContext(self.context, self.user_id,
                                                  network, None,
-                                                 self.grid_config)
-            ib_context.update()
+                                                 self.grid_config, self.plugin)
             ipam_controller = ipam.IpamAsyncController(ib_context)
             ipam_controller.create_network_sync()
 
@@ -128,9 +127,8 @@ class IpamEventHandler(object):
             LOG.debug("network: %s" % network)
 
         ib_context = context.InfobloxContext(self.context, self.user_id,
-                                             network, None,
-                                             self.grid_config)
-        ib_context.update()
+                                             network, None, self.grid_config,
+                                             self.plugin)
         ipam_controller = ipam.IpamAsyncController(ib_context)
         ipam_controller.update_network_sync()
 
@@ -145,7 +143,8 @@ class IpamEventHandler(object):
         # should have been removed; check if still exists and remove them
         # if necessary.
         ib_context = context.InfobloxContext(self.context, self.user_id,
-                                             None, None, self.grid_config)
+                                             None, None, self.grid_config,
+                                             self.plugin)
         ipam_controller = ipam.IpamAsyncController(ib_context)
         ipam_controller.update_network_sync()
 
@@ -177,9 +176,8 @@ class IpamEventHandler(object):
 
             ib_context = context.InfobloxContext(
                 self.context, self.user_id, network, subnet, self.grid_config,
-                self._cached_grid_members, self._cached_network_views,
-                self._cached_mapping_conditions)
-            ib_context.update()
+                self.plugin, self._cached_grid_members,
+                self._cached_network_views, self._cached_mapping_conditions)
 
             ipam_controller = ipam.IpamAsyncController(ib_context)
             ipam_controller.create_subnet_sync()

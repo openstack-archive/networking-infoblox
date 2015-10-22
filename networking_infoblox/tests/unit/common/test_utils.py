@@ -69,7 +69,13 @@ class TestUtils(testlib_api.SqlTestCase):
         grid_1_name = 'test grid 1'
         grid_2_id = 200
         grid_2_name = 'test grid 2'
-        dbi.remove_grids(self.ctx.session, [grid_1_id, grid_2_id])
+
+        # clean up
+        grids = dbi.get_grids(self.ctx.session)
+        grid_ids = utils.get_values_from_records('grid_id', grids)
+        dbi.remove_grids(self.ctx.session, grid_ids)
+
+        # add two grids
         dbi.add_grid(self.ctx.session, grid_1_id, grid_1_name, '{}', 'ON')
         dbi.add_grid(self.ctx.session, grid_2_id, grid_2_name, '{}', 'OFF')
 
