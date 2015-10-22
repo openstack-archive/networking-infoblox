@@ -78,7 +78,6 @@ class TestUtils(testlib_api.SqlTestCase):
         delimiter = '-'
         composite_values = utils.get_composite_values_from_records(
             composite_keys, grids, delimiter)
-        self.assertEqual(2, len(composite_values))
         expected_value = str(grid_1_id) + delimiter + grid_1_name
         self.assertEqual(expected_value, composite_values[0])
         expected_value = str(grid_2_id) + delimiter + grid_2_name

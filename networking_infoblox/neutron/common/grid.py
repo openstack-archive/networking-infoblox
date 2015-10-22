@@ -130,9 +130,9 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_DNS_RECORD_UNBINDING_TYPES,
         'dns_record_removable_types':
             const.EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES,
-        'dhcp_replay_management_network_view':
+        'dhcp_relay_management_network_view':
             const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK_VIEW,
-        'dhcp_replay_management_network':
+        'dhcp_relay_management_network':
             const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK,
         'dhcp_support': const.EA_GRID_CONFIG_DHCP_SUPPORT
     }
@@ -175,8 +175,8 @@ class GridConfiguration(object):
         self.dns_record_binding_types = []
         self.dns_record_unbinding_types = []
         self.dns_record_removable_types = []
-        self.dhcp_replay_management_network_view = None
-        self.dhcp_replay_management_network = None
+        self.dhcp_relay_management_network_view = None
+        self.dhcp_relay_management_network = None
         self.dhcp_support = False
 
     @property
