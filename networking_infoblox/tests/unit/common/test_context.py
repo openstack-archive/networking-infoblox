@@ -81,11 +81,10 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         # test default mapping as 'Single'
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config)
+                                            self.grid_config, self.plugin)
         ib_cxt._get_connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
-        ib_cxt.update()
 
         # verify that 'default' view is used
         db_netviews = dbi.get_network_views(self.ctx.session,
@@ -135,13 +134,11 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         # test default mapping as 'Tenant'
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config)
+                                            self.grid_config, self.plugin)
         ib_cxt._get_connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
         ib_cxt._get_tenant_name = mock.Mock()
-        ib_cxt._get_tenant_name.return_value = tenant_name
-        ib_cxt.update()
 
         # validate the mapping network view
         expected_netview = utils.generate_network_view_name(tenant_id,
@@ -182,11 +179,10 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         # test mapping where tenant id mapping is found
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config)
+                                            self.grid_config, self.plugin)
         ib_cxt._get_connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
-        ib_cxt.update()
 
         # validate the mapping network view
         expected_netview_id = db_conditions[0].network_view_id
@@ -233,11 +229,10 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         # test mapping where both tenant id and tenant cidr match
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config)
+                                            self.grid_config, self.plugin)
         ib_cxt._get_connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
-        ib_cxt.update()
 
         # validate the mapping network view
         matching_cond_1 = dbi.get_mapping_conditions(

@@ -16,12 +16,14 @@
 from oslo_log import log as logging
 
 from neutron.i18n import _LI
+from neutron import manager
 
 from infoblox_client import connector
 from infoblox_client import object_manager as obj_mgr
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc
+from networking_infoblox.neutron.common import ip_allocator
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
@@ -32,10 +34,11 @@ LOG = logging.getLogger(__name__)
 class InfobloxContext(object):
 
     def __init__(self, neutron_context, user_id, network, subnet, grid_config,
-                 grid_members=None, network_views=None,
+                 plugin=None, grid_members=None, network_views=None,
                  mapping_conditions=None):
         self.context = neutron_context
         self.user_id = user_id
+        self.plugin = plugin if plugin else manager.NeutronManager.get_plugin()
         self.network = network if network else {}
         self.subnet = subnet if subnet else {}
 
@@ -49,11 +52,14 @@ class InfobloxContext(object):
             'Mapping',
             {'network_view_id': None,
              'network_view': None,
-             'authority_member': None})
+             'authority_member': None,
+             'mapping_scope': None})
 
         self._discovered_grid_members = grid_members
         self._discovered_network_views = network_views
         self._discovered_mapping_conditions = mapping_conditions
+
+        self._update()
 
     @property
     def discovered_grid_members(self):
@@ -75,17 +81,6 @@ class InfobloxContext(object):
             self._discovered_mapping_conditions = dbi.get_mapping_conditions(
                 self.context.session, grid_id=self.grid_id)
         return self._discovered_mapping_conditions
-
-    def update(self):
-        """Finds mapping and load managers that can interact with NIOS grid."""
-        if not self.network and self.subnet:
-            network_id = self.subnet.get('network_id')
-            self.network = self.get_network(network_id)
-
-        if self.network:
-            if self.subnet:
-                self._find_mapping()
-            self._load_managers()
 
     def reserve_authority_member(self):
         """Reserves the next available authority member.
@@ -123,35 +118,36 @@ class InfobloxContext(object):
         if authority_member.member_type == const.MEMBER_TYPE_CP_MEMBER:
             self._load_managers()
 
-    def get_network(self, network_id):
-        session = self.context.session
-        db_network = dbi.get_network(session, network_id)
-        network = {'id': db_network['id'],
-                   'name': db_network['name'],
-                   'tenant_id': db_network['tenant_id'],
-                   'admin_state_up': db_network['admin_state_up'],
-                   'status': db_network['status']}
-        network['shared'] = self._is_network_shared(db_network)
-        network['external'] = dbi.is_network_external(session, network_id)
-        return network
+    def _update(self):
+        """Finds mapping and load managers that can interact with NIOS grid."""
+        if not self.network and self.subnet:
+            network_id = self.subnet.get('network_id')
+            self.network = self.plugin.get_network(self.context, network_id)
 
-    @staticmethod
-    def _is_network_shared(db_network):
-        # 'shared' attribute for a network reflects if the network
-        # is shared to the calling tenant via an RBAC entry.
-        shared = False
-        matches = ('*', db_network['tenant_id'])
-        for entry in db_network.rbac_entries:
-            if (entry.action == 'access_as_shared' and
-                    entry.target_tenant in matches):
-                shared = True
-                break
-        return shared
+        if self.network:
+            if self.subnet:
+                self._find_mapping()
+            self._load_managers()
 
     def _load_managers(self):
         self.connector = self._get_connector()
         self.ibom = obj_mgr.InfobloxObjectManager(self.connector)
-        self.ip_alloc = None
+        self.ip_alloc = self._get_ip_allocator()
+
+    def _get_ip_allocator(self):
+        options = dict()
+        if (self.grid_config.ip_allocation_strategy ==
+                const.IP_ALLOCATION_STRATEGY_HOST_RECORD):
+            options['use_host_record'] = True
+        else:
+            options['use_host_record'] = False
+            options['dns_record_binding_types'] = (
+                self.grid_config.dns_record_binding_types)
+            options['dns_record_unbinding_types'] = (
+                self.grid_config.dns_record_unbinding_types)
+            options['dns_record_removable_types'] = (
+                self.grid_config.dns_record_removable_types)
+        return ip_allocator.IPAllocator(self.ibom, options)
 
     def _get_connector(self):
         if self.grid_config.is_cloud_wapi is False:
@@ -198,7 +194,7 @@ class InfobloxContext(object):
     @staticmethod
     def _get_tenant_name(tenant_id):
         # TODO(hhwang): We need to store tenant names and retrieve here.
-        return 'Test tenant'
+        return 'test-tenant-name'
 
     def _get_address_scope(self, subnetpool_id):
         session = self.context.session
