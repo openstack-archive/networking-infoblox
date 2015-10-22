@@ -81,11 +81,10 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         # test default mapping as 'Single'
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config)
-        ib_cxt._get_connector = mock.Mock()
+                                            self.grid_config, self.plugin)
+        ib_cxt.connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
-        ib_cxt.update()
 
         # verify that 'default' view is used
         db_netviews = dbi.get_network_views(self.ctx.session,
@@ -135,13 +134,11 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         # test default mapping as 'Tenant'
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config)
-        ib_cxt._get_connector = mock.Mock()
+                                            self.grid_config, self.plugin)
+        ib_cxt.connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
         ib_cxt._get_tenant_name = mock.Mock()
-        ib_cxt._get_tenant_name.return_value = tenant_name
-        ib_cxt.update()
 
         # validate the mapping network view
         expected_netview = utils.generate_network_view_name(tenant_id,
@@ -182,11 +179,10 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         # test mapping where tenant id mapping is found
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config)
-        ib_cxt._get_connector = mock.Mock()
+                                            self.grid_config, self.plugin)
+        ib_cxt.connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
-        ib_cxt.update()
 
         # validate the mapping network view
         expected_netview_id = db_conditions[0].network_view_id
@@ -233,11 +229,10 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         # test mapping where both tenant id and tenant cidr match
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config)
-        ib_cxt._get_connector = mock.Mock()
+                                            self.grid_config, self.plugin)
+        ib_cxt.connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
-        ib_cxt.update()
 
         # validate the mapping network view
         matching_cond_1 = dbi.get_mapping_conditions(
@@ -272,4 +267,53 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertEqual(expected_netview,
                          ib_cxt.mapping.network_view)
         self.assertEqual(expected_member_id,
+                         ib_cxt.mapping.authority_member.member_id)
+
+    def test_get_network_view_mapping_already_exits(self):
+        user_id = 'test user'
+        tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
+
+        # prepare network
+        network_name = 'Test Network'
+        network = self.plugin_stub.create_network(tenant_id, network_name)
+
+        # prepare subnet with cidr tat is not used in mapping conditions
+        subnet_name = 'Test Subnet'
+        subnet_cidr = '11.11.2.0/24'
+        subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
+                                                network['id'], subnet_cidr)
+
+        # make sure that mapping condition exists and prepare expectations
+        db_conditions = dbi.get_mapping_conditions(
+            self.ctx.session,
+            grid_id=self.grid_id,
+            neutron_object_value=subnet_cidr)
+        self.assertEqual(1, len(db_conditions))
+        expected_network_view_id = db_conditions[0].network_view_id
+
+        db_network_views = dbi.get_network_views(self.ctx.session,
+                                                 grid_id=self.grid_id)
+        expected_netview_row = utils.find_one_in_list(
+            'id', expected_network_view_id, db_network_views)
+        expected_authority_member_id = expected_netview_row.authority_member_id
+        expected_network_view = expected_netview_row.network_view
+
+        # prepare network view mapping to neutron network and subnet
+        dbi.associate_network_view(
+            self.ctx.session, expected_network_view_id, network['id'],
+            subnet['id'])
+
+        # test mapping where both tenant id and tenant cidr match
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+        ib_cxt.connector = mock.Mock()
+        ib_cxt.ibom = mock.Mock()
+        ib_cxt.ip_allocator = mock.Mock()
+
+        # validate mapping
+        self.assertEqual(expected_network_view_id,
+                         ib_cxt.mapping.network_view_id)
+        self.assertEqual(expected_network_view,
+                         ib_cxt.mapping.network_view)
+        self.assertEqual(expected_authority_member_id,
                          ib_cxt.mapping.authority_member.member_id)
