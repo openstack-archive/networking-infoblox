@@ -22,6 +22,7 @@ from infoblox_client import object_manager as obj_mgr
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc
+from networking_infoblox.neutron.common import ip_allocator
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
@@ -49,7 +50,8 @@ class InfobloxContext(object):
             'Mapping',
             {'network_view_id': None,
              'network_view': None,
-             'authority_member': None})
+             'authority_member': None,
+             'mapping_scope': None})
 
         self._discovered_grid_members = grid_members
         self._discovered_network_views = network_views
@@ -132,7 +134,8 @@ class InfobloxContext(object):
                    'admin_state_up': db_network['admin_state_up'],
                    'status': db_network['status']}
         network['shared'] = self._is_network_shared(db_network)
-        network['external'] = dbi.is_network_external(session, network_id)
+        network['router:external'] = dbi.is_network_external(session,
+                                                             network_id)
         return network
 
     @staticmethod
@@ -151,7 +154,22 @@ class InfobloxContext(object):
     def _load_managers(self):
         self.connector = self._get_connector()
         self.ibom = obj_mgr.InfobloxObjectManager(self.connector)
-        self.ip_alloc = None
+        self.ip_alloc = self._get_ip_allocator()
+
+    def _get_ip_allocator(self):
+        options = dict()
+        if (self.grid_config.ip_allocation_strategy ==
+                const.IP_ALLOCATION_STRATEGY_HOST_RECORD):
+            options['use_host_record'] = True
+        else:
+            options['use_host_record'] = False
+            options['dns_record_binding_types'] = (
+                self.grid_config.dns_record_binding_types)
+            options['dns_record_unbinding_types'] = (
+                self.grid_config.dns_record_unbinding_types)
+            options['dns_record_removable_types'] = (
+                self.grid_config.dns_record_removable_types)
+        return ip_allocator.IPAllocator(self.ibom, options)
 
     def _get_connector(self):
         if self.grid_config.is_cloud_wapi is False:
