@@ -15,6 +15,7 @@
 
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import uuidutils
 
 from neutron.i18n import _LE
 from neutron.i18n import _LI
@@ -186,11 +187,62 @@ class IpamSyncController(object):
                                             cidr)
             dbi.dissociate_network_view(session, network_id, subnet_id)
 
-    def allocate_ip(self, ip_address, port_id, device_owner, device_id):
-        pass
+    def allocate_specific_ip(self, ip_address, port):
+        hostname = uuidutils.generate_uuid()
+        ea_ip_address = None
+        dns_view = None
+        zone_auth = None
 
-    def deallocate_ip(self, port):
-        pass
+        allocated_ip = self.ib_cxt.ip_alloc.allocate_given_ip(
+            self.ib_cxt.mapping.network_view,
+            dns_view,
+            zone_auth,
+            hostname,
+            port['mac'],
+            ip_address,
+            ea_ip_address)
+        LOG.debug('IP address allocated on Infoblox NIOS: %s', allocated_ip)
+
+        # TODO(hhwang): dhcp member restart needed
+        return allocated_ip
+
+    def allocate_ip_from_pool(self, allocation_pools, port):
+        hostname = uuidutils.generate_uuid()
+        ea_ip_address = None
+        dns_view = None
+        zone_auth = None
+        allocated_ip = None
+
+        for pool in allocation_pools:
+            first_ip = pool['first_ip']
+            last_ip = pool['last_ip']
+            try:
+                allocated_ip = self.ib_cxt.ip_alloc.allocate_ip_from_range(
+                    self.ib_cxt.mapping.network_view,
+                    dns_view,
+                    zone_auth,
+                    hostname,
+                    port['mac'],
+                    first_ip,
+                    last_ip,
+                    ea_ip_address)
+                if allocated_ip:
+                    break
+            except exc.InfobloxCannotAllocateIp:
+                    LOG.debug("Failed to allocate IP from range (%s-%s)." %
+                              (first_ip, last_ip))
+                    continue
+
+        LOG.debug('IP address allocated on Infoblox NIOS: %s', allocated_ip)
+
+        # TODO(hhwang): dhcp member restart needed
+        return allocated_ip
+
+    def deallocate_ip(self, ip_address):
+        dns_view = None
+        self.ib_cxt.ip_alloc.deallocate_ip(self.ib_cxt.mapping.network_view,
+                                           dns_view,
+                                           ip_address)
 
 
 class IpamAsyncController(object):

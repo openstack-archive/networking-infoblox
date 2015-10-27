@@ -24,17 +24,21 @@ class InfobloxNeutronException(exceptions.NeutronException):
 
 
 class InfobloxInvalidCloudDataCenter(exceptions.NeutronException):
-    message = ("Invalid cloud data center: '%(data_center_id)s'")
+    message = _("Invalid cloud data center: '%(data_center_id)s'")
 
 
 class InfobloxCannotFindMember(exceptions.NeutronException):
-    message = ("Cannot find the member: '%(member)s'")
+    message = _("Cannot find the member: '%(member)s'")
 
 
 class InfobloxCannotReserveAuthorityMember(exceptions.NeutronException):
-    message = ("Cannot reserve the authority member for network view: "
-               "%s(network_view)s")
+    message = _("Cannot reserve the authority member for network view: "
+                "%s(network_view)s")
 
 
 class InfobloxPrivateSubnetAlreadyExist(exceptions.Conflict):
-    message = ("Network with the same CIDR already exists on NIOS.")
+    message = _("Network with the same CIDR already exists on NIOS.")
+
+
+class InfobloxCannotAllocateIp(exceptions.NeutronException):
+    message = _("Cannot allocate IP %(ip_data)s")
