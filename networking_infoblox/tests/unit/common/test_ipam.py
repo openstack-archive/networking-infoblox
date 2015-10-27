@@ -236,6 +236,58 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.ibom.delete_network.assert_called_once_with(
             self.helper.options['network_view'], self.helper.subnet['cidr'])
 
+    def test_allocate_specific_ip(self):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+
+        ip_address = '11.11.1.3'
+        mac = ':'.join(['00'] * 6)
+        dns_view = None
+        zone_auth = None
+        hostname = mock.ANY
+        ea_ip_address = None
+
+        ipam_controller = ipam.IpamSyncController(self.ib_cxt)
+        ipam_controller.allocate_specific_ip(ip_address, mac)
+
+        self.ib_cxt.ip_alloc.allocate_given_ip.assert_called_once_with(
+            self.helper.options['network_view'], dns_view, zone_auth,
+            hostname, mac, ip_address, ea_ip_address)
+
+    def test_allocate_ip_from_pool(self):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+
+        allocation_pools = [
+            {'first_ip': '11.11.1.1', 'last_ip': '11.11.1.150'},
+            {'first_ip': '11.11.1.151', 'last_ip': '11.11.1.253'}]
+        mac = ':'.join(['00'] * 6)
+        dns_view = None
+        zone_auth = None
+        hostname = mock.ANY
+        ea_ip_address = None
+
+        ipam_controller = ipam.IpamSyncController(self.ib_cxt)
+        ipam_controller.allocate_ip_from_pool(allocation_pools, mac)
+
+        self.ib_cxt.ip_alloc.allocate_ip_from_range.assert_called_once_with(
+            self.helper.options['network_view'], dns_view, zone_auth,
+            hostname, mac, allocation_pools[0]['first_ip'],
+            allocation_pools[0]['last_ip'], ea_ip_address)
+
+    def test_deallocate_ip(self):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+
+        ip_address = '11.11.1.1'
+        dns_view = None
+
+        ipam_controller = ipam.IpamSyncController(self.ib_cxt)
+        ipam_controller.deallocate_ip(ip_address)
+
+        self.ib_cxt.ip_alloc.deallocate_ip.assert_called_once_with(
+            self.helper.options['network_view'], dns_view, ip_address)
+
 
 class IpamAsyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
