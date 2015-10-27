@@ -15,9 +15,11 @@
 
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import uuidutils
 
 from neutron.i18n import _LE
 from neutron.i18n import _LI
+from neutron.ipam import exceptions as ipam_exc
 
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.db import infoblox_db as dbi
@@ -77,7 +79,7 @@ class IpamSyncController(object):
             self._create_ib_ip_range()
         except Exception as ex:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("An exception occurred during subnet"
+                LOG.exception(_LE("An exception occurred during subnet "
                                   "creation: %s"), ex)
                 # deleting network deletes its child objects like ip ranges
                 if ib_network:
@@ -186,11 +188,69 @@ class IpamSyncController(object):
                                             cidr)
             dbi.dissociate_network_view(session, network_id, subnet_id)
 
-    def allocate_ip(self, ip_address, port_id, device_owner, device_id):
-        pass
+    def allocate_specific_ip(self, ip_address, mac, port_id=None,
+                             device_id=None, device_owner=None):
+        hostname = uuidutils.generate_uuid()
+        ea_ip_address = None
+        dns_view = None
+        zone_auth = None
 
-    def deallocate_ip(self, port):
-        pass
+        allocated_ip = self.ib_cxt.ip_alloc.allocate_given_ip(
+            self.ib_cxt.mapping.network_view,
+            dns_view,
+            zone_auth,
+            hostname,
+            mac,
+            ip_address,
+            ea_ip_address)
+        if allocated_ip:
+            LOG.debug('IP address allocated on Infoblox NIOS: %s',
+                      allocated_ip)
+
+        return allocated_ip
+
+    def allocate_ip_from_pool(self, subnet_id, allocation_pools, mac,
+                              port_id=None, device_id=None, device_owner=None):
+        hostname = uuidutils.generate_uuid()
+        ea_ip_address = None
+        dns_view = None
+        zone_auth = None
+        allocated_ip = None
+
+        for pool in allocation_pools:
+            first_ip = pool['first_ip']
+            last_ip = pool['last_ip']
+            try:
+                allocated_ip = self.ib_cxt.ip_alloc.allocate_ip_from_range(
+                    self.ib_cxt.mapping.network_view,
+                    dns_view,
+                    zone_auth,
+                    hostname,
+                    mac,
+                    first_ip,
+                    last_ip,
+                    ea_ip_address)
+                if allocated_ip:
+                    break
+            except exc.InfobloxCannotAllocateIp:
+                    LOG.debug("Failed to allocate IP from range (%s-%s)." %
+                              (first_ip, last_ip))
+                    continue
+
+        if allocated_ip:
+            LOG.debug('IP address allocated on Infoblox NIOS: %s',
+                      allocated_ip)
+        else:
+            LOG.debug("All IPs from subnet %(subnet_id)s allocated",
+                      {'subnet_id': subnet_id})
+            raise ipam_exc.IpAddressGenerationFailure(subnet_id=subnet_id)
+        return allocated_ip
+
+    def deallocate_ip(self, ip_address):
+        dns_view = None
+        self.ib_cxt.ip_alloc.deallocate_ip(self.ib_cxt.mapping.network_view,
+                                           dns_view,
+                                           ip_address)
 
 
 class IpamAsyncController(object):
