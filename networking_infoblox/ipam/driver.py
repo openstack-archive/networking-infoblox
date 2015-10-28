@@ -60,7 +60,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
     def _build_request_from_subnet(self, neutron_subnet):
         alloc_pools = None
         if neutron_subnet.get('allocation_pools'):
-            alloc_pools = [netaddr.IPRange(pool['first_ip'], pool['last_ip'])
+            alloc_pools = [netaddr.IPRange(pool['start'], pool['end'])
                            for pool in neutron_subnet['allocation_pools']]
         return ipam_req.SpecificSubnetRequest(
             neutron_subnet['tenant_id'],
@@ -72,7 +72,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
     @classmethod
     def _fetch_subnet(cls, context, id):
         plugin = manager.NeutronManager.get_plugin()
-        return plugin._get_subnet(context, id)
+        return plugin.get_subnet(context, id)
 
     def allocate_subnet(self, subnet_request):
         """Create an IPAM subnet from the subnet request which contains cidr.
