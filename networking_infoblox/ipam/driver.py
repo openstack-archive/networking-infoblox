@@ -72,7 +72,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
     @classmethod
     def _fetch_subnet(cls, context, id):
         plugin = manager.NeutronManager.get_plugin()
-        return plugin._get_subnet(context, id)
+        return plugin.get_subnet(context, id)
 
     def allocate_subnet(self, subnet_request):
         """Create an IPAM subnet from the subnet request which contains cidr.
