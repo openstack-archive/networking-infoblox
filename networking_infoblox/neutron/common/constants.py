@@ -13,6 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron.common import constants as n_const
+from neutron.plugins.common import constants as p_const
+
+
 AGENT_BINARY_NAME = 'infoblox-ipam-agent'
 AGENT_TYPE_INFOBLOX_IPAM = 'Infoblox IPAM agent'
 AGENT_TOPIC = 'infoblox_ipam_agent'
@@ -79,3 +83,18 @@ MAPPING_CONDITION_VALUE_NAME = 'neutron_object_value'
 
 MAPPING_RELATION_GM_OWNED = 'GM-OWNED'
 MAPPING_RELATION_DELEGATED = 'DELEGATED'
+
+NEUTRON_DEVICE_OWNER_TO_PATTERN_MAP = {
+    n_const.DEVICE_OWNER_DHCP: 'dhcp-port-{ip_address}',
+    n_const.DEVICE_OWNER_ROUTER_INTF: 'router-iface-{ip_address}',
+    n_const.DEVICE_OWNER_ROUTER_GW: 'router-gw-{ip_address}',
+    n_const.DEVICE_OWNER_FLOATINGIP: 'floating-ip-{ip_address}',
+    'neutron:' + p_const.LOADBALANCER: 'lb-vip-{ip_address}'
+}
+
+NEUTRON_INTERNAL_SERVICE_DEVICE_OWNERS = [
+    n_const.DEVICE_OWNER_DHCP,
+    n_const.DEVICE_OWNER_ROUTER_INTF,
+    n_const.DEVICE_OWNER_ROUTER_GW,
+    'neutron:' + p_const.LOADBALANCER
+]
