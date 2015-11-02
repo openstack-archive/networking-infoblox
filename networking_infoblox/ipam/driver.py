@@ -125,7 +125,13 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         The only update subnet information the driver needs to be aware of
         are allocation pools.
         """
-        pass
+        old_pools = objects.IPRange.search_all(
+            self._conn,
+            network_view='default',
+            network=str(subnet_request.subnet_cidr))
+        for pool in old_pools:
+            pool.delete()
+        self._allocate_pools(subnet_request)
 
     def remove_subnet(self, subnet_id):
         """Remove IPAM Subnet.
