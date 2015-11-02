@@ -16,6 +16,7 @@
 import mock
 import netaddr
 
+from infoblox_client import objects as ib_objects
 from neutron.ipam import requests
 
 from networking_infoblox.ipam import driver as drv
@@ -36,7 +37,7 @@ class TestDriver(base.TestCase):
             'id': 'subnet-id',
             'cidr': cidr,
             'tenant_id': 'tenant-id',
-            'gateway_ip': '192.168.10.1'})
+            'gateway_ip': gateway})
         return driver
 
     @mock.patch('infoblox_client.connector.Connector')
@@ -187,3 +188,50 @@ class TestDriver(base.TestCase):
                                      network_view='default',
                                      ip=expected_ip)
         fixed_address_mock.delete.assert_called_with()
+
+    def test__get_changed_pools(self):
+        connector = mock.Mock()
+        nios_pools = (ib_objects.IPRange(connector,
+                                         start_addr='192.168.1.3',
+                                         end_addr='192.168.1.19'),
+                      ib_objects.IPRange(connector,
+                                         start_addr='192.168.1.25',
+                                         end_addr='192.168.1.30'))
+
+        requested_pools = (netaddr.IPRange('192.168.1.25', '192.168.1.30'),
+                           netaddr.IPRange('192.168.1.45', '192.168.1.60'))
+        expected_add_list = [requested_pools[1]]
+        expected_remove_list = [nios_pools[0]]
+
+        add, remove = drv.InfobloxPool._get_changed_pools(nios_pools,
+                                                          requested_pools,
+                                                          4)
+        self.assertEqual(expected_add_list, add)
+        self.assertEqual(expected_remove_list, remove)
+
+    @mock.patch('infoblox_client.connector.Connector')
+    @mock.patch('infoblox_client.objects.IPRange')
+    def test_update_subnet(self, range_mock, connector):
+        driver = self._mock_driver()
+        pools = [netaddr.ip.IPRange('192.168.10.20', '192.168.10.25')]
+        request = requests.SpecificSubnetRequest(
+            'tenant_id', 'subnet_id', '192.168.10.0/24',
+            '192.168.10.1', pools)
+
+        nios_iprange = mock.Mock()
+        nios_iprange.start_addr = '192.168.10.3'
+        nios_iprange.end_addr = '192.168.10.15'
+        range_mock.search_all.return_value = [nios_iprange]
+
+        driver.update_subnet(request)
+
+        range_mock.search_all.assert_called_with(connector(),
+                                                 network_view='default',
+                                                 network='192.168.10.0/24')
+
+        nios_iprange.delete.assert_called_once_with()
+        range_mock.create.assert_called_with(connector(),
+                                             network_view='default',
+                                             network='192.168.10.0/24',
+                                             start_addr='192.168.10.20',
+                                             end_addr='192.168.10.25')
