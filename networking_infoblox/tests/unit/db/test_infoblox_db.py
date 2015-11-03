@@ -226,7 +226,8 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
             infoblox_db.add_network_view(self.ctx.session,
                                          network_view,
                                          self.grid_id,
-                                         network_view_dict[network_view])
+                                         network_view_dict[network_view],
+                                         False)
 
     def _create_simple_members(self):
         for i in range(1, 6):

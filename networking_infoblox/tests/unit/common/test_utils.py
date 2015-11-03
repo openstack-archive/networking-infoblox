@@ -270,32 +270,6 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual(len({}.fromkeys(duids)), len(duids))
         self.assertEqual(duid_count, len(matching))
 
-    def test_get_prefix_for_dns_zone(self):
-        subnet_name = None
-        cidr = None
-        self.assertRaises(ValueError, utils.get_prefix_for_dns_zone,
-                          subnet_name, cidr)
-
-        subnet_name = "subnet 1"
-        cidr = ""
-        self.assertRaises(ValueError, utils.get_prefix_for_dns_zone,
-                          subnet_name, cidr)
-
-        subnet_name = "subnet 1"
-        cidr = "10.10.10.10/23"
-        prefix = utils.get_prefix_for_dns_zone(subnet_name, cidr)
-        self.assertEqual(None, prefix)
-
-        subnet_name = "subnet 1"
-        cidr = "10.10.10.10/25"
-        prefix = utils.get_prefix_for_dns_zone(subnet_name, cidr)
-        self.assertEqual(subnet_name, prefix)
-
-        subnet_name = "subnet 1"
-        cidr = "fe80::8cfc:63ff:fe97:2240/64"
-        prefix = utils.get_prefix_for_dns_zone(subnet_name, cidr)
-        self.assertEqual(None, prefix)
-
     def test_get_physical_network_meta(self):
         self.assertRaises(ValueError, utils.get_physical_network_meta, None)
         self.assertRaises(ValueError, utils.get_physical_network_meta, '')
@@ -609,3 +583,18 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual('1234', utils.generate_network_view_name('1234', ''))
         self.assertEqual('1234', utils.generate_network_view_name('1234'))
         self.assertEqual('hi-23', utils.generate_network_view_name('23', 'hi'))
+
+    def test_get_ipv4_network_prefix(self):
+        self.assertEqual(None,
+                         utils.get_ipv4_network_prefix('2001:db8:85a3::/64',
+                                                       ''))
+        self.assertEqual(None,
+                         utils.get_ipv4_network_prefix('11.11.1.1/24', ''))
+        self.assertEqual(None,
+                         utils.get_ipv4_network_prefix('11.11.1.1/24', ''))
+        self.assertEqual('11-11-1-1-25',
+                         utils.get_ipv4_network_prefix('11.11.1.1/25', ''))
+        self.assertEqual('sub1',
+                         utils.get_ipv4_network_prefix('11.11.1.1/25', 'sub1'))
+        self.assertEqual('11-11-1-1-29',
+                         utils.get_ipv4_network_prefix('11.11.1.1/29', None))

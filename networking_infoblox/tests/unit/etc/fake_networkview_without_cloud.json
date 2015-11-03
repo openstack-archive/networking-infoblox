@@ -35,6 +35,9 @@
                     "12.12.1.0/24",
                     "12.12.2.0/24"
                 ]
+            },
+            "Is Shared": {
+                "value": "True"
             }
         },
         "is_default": false,

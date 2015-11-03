@@ -197,34 +197,6 @@ def generate_duid(mac):
     return ':'.join(map(lambda x: "%02x" % x, duid)) + ':' + mac
 
 
-def get_prefix_for_dns_zone(subnet_name, cidr):
-    valid = cidr and isinstance(cidr, six.string_types)
-    if not valid:
-        raise ValueError("Invalid argument was passed")
-
-    subnet_name = subnet_name if subnet_name else ''
-    try:
-        ip_version = get_ip_version(cidr)
-    except netaddr.core.AddrFormatError:
-        raise ValueError("Invalid cidr")
-
-    # add prefix only for classless networks (ipv4) mask greater than
-    # 24 needs prefix; use meaningful prefix if used
-    prefix = None
-    if ip_version == 4:
-        m = re.search(r'/\d+', cidr)
-        mask = m.group().replace("/", "")
-        if int(mask) > 24:
-            if len(subnet_name) > 0:
-                prefix = subnet_name
-            else:
-                prefix = '-'.join(
-                    filter(None,
-                           re.split(r'[.:/]', cidr))
-                )
-    return prefix
-
-
 def get_physical_network_meta(network):
     if not isinstance(network, dict):
         raise ValueError("Invalid argument was passed")
@@ -499,3 +471,26 @@ def get_connector():
             if mapping[field] else grid_opts[field]
             for field in mapping}
     return conn.Connector(opts)
+
+
+def get_ipv4_network_prefix(cidr, subnet_name):
+    """Add prefix for an ipv4 classless network mask greater than 24."""
+    valid = cidr and isinstance(cidr, six.string_types)
+    if not valid:
+        raise ValueError("Invalid argument was passed")
+
+    try:
+        ip_net = netaddr.IPNetwork(cidr)
+    except netaddr.core.AddrFormatError:
+        raise ValueError("Invalid cidr")
+
+    if ip_net.version != 4:
+        return None
+
+    prefix = None
+    if ip_net.prefixlen > 24:
+        if subnet_name and len(subnet_name) > 0:
+            prefix = subnet_name
+        else:
+            prefix = '-'.join(filter(None, re.split(r'[.:/]', cidr)))
+    return prefix
