@@ -17,9 +17,6 @@ from datetime import datetime
 from oslo_log import log as logging
 
 from sqlalchemy import func
-from sqlalchemy.orm import exc
-
-from neutron.common import exceptions as n_exc
 
 from neutron.db import address_scope_db
 from neutron.db import external_net_db
@@ -157,7 +154,7 @@ def remove_members(session, member_ids):
 
 # Network Views
 def get_network_views(session, network_view=None, grid_id=None,
-                      authority_member_id=None):
+                      authority_member_id=None, shared=None):
     q = session.query(ib_models.InfobloxNetworkView)
     if network_view:
         q = q.filter(ib_models.InfobloxNetworkView.network_view ==
@@ -165,22 +162,27 @@ def get_network_views(session, network_view=None, grid_id=None,
     if authority_member_id:
         q = q.filter(ib_models.InfobloxNetworkView.authority_member_id ==
                      authority_member_id)
+    if shared:
+        q = q.filter(ib_models.InfobloxNetworkView.shared == shared)
     if grid_id:
         q = q.filter(ib_models.InfobloxNetworkView.grid_id == grid_id)
     return q.all()
 
 
-def update_network_view(session, network_view, grid_id, authority_member_id):
-    session.query(ib_models.InfobloxNetworkView).\
-        filter_by(network_view=network_view, grid_id=grid_id).\
-        update({'authority_member_id': authority_member_id})
+def update_network_view(session, network_view, grid_id, authority_member_id,
+                        shared):
+    (session.query(ib_models.InfobloxNetworkView).
+     filter_by(network_view=network_view, grid_id=grid_id).
+     update({'authority_member_id': authority_member_id, 'shared': shared}))
 
 
-def add_network_view(session, network_view, grid_id, authority_member_id):
+def add_network_view(session, network_view, grid_id, authority_member_id,
+                     shared):
     network_view = ib_models.InfobloxNetworkView(
         network_view=network_view,
         grid_id=grid_id,
-        authority_member_id=authority_member_id)
+        authority_member_id=authority_member_id,
+        shared=shared)
     session.add(network_view)
     session.flush()
     return network_view
@@ -448,32 +450,54 @@ def record_last_sync_time(session, sync_time=None):
 
 # Neutron general queries
 def get_subnets_by_network_id(session, network_id):
-    q = session.query(models_v2.Subnet)
-    return q.filter_by(network_id=network_id).all()
-
-
-def get_subnets_by_tenant_id(session, tenant_id):
-    q = session.query(models_v2.Subnet)
-    return q.filter_by(tenant_id=tenant_id).all()
-
-
-def get_address_scope_by_subnetpool_id(session, subnetpool_id):
-    sub_qry = session.query(models_v2.SubnetPool.address_scope_id)
-    sub_qry = sub_qry.filter(models_v2.SubnetPool.id == subnetpool_id)
-    q = session.query(address_scope_db.AddressScope)
-    q = q.filter(address_scope_db.AddressScope.id.in_(sub_qry))
+    q = session.query(models_v2.Subnet).filter_by(network_id=network_id)
     return q.all()
 
 
-def get_network(session, network_id):
-    q = session.query(models_v2.Network)
-    try:
-        network = q.filter_by(id=network_id).one()
-    except exc.NoResultFound:
-        raise n_exc.NetworkNotFound(net_id=network_id)
-    return network
+def get_subnets_by_tenant_id(session, tenant_id):
+    q = session.query(models_v2.Subnet).filter_by(tenant_id=tenant_id)
+    return q.all()
 
 
-def is_network_external(session, network_id):
-    q = session.query(external_net_db.ExternalNetwork)
-    return q.filter_by(network_id=network_id).count() > 0
+def get_address_scope_by_subnetpool_id(session, subnetpool_id):
+    sub_qry = (session.query(models_v2.SubnetPool.address_scope_id).
+               filter(models_v2.SubnetPool.id == subnetpool_id))
+    q = (session.query(address_scope_db.AddressScope).
+         filter(address_scope_db.AddressScope.id.in_(sub_qry)))
+    return q.all()
+
+
+def is_last_subnet(session, subnet_id):
+    q = (session.query(models_v2.Subnet).
+         filter(models_v2.Subnet.id != subnet_id))
+    return q.count() == 0
+
+
+def is_last_subnet_in_network(session, subnet_id, network_id):
+    q = (session.query(models_v2.Subnet).
+         filter(models_v2.Subnet.id != subnet_id,
+                models_v2.Subnet.network_id == network_id))
+    return q.count() == 0
+
+
+def is_last_subnet_in_tenant(session, subnet_id, tenant_id):
+    q = (session.query(models_v2.Subnet).
+         filter(models_v2.Subnet.id != subnet_id,
+                models_v2.Subnet.tenant_id == tenant_id))
+    return q.count() == 0
+
+
+def is_last_subnet_in_private_networks(session, subnet_id):
+    sub_qry = session.query(external_net_db.ExternalNetwork.network_id)
+    q = (session.query(models_v2.Subnet.id).
+         filter(models_v2.Subnet.id != subnet_id).
+         filter(~models_v2.Subnet.network_id.in_(sub_qry)))
+    return q.count() == 0
+
+
+def is_last_subnet_in_address_scope(session, subnet_id):
+    q = (session.query(models_v2.Subnet).
+         filter(models_v2.Subnet.subnetpool_id == models_v2.SubnetPool.id).
+         filter(address_scope_db.id == models_v2.SubnetPool.address_scope_id).
+         filter(models_v2.Subnet.id != subnet_id))
+    return q.count() == 0

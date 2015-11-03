@@ -499,3 +499,37 @@ def get_connector():
             if mapping[field] else grid_opts[field]
             for field in mapping}
     return conn.Connector(opts)
+
+
+def get_ipv4_network_prefix(cidr, subnet_name):
+    """Add prefix for an ipv4 classless network mask greater than 24."""
+    ip_version = get_ip_version(cidr)
+    if ip_version != 4:
+        return None
+
+    prefix = None
+    m = re.search(r'/\d+', cidr)
+    mask = m.group().replace("/", "")
+    if int(mask) > 24:
+        if subnet_name and len(subnet_name) > 0:
+            prefix = subnet_name
+        else:
+            prefix = '-'.join(filter(None, re.split(r'[.:/]', cidr)))
+    return prefix
+
+
+def to_bool(value):
+    valid = {'true': True, 't': True, '1': True,
+             'false': False, 'f': False, '0': False}
+
+    if isinstance(value, bool):
+        return value
+
+    if not isinstance(value, basestring):
+        raise ValueError('Invalid literal for boolean. Not a string.')
+
+    lower_value = value.lower()
+    if lower_value in valid:
+        return valid[lower_value]
+    else:
+        raise ValueError('Invalid literal for boolean: "%s"' % value)
