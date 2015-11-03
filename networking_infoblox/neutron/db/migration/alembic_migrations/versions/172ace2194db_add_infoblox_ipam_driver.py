@@ -83,6 +83,7 @@ def upgrade():
         sa.Column('network_view', sa.String(length=255), nullable=False),
         sa.Column('grid_id', sa.Integer(), nullable=False),
         sa.Column('authority_member_id', sa.String(length=32), nullable=False),
+        sa.Column('shared', sa.Boolean(), default=False, nullable=False),
         sa.ForeignKeyConstraint(['authority_member_id'],
                                 ['infoblox_grid_members.member_id'],
                                 ondelete='CASCADE'),
