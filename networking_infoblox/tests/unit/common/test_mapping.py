@@ -96,6 +96,8 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
                                                  db_network_views)
             netview_id = netview_row.id
             for condition_name in expected_conditions[netview]:
+                if 'Mapping' not in condition_name:
+                    continue
                 values = expected_conditions[netview][condition_name]['value']
                 if not isinstance(values, list):
                     expected_condition_rows.append(netview_id + DELIMITER +

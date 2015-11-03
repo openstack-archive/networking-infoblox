@@ -53,7 +53,9 @@ class InfobloxContext(object):
             {'network_view_id': None,
              'network_view': None,
              'authority_member': None,
-             'mapping_scope': None})
+             'shared': False,
+             'mapping_scope': None,
+             'dns_view': None})
 
         self._discovered_grid_members = grid_members
         self._discovered_network_views = network_views
@@ -109,9 +111,11 @@ class InfobloxContext(object):
         # create network view mapping and update mapping properties
         db_network_view = dbi.add_network_view(session, network_view,
                                                self.grid_id,
-                                               authority_member.member_id)
+                                               authority_member.member_id,
+                                               False)
         self.mapping.network_view_id = db_network_view.id
         self.mapping.authority_member = authority_member
+        self.mapping.dns_view = self._get_dns_view()
 
         # change connector if authority member is CPM because currently
         # gm_connector is used
@@ -213,6 +217,7 @@ class InfobloxContext(object):
         session = self.context.session
         netview_id = None
         netview_name = None
+        netview_shared = False
 
         # First check if mapping already exists
         network_id = self.subnet.get('network_id')
@@ -227,6 +232,8 @@ class InfobloxContext(object):
             self.mapping.network_view = netview_row.network_view
             self.mapping.authority_member = self._get_authority_member(
                 netview_row.authority_member_id)
+            self.mapping.shared = netview_row.shared
+            self.mapping.dns_view = self._get_dns_view()
             LOG.info(_LI("Network view %(netview)s mapping found for "
                          "network %(network)s and subnet %(subnet)s"),
                      dict(netview=netview_row.network_view, network=network_id,
@@ -265,6 +272,7 @@ class InfobloxContext(object):
             netview_row = utils.find_one_in_list('id', netview_id,
                                                  self.discovered_network_views)
             netview_name = netview_row.network_view
+            netview_shared = netview_row.shared
         else:
             # no matching found; use default network view scope
             netview_scope = self.grid_config.default_network_view_scope
@@ -274,11 +282,14 @@ class InfobloxContext(object):
                                                  self.discovered_network_views)
             if netview_row:
                 netview_id = netview_row.id
+                netview_shared = netview_row.shared
 
         self.mapping.network_view_id = netview_id
         self.mapping.network_view = netview_name
         if self.mapping.network_view_id:
             self.mapping.authority_member = self._get_authority_member()
+            self.mapping.shared = netview_shared
+        self.mapping.dns_view = self._get_dns_view()
 
     def _get_authority_member(self, authority_member_id=None):
         if authority_member_id is None:
@@ -361,3 +372,8 @@ class InfobloxContext(object):
                 netview_name = utils.generate_network_view_name(object_id,
                                                                 object_name)
         return netview_name
+
+    def _get_dns_view(self):
+        if self.mapping.network_view == const.DEFAULT_NETWORK_VIEW:
+            return self.grid_config.dns_view
+        return '.'.join([self.grid_config.dns_view, self.mapping.network_view])
