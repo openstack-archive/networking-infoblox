@@ -609,3 +609,44 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual('1234', utils.generate_network_view_name('1234', ''))
         self.assertEqual('1234', utils.generate_network_view_name('1234'))
         self.assertEqual('hi-23', utils.generate_network_view_name('23', 'hi'))
+
+    def test_get_ipv4_network_prefix(self):
+        self.assertEqual(None,
+                         utils.get_ipv4_network_prefix('2001:db8:85a3::/64',
+                                                       ''))
+        self.assertEqual(None,
+                         utils.get_ipv4_network_prefix('11.11.1.1/24', ''))
+        self.assertEqual(None,
+                         utils.get_ipv4_network_prefix('11.11.1.1/24', ''))
+        self.assertEqual('11-11-1-1-25',
+                         utils.get_ipv4_network_prefix('11.11.1.1/25', ''))
+        self.assertEqual('sub1',
+                         utils.get_ipv4_network_prefix('11.11.1.1/25', 'sub1'))
+        self.assertEqual('11-11-1-1-29',
+                         utils.get_ipv4_network_prefix('11.11.1.1/29', None))
+
+    def test_to_bool(self):
+        self.assertRaises(ValueError, utils.to_bool, '')
+        self.assertRaises(ValueError, utils.to_bool, 12)
+        self.assertRaises(ValueError, utils.to_bool, [])
+        self.assertRaises(ValueError, utils.to_bool, 'yes')
+        self.assertRaises(ValueError, utils.to_bool, 'baba')
+        assert utils.to_bool('true'), '"true" is True'
+        assert utils.to_bool('True'), '"True" is True'
+        assert utils.to_bool('TRue'), '"TRue" is True'
+        assert utils.to_bool('TRUE'), '"TRUE" is True'
+        assert utils.to_bool('T'), '"T" is True'
+        assert utils.to_bool('t'), '"t" is True'
+        assert utils.to_bool('1'), '"1" is True'
+        assert utils.to_bool(True), 'True is True'
+        assert utils.to_bool(u'true'), 'unicode "true" is True'
+
+        assert utils.to_bool('false') is False, '"false" is False'
+        assert utils.to_bool('False') is False, '"False" is False'
+        assert utils.to_bool('FAlse') is False, '"FAlse" is False'
+        assert utils.to_bool('FALSE') is False, '"FALSE" is False'
+        assert utils.to_bool('F') is False, '"F" is False'
+        assert utils.to_bool('f') is False, '"f" is False'
+        assert utils.to_bool('0') is False, '"0" is False'
+        assert utils.to_bool(False) is False, 'False is False'
+        assert utils.to_bool(u'false') is False, 'unicode "false" is False'

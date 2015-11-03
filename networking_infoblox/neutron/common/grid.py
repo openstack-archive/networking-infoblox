@@ -126,6 +126,7 @@ class GridConfiguration(object):
         'default_domain_name_pattern':
             const.EA_GRID_CONFIG_DEFAULT_DOMAIN_NAME_PATTERN,
         'ns_group': const.EA_GRID_CONFIG_NS_GROUP,
+        'dns_view': const.EA_GRID_CONFIG_DNS_VIEW,
         'network_template': const.EA_GRID_CONFIG_NETWORK_TEMPLATE,
         'admin_network_deletion': const.EA_GRID_CONFIG_ADMIN_NETWORK_DELETION,
         'ip_allocation_strategy': const.EA_GRID_CONFIG_IP_ALLOCATION_STRATEGY,
@@ -174,6 +175,7 @@ class GridConfiguration(object):
         self.default_host_name_pattern = 'host-{ip_address}'
         self.default_domain_name_pattern = '{subnet_id}.cloud.global.com'
         self.ns_group = None
+        self.dns_view = const.DEFAULT_NETWORK_VIEW
         self.network_template = None
         self.admin_network_deletion = False
         self.ip_allocation_strategy = const.IP_ALLOCATION_STRATEGY_HOST_RECORD

@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import oslo_config.types as types
 from oslo_log import log as logging
 
 from networking_infoblox.neutron.common import constants as const
@@ -101,6 +102,8 @@ class GridMappingManager(object):
 
         for netview in discovered_netviews:
             netview_name = netview['name']
+            shared_val = utils.get_ea_value(const.EA_IS_SHARED, netview)
+            is_shared = types.Boolean()(shared_val) if shared_val else False
             discovered_netview_names.append(netview_name)
 
             # find the network view id
@@ -126,11 +129,12 @@ class GridMappingManager(object):
             # update or add a network view
             if netview_name in persisted_netview_names:
                 dbi.update_network_view(session, netview_id, self._grid_id,
-                                        authority_member_id)
+                                        authority_member_id, is_shared)
             else:
                 new_netview = dbi.add_network_view(session, netview_name,
                                                    self._grid_id,
-                                                   authority_member_id)
+                                                   authority_member_id,
+                                                   is_shared)
                 netview_id = new_netview.id
 
             # update mapping conditions for the current network view
