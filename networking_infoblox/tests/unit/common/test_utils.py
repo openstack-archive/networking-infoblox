@@ -270,23 +270,6 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual(len({}.fromkeys(duids)), len(duids))
         self.assertEqual(duid_count, len(matching))
 
-    def test_get_physical_network_meta(self):
-        self.assertRaises(ValueError, utils.get_physical_network_meta, None)
-        self.assertRaises(ValueError, utils.get_physical_network_meta, '')
-        self.assertEqual({}, utils.get_physical_network_meta({}))
-
-        physical_network_json = {
-            'provider:physical_network': None,
-            'provider:network_type': 'vxlan'
-        }
-        actual = utils.get_physical_network_meta(physical_network_json)
-        expected = {
-            'network_type': 'vxlan',
-            'physical_network': None,
-            'segmentation_id': None
-        }
-        self.assertEqual(expected, actual)
-
     def test_get_list_from_string(self):
         self.assertRaises(ValueError, utils.get_list_from_string, None, None)
         self.assertRaises(ValueError, utils.get_list_from_string, 'key', [])

@@ -197,23 +197,6 @@ def generate_duid(mac):
     return ':'.join(map(lambda x: "%02x" % x, duid)) + ':' + mac
 
 
-def get_physical_network_meta(network):
-    if not isinstance(network, dict):
-        raise ValueError("Invalid argument was passed")
-
-    if not network:
-        return {}
-
-    network = network if network else {}
-    provider_network_type = network.get('provider:network_type')
-    provider_physical_network = network.get('provider:physical_network')
-    provider_segmentation_id = network.get('provider:segmentation_id')
-    network_meta = {'network_type': provider_network_type,
-                    'physical_network': provider_physical_network,
-                    'segmentation_id': provider_segmentation_id}
-    return network_meta
-
-
 def get_list_from_string(data_string, delimiter_list):
     valid = (data_string and
              isinstance(data_string, six.string_types) and
