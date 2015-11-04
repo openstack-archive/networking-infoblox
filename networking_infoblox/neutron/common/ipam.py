@@ -1,4 +1,4 @@
-# Copyright 2015 OpenStack LLC.
+# Copyright 2015 Infoblox Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
