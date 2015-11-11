@@ -21,7 +21,9 @@ from neutron.i18n import _LE
 from neutron.i18n import _LI
 from neutron.ipam import exceptions as ipam_exc
 
+from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc
+from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
 
@@ -262,11 +264,59 @@ class IpamAsyncController(object):
 
     def create_network_sync(self):
         """Manages DHCP relay management ips."""
-        pass
+        if not self.grid_config.dhcp_relay_management_network:
+            return
+
+        session = self.ib_cxt.context.session
+        network = self.ib_cxt.network
+        network_id = network.get('id')
+
+        # adds management ip
+        mgmt_net_cidr = (
+            self.grid_config.dhcp_relay_management_network)
+        mgmt_net_view = (
+            self.grid_config.dhcp_relay_management_network_view)
+
+        mac = ':'.join(['00'] * 6)
+
+        # when an IP is allocated for DHCP relay (trel interface) for the DHCP
+        # relay management network, OpenStack is unaware of this so no port to
+        # associate with. In this case, we still need to populate EAs with
+        # default values.
+        ea_ip = None
+
+        fixed_address = self.ib_cxt.ibom.create_fixed_address_from_cidr(
+            mgmt_net_view, mac, mgmt_net_cidr, ea_ip)
+        ip_version = utils.get_ip_version(fixed_address.ip)
+
+        dbi.add_management_ip(session, network_id, fixed_address.ip,
+                              ip_version, fixed_address.ref)
 
     def update_network_sync(self):
-        """Updates EAs for each subnet that belong to the updated network."""
-        pass
+        """Updates EAs for each subnet that belongs to the updated network."""
+        session = self.ib_cxt.context.session
+        network = self.ib_cxt.network
+        network_id = network.get('id')
+
+        subnets = dbi.get_subnets_by_network_id(session, network_id)
+        for subnet in subnets:
+            network_view = None
+            cidr = subnet.get('cidr')
+            subnet_id = subnet.get('id')
+
+            netview_mappings = dbi.get_network_view_mappings(
+                session, grid_id=self.grid_id, network_id=network_id,
+                subnet_id=subnet_id)
+            if netview_mappings:
+                netview_row = utils.find_one_in_list(
+                    'id', netview_mappings[0].network_view_id,
+                    self.ib_cxt.discovered_network_views)
+                network_view = netview_row.network_view
+
+            if network_view:
+                ib_network = self.ib_cxt.ibom.get_network(network_view, cidr)
+                ea_network = None
+                self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
 
     def delete_network_sync(self, network_id):
         """Deletes infoblox entities that are associated with neutron network.
@@ -274,10 +324,36 @@ class IpamAsyncController(object):
         db_base_plugin_v2 delete_network calls delete_subnet per subnet under
         the network so subnet deletion is not concerned here.
         """
-        pass
+        session = self.ib_cxt.context.session
+
+        # delete management ip if used
+        if self.grid_config.dhcp_relay_management_network:
+            mgmt_ip = dbi.get_management_ip(session, network_id)
+            if mgmt_ip:
+                self.ib_cxt.ibom.delete_object_by_ref(mgmt_ip.ip_address_ref)
+                dbi.delete_management_ip(session, network_id)
+
+        # delete the associated network view if not shared
+        netview_mappings = dbi.get_network_view_mappings(session,
+                                                         grid_id=self.grid_id,
+                                                         network_id=network_id,
+                                                         subnet_id=const.NONE)
+        if netview_mappings:
+            netview_row = utils.find_one_in_list(
+                'id', netview_mappings[0].network_view_id,
+                self.ib_cxt.discovered_network_views)
+            if (not netview_row.shared and not self.ib_cxt.ibom.has_networks(
+                    netview_row.network_view)):
+                    self.ib_cxt.ibom.delete_network_view(
+                        netview_row.network_view)
+
+        # dissociate network view on network level
+        dbi.dissociate_network_view(session, network_id, const.NONE)
 
     def create_subnet_sync(self):
-        """Updates Physical network related EAs."""
+        pass
+
+    def delete_subnet_sync(self):
         pass
 
     def create_floatingip_sync(self, port):

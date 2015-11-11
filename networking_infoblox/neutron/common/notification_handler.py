@@ -47,8 +47,8 @@ class IpamEventHandler(object):
         self._cached_network_views = None
         self._cached_mapping_conditions = None
 
-    def _resync(self):
-        self.grid_mgr.sync()
+    def _resync(self, force_sync=False):
+        self.grid_mgr.sync(force_sync)
 
         self._cached_grid_members = dbi.get_members(
             self.context.session, grid_id=self.grid_id)
@@ -146,7 +146,7 @@ class IpamEventHandler(object):
                                              None, None, self.grid_config,
                                              self.plugin)
         ipam_controller = ipam.IpamAsyncController(ib_context)
-        ipam_controller.update_network_sync()
+        ipam_controller.delete_network_sync(network_id)
 
         self._resync()
 
@@ -175,14 +175,15 @@ class IpamEventHandler(object):
                 LOG.debug("subnet: %s" % subnet)
 
             ib_context = context.InfobloxContext(
-                self.context, self.user_id, network, subnet, self.grid_config,
-                self.plugin, self._cached_grid_members,
-                self._cached_network_views, self._cached_mapping_conditions)
+                self.context, self.user_id, network, subnet,
+                self.grid_config, self.plugin, self._cached_grid_members,
+                self._cached_network_views,
+                self._cached_mapping_conditions)
 
             ipam_controller = ipam.IpamAsyncController(ib_context)
             ipam_controller.create_subnet_sync()
 
-        self._resync()
+        self._resync(True)
 
     def update_subnet_sync(self, payload):
         """Notifies that the subnet has been updated."""
@@ -201,7 +202,7 @@ class IpamEventHandler(object):
         # At this point, NIOS subnets should have been removed.
         # Check if still exists and remove them if necessary.
 
-        self._resync()
+        self._resync(True)
 
     def create_port_sync(self, payload):
         """Notifies that new ports have been created."""
@@ -277,3 +278,10 @@ class IpamEventHandler(object):
 
         if self.traceable:
             LOG.debug("instance_id: %s, host: %s" % (instance_id, host))
+
+    def delete_instance_sync(self, payload):
+        """Notifies that an instance has been deleted."""
+        instance_id = payload.get('instance_id')
+
+        if self.traceable:
+            LOG.debug("instance_id: %s" % instance_id)
