@@ -161,7 +161,6 @@ class GridConfiguration(object):
 
         # connector object to GM
         self.gm_connector = None
-        self.wapi_major_version = None
         self._wapi_version = None
         self._is_cloud_wapi = False
 
@@ -192,8 +191,8 @@ class GridConfiguration(object):
     def wapi_version(self, value):
         self._wapi_version = value
         if value:
-            self._is_cloud_wapi = connector.Connector.is_cloud_wapi(value)
-            self.wapi_major_version = utils.get_major_version(value)
+            self._is_cloud_wapi =\
+                utils.get_features(self.wapi_version).cloud_api
 
     @property
     def is_cloud_wapi(self):
@@ -228,7 +227,7 @@ class GridConfiguration(object):
 
     def _discover_config(self, gm_member):
         return_fields = ['extattrs']
-        if self.wapi_major_version >= 2:
+        if utils.get_features(self.wapi_version).member_ipv6_setting:
             return_fields.append('ipv6_setting')
 
         obj_type = 'member'

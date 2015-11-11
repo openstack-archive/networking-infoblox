@@ -27,6 +27,7 @@ class TestDriver(base.TestCase):
 
     @mock.patch('infoblox_client.connector.Connector')
     def test_driver_initialized(self, connector):
+        connector().wapi_version = '2.0'
         self.assertIsInstance(drv.InfobloxPool(mock.Mock(), mock.Mock()),
                               drv.InfobloxPool)
 
@@ -44,6 +45,7 @@ class TestDriver(base.TestCase):
     @mock.patch('infoblox_client.objects.EA')
     @mock.patch('infoblox_client.objects.Network')
     def test_get_subnet(self, net, ea_mock, connector):
+        connector().wapi_version = '2.0'
         driver = self._mock_driver()
         subnet_id = 'subnet-id'
 
@@ -63,6 +65,7 @@ class TestDriver(base.TestCase):
     @mock.patch('infoblox_client.objects.EA')
     @mock.patch('infoblox_client.objects.Network')
     def test_allocate_subnet(self, net, ea_mock, connector, range_mock):
+        connector().wapi_version = '2.0'
         driver = self._mock_driver(None)
         pools = [netaddr.ip.IPRange('192.168.10.3', '192.168.10.25')]
 
@@ -89,6 +92,7 @@ class TestDriver(base.TestCase):
     def test_remove_subnet(self, net, ea_mock, connector):
         nios_net = mock.Mock()
         net.search = mock.Mock(return_value=nios_net)
+        connector().wapi_version = '2.0'
         driver = self._mock_driver()
 
         driver.remove_subnet('subnet-id')
@@ -112,6 +116,7 @@ class TestDriver(base.TestCase):
                          'http_pool_maxsize': 100,
                          'http_request_timeout': 120}
         conn_mock._parse_options = mock.Mock()
+        conn_mock().wapi_version = '2.0'
         driver = drv.InfobloxPool(mock.Mock(), mock.Mock())
         conn_mock.assert_called_with(expected_opts)
         self.assertEqual(conn_mock(), driver._conn)
@@ -212,6 +217,7 @@ class TestDriver(base.TestCase):
     @mock.patch('infoblox_client.connector.Connector')
     @mock.patch('infoblox_client.objects.IPRange')
     def test_update_subnet(self, range_mock, connector):
+        connector().wapi_version = '2.0'
         driver = self._mock_driver()
         pools = [netaddr.ip.IPRange('192.168.10.20', '192.168.10.25')]
         request = requests.SpecificSubnetRequest(

@@ -545,15 +545,6 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual(expected,
                          utils.get_notification_handler_name(event_type))
 
-    def test_get_major_version(self):
-        self.assertRaises(ValueError, utils.get_major_version, None)
-        self.assertRaises(ValueError, utils.get_major_version, [])
-        self.assertRaises(ValueError, utils.get_major_version, '')
-        self.assertEqual(1, utils.get_major_version('1.2'))
-        self.assertEqual(1, utils.get_major_version('1.4.1'))
-        self.assertEqual(2, utils.get_major_version('2.2'))
-        self.assertIsNone(utils.get_major_version('2.'))
-
     def test_generate_network_view_name(self):
         self.assertRaises(ValueError, utils.generate_network_view_name, None)
         self.assertRaises(ValueError, utils.generate_network_view_name, [])

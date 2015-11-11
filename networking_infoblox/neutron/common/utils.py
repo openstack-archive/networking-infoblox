@@ -23,6 +23,7 @@ import six
 import urllib
 
 from infoblox_client import connector as conn
+from infoblox_client import feature
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
@@ -415,16 +416,6 @@ def get_notification_handler_name(event_type):
     return handler_name
 
 
-def get_major_version(wapi_version):
-    valid = wapi_version and isinstance(wapi_version, six.string_types)
-    if not valid:
-        raise ValueError("Invalid argument was passed")
-    version_match = re.search('(\d+)\.(\d+)', wapi_version)
-    if version_match:
-        return int(version_match.group(1))
-    return None
-
-
 def generate_network_view_name(object_id, object_name=None):
     if not object_id or not isinstance(object_id, six.string_types):
         raise ValueError("object_id cannot be empty and must a string.")
@@ -477,3 +468,7 @@ def get_ipv4_network_prefix(cidr, subnet_name):
         else:
             prefix = '-'.join(filter(None, re.split(r'[.:/]', cidr)))
     return prefix
+
+
+def get_features(version):
+    return feature.Feature(version)

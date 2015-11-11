@@ -15,6 +15,7 @@
 
 import netaddr
 
+from infoblox_client import object_manager
 from infoblox_client import objects
 from neutron.ipam import driver
 from neutron.ipam import exceptions as ipam_exc
@@ -24,6 +25,7 @@ from neutron.ipam import utils as ipam_utils
 from neutron import manager
 
 from networking_infoblox.ipam import requests
+from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import utils
 
 
@@ -36,6 +38,9 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
     def __init__(self, *args, **kwargs):
         super(InfobloxPool, self).__init__(*args, **kwargs)
         self._conn = utils.get_connector()
+        if utils.get_features(self._conn).create_ea_def:
+            mgr = object_manager.InfobloxObjectManager(self._conn)
+            mgr.create_required_ea_definitions(const.REQUIRED_EA_DEFS)
 
     def get_subnet(self, subnet_id):
         """Retrieve an IPAM subnet.

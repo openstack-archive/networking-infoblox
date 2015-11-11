@@ -81,15 +81,21 @@ EA_PORT_ID = 'Port ID'
 EA_PORT_DEVICE_OWNER = 'Port Attached Device - Device Owner'
 EA_PORT_DEVICE_ID = 'Port Attached Device - Device ID'
 EA_VM_ID = 'VM ID'
+EA_VM_NAME = 'VM Name'
 EA_IP_TYPE = 'IP Type'
 EA_TENANT_ID = 'Tenant ID'
+EA_TENANT_NAME = 'Tenant Name'
 EA_ACCOUNT = 'Account'
 EA_CLOUD_API_OWNED = 'Cloud API Owned'
+EA_CMP_TYPE = 'CMP Type'
 EA_IS_EXTERNAL = 'Is External'
 EA_IS_SHARED = 'Is Shared'
 
 IP_TYPE_FIXED = 'Fixed'
 IP_TYPE_FLOATING = 'Floating'
+IP_TYPE_PUBLIC = 'Public'
+IP_TYPE_PRIVATE = 'Private'
+IP_TYPE_ELASTIC = 'Elastic'
 
 IP_ALLOCATION_STRATEGY_HOST_RECORD = 'Host Record'
 IP_ALLOCATION_STRATEGY_FIXED_ADDRESS = 'Fixed Address'
@@ -124,3 +130,218 @@ NEUTRON_INTERNAL_SERVICE_DEVICE_OWNERS = [
 ]
 
 NONE_ID = 'NONE'
+
+REQUIRED_EA_DEFS = [
+    # Cloud Property EAs
+    {'name': EA_ACCOUNT, 'type': 'STRING', 'flags': 'C',
+     'comment': 'User ID in OpenStack'},
+
+    {'name': EA_CLOUD_API_OWNED, 'type': 'ENUM', 'flags': 'C',
+     'list_values': [{'value': 'True'}, {'value': 'False'}],
+     'comment': 'Is Cloud API owned'},
+
+    {'name': EA_CMP_TYPE, 'type': 'STRING', 'flags': 'C',
+     'comment': 'CMP Types (OpenStack)'},
+
+    {'name': EA_IS_EXTERNAL, 'type': 'ENUM', 'flags': 'C',
+     'list_values': [{'value': 'True'}, {'value': 'False'}],
+     'comment': 'For networks and network containers only'},
+
+    {'name': EA_IS_SHARED, 'type': 'ENUM', 'flags': 'C',
+     'list_values': [{'value': 'True'}, {'value': 'False'}],
+     'comment': 'For networks and network containers only'},
+
+    {'name': EA_IP_TYPE, 'type': 'ENUM', 'flags': 'C',
+     'list_values': [{'value': IP_TYPE_ELASTIC},
+                     {'value': IP_TYPE_FIXED},
+                     {'value': IP_TYPE_FLOATING},
+                     {'value': IP_TYPE_PRIVATE},
+                     {'value': IP_TYPE_PUBLIC}],
+     'comment': 'Type of IP address'},
+
+    {'name': EA_NETWORK_ENCAP, 'type': 'STRING', 'flags': 'C',
+     'comment': 'Type of IP address'},
+
+    {'name': EA_NETWORK_ID, 'type': 'STRING', 'flags': 'C',
+     'comment': 'Network ID in OpenStack'},
+
+    {'name': EA_NETWORK_NAME, 'type': 'STRING', 'flags': 'C',
+     'comment': 'Network Name'},
+
+    {'name': EA_PHYSICAL_NETWORK_NAME, 'type': 'STRING', 'flags': 'C',
+     'comment': ''},
+
+    {'name': EA_PORT_DEVICE_ID, 'type': 'STRING', 'flags': 'C',
+     'comment': ''},
+
+    {'name': EA_PORT_DEVICE_OWNER, 'type': 'STRING', 'flags': 'C',
+     'comment': ''},
+
+    {'name': EA_PORT_ID, 'type': 'STRING', 'flags': 'C',
+     'comment': ''},
+
+    {'name': EA_SEGMENTATION_ID, 'type': 'STRING', 'flags': 'C',
+     'comment': ''},
+
+    {'name': EA_SUBNET_ID, 'type': 'STRING', 'flags': 'C',
+     'comment': 'Subnet ID in OpenStack'},
+
+    {'name': EA_SUBNET_NAME, 'type': 'STRING', 'flags': 'C',
+     'comment': 'Subnet Name in OpenStack'},
+
+    {'name': EA_TENANT_ID, 'type': 'STRING', 'flags': 'C',
+     'comment': 'Tenant ID in OpenStack'},
+
+    {'name': EA_TENANT_NAME, 'type': 'STRING', 'flags': 'C',
+     'comment': 'Tenant Name in OpenStack'},
+
+    {'name': EA_VM_ID, 'type': 'STRING', 'flags': 'C',
+     'comment': 'Instance ID in OpenStack'},
+
+    {'name': EA_VM_NAME, 'type': 'STRING', 'flags': 'C',
+     'comment': 'Instance Name in OpenStack'},
+
+    # Grid Configuration EAs
+    {'name': EA_GRID_CONFIG_GRID_SYNC_SUPPORT,
+     'type': 'ENUM', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'list_values': [{'value': 'True'},
+                     {'value': 'False'}],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_GRID_SYNC_MINIMUM_WAIT_TIME,
+     'type': 'INTEGER', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE,
+     'type': 'ENUM', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'list_values': [{'value': NETWORK_VIEW_SCOPE_SINGLE},
+                     {'value': NETWORK_VIEW_SCOPE_ADDRESS_SCOPE},
+                     {'value': NETWORK_VIEW_SCOPE_TENANT},
+                     {'value': NETWORK_VIEW_SCOPE_NETWORK},
+                     {'value': NETWORK_VIEW_SCOPE_SUBNET}],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW,
+     'type': 'STRING', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN,
+     'type': 'STRING', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_DEFAULT_DOMAIN_NAME_PATTERN,
+     'type': 'STRING', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_NS_GROUP,
+     'type': 'STRING', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_DNS_VIEW,
+     'type': 'STRING', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_NETWORK_TEMPLATE,
+     'type': 'STRING', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_ADMIN_NETWORK_DELETION,
+     'type': 'ENUM', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'list_values': [{'value': 'True'},
+                     {'value': 'False'}],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_IP_ALLOCATION_STRATEGY,
+     'type': 'ENUM', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'list_values': [{'value': IP_ALLOCATION_STRATEGY_HOST_RECORD},
+                     {'value': IP_ALLOCATION_STRATEGY_FIXED_ADDRESS}],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_DNS_RECORD_BINDING_TYPES,
+     'type': 'STRING', 'flags': 'V',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_DNS_RECORD_UNBINDING_TYPES,
+     'type': 'STRING', 'flags': 'V',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES,
+     'type': 'STRING', 'flags': 'V',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK_VIEW,
+     'type': 'STRING', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK,
+     'type': 'STRING', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_DHCP_SUPPORT,
+     'type': 'ENUM', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'list_values': [{'value': 'True'},
+                     {'value': 'False'}],
+     'comment': 'Grid Configuration'},
+
+    # Mapping EAs
+    {'name': EA_MAPPING_ADDRESS_SCOPE_ID,
+     'type': 'STRING', 'flags': 'CGV',
+     'allowed_object_types': ['NetworkView'],
+     'comment': 'Mapping'},
+
+    {'name': EA_MAPPING_ADDRESS_SCOPE_NAME,
+     'type': 'STRING', 'flags': 'CGV',
+     'allowed_object_types': ['NetworkView'],
+     'comment': 'Mapping'},
+
+    {'name': EA_MAPPING_TENANT_ID,
+     'type': 'STRING', 'flags': 'CGV',
+     'allowed_object_types': ['NetworkView'],
+     'comment': 'Mapping'},
+
+    {'name': EA_MAPPING_TENANT_NAME,
+     'type': 'STRING', 'flags': 'CGV',
+     'allowed_object_types': ['NetworkView'],
+     'comment': 'Mapping'},
+
+    {'name': EA_MAPPING_TENANT_CIDR,
+     'type': 'STRING', 'flags': 'CGV',
+     'allowed_object_types': ['NetworkView'],
+     'comment': 'Mapping'},
+
+    {'name': EA_MAPPING_NETWORK_ID,
+     'type': 'STRING', 'flags': 'CGV',
+     'allowed_object_types': ['NetworkView'],
+     'comment': 'Mapping'},
+
+    {'name': EA_MAPPING_NETWORK_NAME,
+     'type': 'STRING', 'flags': 'CGV',
+     'allowed_object_types': ['NetworkView'],
+     'comment': 'Mapping'},
+
+    {'name': EA_MAPPING_SUBNET_ID,
+     'type': 'STRING', 'flags': 'CGV',
+     'allowed_object_types': ['NetworkView'],
+     'comment': 'Mapping'},
+
+    {'name': EA_MAPPING_SUBNET_CIDR,
+     'type': 'STRING', 'flags': 'CGV',
+     'allowed_object_types': ['NetworkView'],
+     'comment': 'Mapping'}]

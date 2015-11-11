@@ -155,7 +155,8 @@ class GridMemberManager(object):
 
     def _discover_members(self):
         return_fields = ['node_info', 'host_name', 'vip_setting']
-        if self._grid_config.wapi_major_version >= 2:
+        if utils.get_features(
+                self._grid_config.wapi_version).member_ipv6_setting:
             return_fields.append('ipv6_setting')
 
         members = self._connector.get_object('member',
@@ -163,7 +164,8 @@ class GridMemberManager(object):
         return members
 
     def _discover_member_licenses(self):
-        if self._grid_config.wapi_major_version < 2:
+        if not utils.get_features(
+                self._grid_config.wapi_version).member_licenses:
             return None
 
         return_fields = ['expiry_date', 'hwid', 'kind', 'type']
