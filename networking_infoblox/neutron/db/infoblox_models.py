@@ -124,8 +124,6 @@ class InfobloxNetworkViewMapping(model_base.BASEV2):
                            nullable=False,
                            primary_key=True)
     subnet_id = sa.Column(sa.String(36),
-                          sa.ForeignKey("subnets.id",
-                                        ondelete="CASCADE"),
                           nullable=False,
                           primary_key=True)
 

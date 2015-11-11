@@ -45,7 +45,7 @@ class GridManager(object):
         self.member = grid_member.GridMemberManager(self.grid_config)
         self.mapping = grid_mapping.GridMappingManager(self.grid_config)
 
-    def sync(self):
+    def sync(self, force_sync=False):
         """Synchronize members, config, and mapping between NIOS and neutron.
 
         First sync members, then config, and lastly mapping because config
@@ -55,11 +55,9 @@ class GridManager(object):
         allow_sync = False
         if self.grid_config.grid_sync_support:
             self.last_sync_time = dbi.get_last_sync_time(session)
-            if not self.last_sync_time:
-                allow_sync = True
-            elif (datetime.utcnow() - self.last_sync_time >
-                    timedelta(
-                        seconds=self.grid_config.grid_sync_minimum_wait_time)):
+            if (force_sync or not self.last_sync_time or
+                (datetime.utcnow() - self.last_sync_time > timedelta(
+                    seconds=self.grid_config.grid_sync_minimum_wait_time))):
                 allow_sync = True
 
         if allow_sync:

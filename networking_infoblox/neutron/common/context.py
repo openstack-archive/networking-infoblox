@@ -54,7 +54,6 @@ class InfobloxContext(object):
              'network_view': None,
              'authority_member': None,
              'shared': False,
-             'mapping_scope': None,
              'dns_view': None})
 
         self._discovered_grid_members = grid_members
@@ -222,7 +221,7 @@ class InfobloxContext(object):
         # First check if mapping already exists
         network_id = self.subnet.get('network_id')
         subnet_id = self.subnet.get('id')
-        netview_mapping = dbi.get_network_view_mapping(
+        netview_mapping = dbi.get_network_view_mappings(
             session, network_id=network_id, subnet_id=subnet_id)
         if netview_mapping:
             netview_id = netview_mapping[0].network_view_id
