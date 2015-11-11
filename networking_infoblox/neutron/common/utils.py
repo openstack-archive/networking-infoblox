@@ -416,12 +416,27 @@ def get_notification_handler_name(event_type):
 
 
 def get_major_version(wapi_version):
+    parts = get_wapi_version_dict(wapi_version)
+    if not parts:
+        return None
+    return parts['major']
+
+
+def get_minor_version(wapi_version):
+    parts = get_wapi_version_dict(wapi_version)
+    if not parts:
+        return None
+    return parts['minor']
+
+
+def get_wapi_version_dict(wapi_version):
     valid = wapi_version and isinstance(wapi_version, six.string_types)
     if not valid:
         raise ValueError("Invalid argument was passed")
     version_match = re.search('(\d+)\.(\d+)', wapi_version)
     if version_match:
-        return int(version_match.group(1))
+        return {'major': int(version_match.group(1)),
+                'minor': int(version_match.group(2))}
     return None
 
 
