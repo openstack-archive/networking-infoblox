@@ -52,7 +52,8 @@ class NotificationEndpoint(object):
         'floatingip.update.end',
         'floatingip.delete.end',
         # nova instance event
-        'compute.instance.create.end']
+        'compute.instance.create.end',
+        'compute.instance.delete.end']
 
     def __init__(self, context):
         self.context = context
