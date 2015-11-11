@@ -207,8 +207,8 @@ def remove_network_views_by_names(session, network_views, grid_id):
 
 
 # Network View Mapped to Neutron
-def get_network_view_mapping(session, network_view_id=None, grid_id=None,
-                             network_id=None, subnet_id=None):
+def get_network_view_mappings(session, network_view_id=None, grid_id=None,
+                              network_id=None, subnet_id=None):
     q = session.query(ib_models.InfobloxNetworkViewMapping)
     if network_view_id:
         q = q.filter(ib_models.InfobloxNetworkViewMapping.network_view_id ==
@@ -229,6 +229,7 @@ def get_network_view_mapping(session, network_view_id=None, grid_id=None,
 
 
 def associate_network_view(session, network_view_id, network_id, subnet_id):
+    # check if network and subnet level mapping exists
     q = session.query(ib_models.InfobloxNetworkViewMapping)
     network_view_mapping = q.filter_by(network_id=network_id,
                                        subnet_id=subnet_id).first()
@@ -237,6 +238,18 @@ def associate_network_view(session, network_view_id, network_id, subnet_id):
             network_view_id=network_view_id,
             network_id=network_id,
             subnet_id=subnet_id)
+        session.add(network_view_mapping)
+
+    # check if network level mapping exists; network level mapping is needed
+    # when the network is deleted after all subnets are deleted
+    q = session.query(ib_models.InfobloxNetworkViewMapping)
+    network_view_mapping = q.filter_by(network_id=network_id,
+                                       subnet_id=const.NONE).first()
+    if not network_view_mapping:
+        network_view_mapping = ib_models.InfobloxNetworkViewMapping(
+            network_view_id=network_view_id,
+            network_id=network_id,
+            subnet_id=const.NONE)
         session.add(network_view_mapping)
 
 
