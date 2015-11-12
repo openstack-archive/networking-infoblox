@@ -55,12 +55,10 @@ class TestUtils(testlib_api.SqlTestCase):
         grids = dbi.get_grids(self.ctx.session)
         grid_ids = utils.get_values_from_records('grid_id', grids)
 
-        self.assertEqual(2, len(grid_ids))
         self.assertEqual(grid_1_id, grid_ids[0])
         self.assertEqual(grid_2_id, grid_ids[1])
 
         grid_names = utils.get_values_from_records('grid_name', grids)
-        self.assertEqual(2, len(grid_ids))
         self.assertEqual('test grid 1', grid_names[0])
         self.assertEqual('test grid 2', grid_names[1])
 
