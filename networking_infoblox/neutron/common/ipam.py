@@ -22,7 +22,9 @@ from neutron.i18n import _LI
 from neutron.ipam import exceptions as ipam_exc
 
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import ea_manager as eam
 from networking_infoblox.neutron.common import exceptions as exc
+from networking_infoblox.neutron.common import pattern
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
@@ -36,6 +38,10 @@ class IpamSyncController(object):
         self.ib_cxt = ib_context
         self.grid_config = self.ib_cxt.grid_config
         self.grid_id = self.grid_config.grid_id
+        self.tenant_id = (self.ib_cxt.network.get('tenant_id') or
+                          self.ib_cxt.subnet.get('tenant_id') or
+                          self.ib_cxt.context.get('tenant_id'))
+        self.pattern_builder = pattern.PatternBuilder(self.ib_cxt)
 
     def create_subnet(self):
         """Creates subnet equivalent NIOS objects.
@@ -89,7 +95,7 @@ class IpamSyncController(object):
                         self.ib_cxt.mapping.network_view, subnet.get('cidr'))
 
     def _create_ib_network_view(self):
-        ea_network_view = None
+        ea_network_view = eam.get_ea_for_network_view(self.tenant_id)
         ib_network_view = self.ib_cxt.ibom.create_network_view(
             self.ib_cxt.mapping.network_view, ea_network_view)
         LOG.info(_LI("Created a network view: %s"), ib_network_view)
@@ -105,9 +111,10 @@ class IpamSyncController(object):
         cidr = subnet.get('cidr')
         gateway_ip = subnet.get('gateway_ip')
 
-        network_template = self.grid_config.network_template
+        ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
+                                            self.tenant_id, network, subnet)
 
-        ea_network = None
+        network_template = self.grid_config.network_template
 
         # check if network already exists
         exists_network = self.ib_cxt.ibom.network_exists(
@@ -123,7 +130,8 @@ class IpamSyncController(object):
         # network creation using template
         if network_template:
             ib_network = self.ib_cxt.ibom.create_network_from_template(
-                self.ib_cxt.mapping.network_view, cidr, network_template)
+                self.ib_cxt.mapping.network_view, cidr, network_template,
+                ea_network)
             return ib_network
 
         # network creation starts
@@ -139,11 +147,11 @@ class IpamSyncController(object):
         ib_network = self.ib_cxt.ibom.create_network(
             self.ib_cxt.mapping.network_view,
             cidr,
-            nameservers=nameservers,
-            dhcp_members=dhcp_members,
-            gateway_ip=gateway_ip,
-            relay_trel_ip=relay_trel_ip,
-            extattrs=ea_network)
+            nameservers,
+            dhcp_members,
+            gateway_ip,
+            relay_trel_ip,
+            ea_network)
 
         for member in dhcp_members:
             self.ib_cxt.ibom.restart_all_services(member)
@@ -155,7 +163,8 @@ class IpamSyncController(object):
         cidr = subnet.get('cidr')
         allocation_pools = subnet.get('allocation_pools')
 
-        ea_range = None
+        ea_range = eam.get_ea_for_range(self.ib_cxt.user_id, self.tenant_id,
+                                        self.ib_cxt.network)
 
         for ip_range in allocation_pools:
             start_ip = ip_range['start']
@@ -193,9 +202,12 @@ class IpamSyncController(object):
     def allocate_specific_ip(self, ip_address, mac, port_id=None,
                              device_id=None, device_owner=None):
         hostname = uuidutils.generate_uuid()
-        ea_ip_address = None
-        dns_view = None
-        zone_auth = None
+
+        ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id, self.tenant_id,
+                                          self.ib_cxt.network, port_id,
+                                          device_id, device_owner)
+        dns_view = self.ib_cxt.mapping.dns_view
+        zone_auth = self.pattern_builder.get_zone_name()
 
         allocated_ip = self.ib_cxt.ip_alloc.allocate_given_ip(
             self.ib_cxt.mapping.network_view,
@@ -214,9 +226,12 @@ class IpamSyncController(object):
     def allocate_ip_from_pool(self, subnet_id, allocation_pools, mac,
                               port_id=None, device_id=None, device_owner=None):
         hostname = uuidutils.generate_uuid()
-        ea_ip_address = None
-        dns_view = None
-        zone_auth = None
+
+        ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id, self.tenant_id,
+                                          self.ib_cxt.network, port_id,
+                                          device_id, device_owner)
+        dns_view = self.ib_cxt.mapping.dns_view
+        zone_auth = self.pattern_builder.get_zone_name()
         allocated_ip = None
 
         for pool in allocation_pools:
