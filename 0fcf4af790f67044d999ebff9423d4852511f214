@@ -1,0 +1,9 @@
+Verified+2: Jenkins
+Code-Review+2: Kyle Mestery <mestery@mestery.com>
+Workflow+1: Kyle Mestery <mestery@mestery.com>
+Code-Review+1: John Belamaric <jbelamaric@infoblox.com>
+Submitted-by: Jenkins
+Submitted-at: Thu, 12 Nov 2015 14:33:31 +0000
+Reviewed-on: https://review.openstack.org/243692
+Project: openstack/networking-infoblox
+Branch: refs/heads/stable/liberty
