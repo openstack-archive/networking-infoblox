@@ -48,6 +48,7 @@ class NotificationTestCase(base.RpcTestCase):
         stub = grid_sync_stub.GridSyncStub(self.ctx, self.connector_fixture)
         stub.prepare_grid_manager(wapi_version='2.2')
         self.grid_mgr = stub.get_grid_manager()
+        self.grid_mgr.grid_config.grid_sync_support = False
         self.grid_mgr.last_sync_time = mock.Mock()
         self._setup_config()
         self.event_handler = notification_handler.IpamEventHandler(
