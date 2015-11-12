@@ -62,6 +62,10 @@ class InfobloxContext(object):
 
         self._update()
 
+        self.tenant_id = (self.network.get('tenant_id') or
+                          self.subnet.get('tenant_id') or
+                          self.context.get('tenant_id'))
+
     @property
     def discovered_grid_members(self):
         if self._discovered_grid_members is None:
