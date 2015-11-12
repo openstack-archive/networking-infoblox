@@ -63,14 +63,14 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                 self.test_dns_zone,
                 grid_primary=None,
                 grid_secondaries=None,
-                extattrs=None),
+                extattrs=mock.ANY),
             mock.call.create_dns_zone(
                 self.ib_cxt.mapping.dns_view,
                 self.ib_cxt.subnet['cidr'],
                 grid_primary=None,
                 prefix=None,
                 zone_format=self.test_zone_format,
-                extattrs=None)
+                extattrs=mock.ANY)
         ]
 
     def test_create_dns_zones_with_ns_group(self):
@@ -82,13 +82,13 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                 self.ib_cxt.mapping.dns_view,
                 self.test_dns_zone,
                 ns_group=self.ib_cxt.grid_config.ns_group,
-                extattrs=None),
+                extattrs=mock.ANY),
             mock.call.create_dns_zone(
                 self.ib_cxt.mapping.dns_view,
                 self.ib_cxt.subnet['cidr'],
                 prefix=None,
                 zone_format=self.test_zone_format,
-                extattrs=None)
+                extattrs=mock.ANY)
         ]
 
     def test_delete_dns_zones_for_shared_network_view(self):
@@ -278,7 +278,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                  self.ib_cxt.mapping.dns_view,
                                  ip_address,
                                  fqdn,
-                                 None)
+                                 mock.ANY)
         ]
 
     def test_unbind_names(self):
@@ -300,5 +300,5 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                    self.ib_cxt.mapping.dns_view,
                                    ip_address,
                                    fqdn,
-                                   None)
+                                   mock.ANY)
         ]

@@ -20,6 +20,7 @@ from neutron.i18n import _LE
 
 from infoblox_client import exceptions as ibc_exc
 
+from networking_infoblox.neutron.common import ea_manager as eam
 from networking_infoblox.neutron.common import pattern
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
@@ -38,8 +39,9 @@ class DnsController(object):
         self.dns_zone = self.pattern_builder.get_zone_name()
 
     def create_dns_zones(self):
-        ea_zone = None
-
+        ea_zone = eam.get_ea_for_zone(self.ib_cxt.user_id,
+                                      self.ib_cxt.tenant_id,
+                                      self.ib_cxt.network)
         cidr = self.ib_cxt.subnet['cidr']
         subnet_name = self.ib_cxt.subnet['name']
         dns_view = self.ib_cxt.mapping.dns_view
@@ -145,9 +147,10 @@ class DnsController(object):
         if not device_owner:
             return
 
-        # TODO(hhwang): generate EA for ip address
-        # tenant_id = port_tenant_id or self.ib_cxt.context.tenant_id or 'None'
-        ea_ip_address = None
+        tenant_id = port_tenant_id or self.ib_cxt.context.tenant_id or 'None'
+        ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id, tenant_id,
+                                          self.ib_cxt.network, port_id,
+                                          device_id, device_owner)
 
         try:
             self._bind_names(self.ib_cxt.ip_alloc.bind_names, ip_address,
