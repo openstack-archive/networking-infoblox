@@ -97,27 +97,60 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
             network=str(subnet_request.subnet_cidr),
             extattrs=ea)
 
-        self._allocate_pools(subnet_request)
-
-        return InfobloxSubnet(subnet_request, infoblox_network)
-
-    def _allocate_pools(self, subnet_request):
         if not subnet_request.allocation_pools:
             pools = ipam_utils.generate_pools(subnet_request.subnet_cidr,
                                               subnet_request.gateway_ip)
         else:
             pools = subnet_request.allocation_pools
 
-        ip_version = subnet_request.subnet_cidr.version
+        self._allocate_pools(pools, subnet_request.subnet_cidr)
+
+        return InfobloxSubnet(subnet_request, infoblox_network)
+
+    def _allocate_pools(self, pools, cidr):
+        ip_version = cidr.version
         allocated = []
         for pool in pools:
             allocated.append(objects.IPRange.create(
                 self._conn,
                 network_view='default',
-                network=str(subnet_request.subnet_cidr),
+                network=str(cidr),
                 start_addr=netaddr.IPAddress(pool.first, ip_version).format(),
                 end_addr=netaddr.IPAddress(pool.last, ip_version).format()))
         return allocated
+
+    @staticmethod
+    def _get_changed_pools(nios_pools, pools_from_request, ip_version):
+        """Calculates difference between nios and neutron ranges.
+
+        :param nios_pools: list of objects.IPRange returned by NIOS
+        :param pools_from_request: list of netaddr.IPRange from subnet request
+        :return: tuple with two elements:
+            - add_list with netaddr.IPRange objects;
+            - remove_list with objects.IPRange objects;
+        """
+        if pools_from_request is None:
+            pools_from_request = []
+
+        nios_pool_map = {'%s-%s' % (pool.start_addr, pool.end_addr): pool
+                         for pool in nios_pools}
+
+        request_pool_map = {}
+        for pool in pools_from_request:
+            first_ip = netaddr.IPAddress(pool.first, ip_version).format()
+            last_ip = netaddr.IPAddress(pool.last, ip_version).format()
+            pool_str = '%s-%s' % (first_ip, last_ip)
+            request_pool_map[pool_str] = pool
+
+        old_pools = set(nios_pool_map.keys())
+        new_pools = set(request_pool_map.keys())
+
+        add_pool = new_pools - old_pools
+        remove_pool = old_pools - new_pools
+
+        add_list = [request_pool_map[pool] for pool in add_pool]
+        remove_list = [nios_pool_map[pool] for pool in remove_pool]
+        return add_list, remove_list
 
     def update_subnet(self, subnet_request):
         """Update IPAM Subnet.
@@ -125,7 +158,20 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         The only update subnet information the driver needs to be aware of
         are allocation pools.
         """
-        pass
+        nios_pools = objects.IPRange.search_all(
+            self._conn,
+            network_view='default',
+            network=str(subnet_request.subnet_cidr))
+
+        add_pool, remove_pool = self._get_changed_pools(
+            nios_pools,
+            subnet_request.allocation_pools,
+            subnet_request.subnet_cidr.version)
+
+        for pool in remove_pool:
+            pool.delete()
+
+        self._allocate_pools(add_pool, subnet_request.subnet_cidr)
 
     def remove_subnet(self, subnet_id):
         """Remove IPAM Subnet.
