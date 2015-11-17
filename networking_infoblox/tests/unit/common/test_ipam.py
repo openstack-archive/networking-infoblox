@@ -21,6 +21,8 @@ from neutron.tests.unit import testlib_api
 
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import ipam
+from networking_infoblox.neutron.common import utils
+from networking_infoblox.neutron.db import infoblox_db as dbi
 from networking_infoblox.tests import base
 
 
@@ -46,7 +48,7 @@ class IpamControllerTestHelper(object):
         self.ib_cxt.context = self.neutron_cxt
         self.ib_cxt.grid_config.admin_network_deletion = False
         self.ib_cxt.grid_config.network_template = None
-        self.ib_cxt.grid_config.dhcp_replay_management_network = None
+        self.ib_cxt.grid_config.dhcp_relay_management_network = None
         self.ib_cxt.ibom.network_exists.return_value = False
 
     def prepare_test(self, options):
@@ -90,7 +92,7 @@ class IpamControllerTestHelper(object):
             'mtu': 0,
             'shared': shared,
             'provider:network_type': 'vxlan',
-            'id': str.format("%s-id", name),
+            'id': str.format("{}-id", name),
             'provider:segmentation_id': 1001
         }
 
@@ -115,7 +117,7 @@ class IpamControllerTestHelper(object):
             'ip_version': ip_network.version,
             'host_routes': [],
             'cidr': cidr,
-            'id': str.format("%s-id", name),
+            'id': str.format("{}-id", name),
             'subnetpool_id': 'None'
         }
 
@@ -128,7 +130,7 @@ class IpamControllerTestHelper(object):
             self.ib_cxt.mapping.network_view_id = None
             self.ib_cxt.mapping.authority_member = None
         else:
-            self.ib_cxt.mapping.network_view_id = str.format("%s-id",
+            self.ib_cxt.mapping.network_view_id = str.format("{}-id",
                                                              network_view)
             self.ib_cxt.mapping.authority_member = mock.Mock()
 
@@ -162,6 +164,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             subnet['allocation_pools'][0]['end'],
             subnet['cidr'], True, None)
 
+    @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     def test_create_subnet_new_network_view(self):
         test_opts = dict()
         self.helper.prepare_test(test_opts)
@@ -172,6 +175,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.validate_network_creation(self.helper.options['network_view'],
                                        self.helper.subnet)
 
+    @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     def test_create_subnet_existing_network_view(self):
         test_opts = {'cidr': '12.12.12.0/24', 'network_view_exists': True}
         self.helper.prepare_test(test_opts)
@@ -190,6 +194,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertRaises(exc.InfobloxPrivateSubnetAlreadyExist,
                           ipam_controller.create_subnet)
 
+    @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     def test_create_subnet_existing_external_network(self):
         test_opts = {'network_name': 'extnet',
                      'subnet_name': 'extsub',
@@ -297,5 +302,137 @@ class IpamAsyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.helper = IpamControllerTestHelper()
         self.ib_cxt = self.helper.ib_cxt
 
-    def test_create_network_sync(self):
-        pass
+    def test_update_network_sync_without_subnet(self):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+
+        ipam_controller = ipam.IpamAsyncController(self.ib_cxt)
+        with mock.patch.object(dbi,
+                               'get_subnets_by_network_id',
+                               return_value=[]):
+            ipam_controller.update_network_sync()
+            assert not self.ib_cxt.ibom.get_network.called
+            assert not self.ib_cxt.ibom.update_network_options.called
+
+    @mock.patch.object(dbi, 'get_network_view_mappings', return_value=[])
+    def test_update_network_sync_without_network_view_mapping(self, dbi_mock):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+
+        ipam_controller = ipam.IpamAsyncController(self.ib_cxt)
+        with mock.patch.object(dbi,
+                               'get_subnets_by_network_id',
+                               return_value=[{'id': 'subnet-id',
+                                              'cidr': '11.11.1.0/24'}]):
+            ipam_controller.update_network_sync()
+            assert not self.ib_cxt.ibom.get_network.called
+            assert not self.ib_cxt.ibom.update_network_options.called
+
+    @mock.patch.object(utils, 'find_one_in_list')
+    @mock.patch.object(dbi, 'get_network_view_mappings')
+    def test_update_network_sync_with_network_view_mapping(
+            self, netview_mapping_mock, find_row_mock):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+
+        test_netview_mapping = utils.json_to_obj(
+            'NetworkViewMapping',
+            {'network_view_id': 'test-id', 'network_view': 'test-view'})
+        test_netview = utils.json_to_obj(
+            'NetworkView',
+            {'id': 'test-id', 'network_view': 'test-view'})
+        netview_mapping_mock.return_value = [test_netview_mapping]
+        find_row_mock.return_value = test_netview
+
+        ipam_controller = ipam.IpamAsyncController(self.ib_cxt)
+        with mock.patch.object(dbi,
+                               'get_subnets_by_network_id',
+                               return_value=[{'id': 'subnet-id',
+                                              'cidr': '11.11.1.0/24'}]):
+            ipam_controller.update_network_sync()
+            assert self.ib_cxt.ibom.get_network.called
+            assert self.ib_cxt.ibom.update_network_options.called
+
+    @mock.patch.object(dbi, 'get_network_view_mappings', return_value=[])
+    def test_delete_network_sync_without_network_view_mapping(
+            self, netview_mapping_mock):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+        network_id = 'test-id'
+
+        ipam_controller = ipam.IpamAsyncController(self.ib_cxt)
+        ipam_controller.delete_network_sync(network_id)
+
+        assert not self.ib_cxt.ibom.has_networks.called
+        assert not self.ib_cxt.ibom.delete_network_view.called
+
+    @mock.patch.object(utils, 'find_one_in_list')
+    @mock.patch.object(dbi, 'get_network_view_mappings')
+    def test_delete_network_sync_with_mapping_and_shared_network(
+            self, netview_mapping_mock, find_row_mock):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+        network_id = 'test-id'
+
+        test_netview_mapping = utils.json_to_obj(
+            'NetworkViewMapping',
+            {'network_view_id': 'test-id', 'network_view': 'test-view'})
+        test_netview = utils.json_to_obj(
+            'NetworkView',
+            {'id': 'test-id', 'network_view': 'test-view', 'shared': True})
+        netview_mapping_mock.return_value = [test_netview_mapping]
+        find_row_mock.return_value = test_netview
+
+        ipam_controller = ipam.IpamAsyncController(self.ib_cxt)
+        ipam_controller.delete_network_sync(network_id)
+
+        assert not self.ib_cxt.ibom.has_networks.called
+        assert not self.ib_cxt.ibom.delete_network_view.called
+
+    @mock.patch.object(utils, 'find_one_in_list')
+    @mock.patch.object(dbi, 'get_network_view_mappings')
+    def test_delete_network_sync_with_mapping_and_not_shared_and_nework(
+            self, netview_mapping_mock, find_row_mock):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+        network_id = 'test-id'
+
+        test_netview_mapping = utils.json_to_obj(
+            'NetworkViewMapping',
+            {'network_view_id': 'test-id', 'network_view': 'test-view'})
+        test_netview = utils.json_to_obj(
+            'NetworkView',
+            {'id': 'test-id', 'network_view': 'test-view', 'shared': False})
+        netview_mapping_mock.return_value = [test_netview_mapping]
+        find_row_mock.return_value = test_netview
+        self.ib_cxt.ibom.has_networks.return_value = True
+
+        ipam_controller = ipam.IpamAsyncController(self.ib_cxt)
+        ipam_controller.delete_network_sync(network_id)
+
+        assert self.ib_cxt.ibom.has_networks.called
+        assert not self.ib_cxt.ibom.delete_network_view.called
+
+    @mock.patch.object(utils, 'find_one_in_list')
+    @mock.patch.object(dbi, 'get_network_view_mappings')
+    def test_delete_network_sync_with_mapping_and_not_shared_and_no_nework(
+            self, netview_mapping_mock, find_row_mock):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+        network_id = 'test-id'
+
+        test_netview_mapping = utils.json_to_obj(
+            'NetworkViewMapping',
+            {'network_view_id': 'test-id', 'network_view': 'test-view'})
+        test_netview = utils.json_to_obj(
+            'NetworkView',
+            {'id': 'test-id', 'network_view': 'test-view', 'shared': False})
+        netview_mapping_mock.return_value = [test_netview_mapping]
+        find_row_mock.return_value = test_netview
+        self.ib_cxt.ibom.has_networks.return_value = False
+
+        ipam_controller = ipam.IpamAsyncController(self.ib_cxt)
+        ipam_controller.delete_network_sync(network_id)
+
+        assert self.ib_cxt.ibom.has_networks.called
+        assert self.ib_cxt.ibom.delete_network_view.called
