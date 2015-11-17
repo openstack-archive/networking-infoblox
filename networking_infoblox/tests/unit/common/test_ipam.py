@@ -126,6 +126,7 @@ class IpamControllerTestHelper(object):
         self.ib_cxt.network = network
         self.ib_cxt.subnet = subnet
         self.ib_cxt.mapping.network_view = network_view
+        self.ib_cxt.mapping.dns_view = 'test-view'
         if network_view_exists is False:
             self.ib_cxt.mapping.network_view_id = None
             self.ib_cxt.mapping.authority_member = None
@@ -148,21 +149,22 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             self.ib_cxt.ibom.create_network_view.assert_not_called()
         else:
             self.ib_cxt.ibom.create_network_view.assert_called_once_with(
-                network_view, None)
+                network_view, mock.ANY)
 
         self.ib_cxt.ibom.network_exists.assert_called_once_with(
             network_view, subnet['cidr'])
 
         self.ib_cxt.ibom.create_network.assert_called_once_with(
-            network_view, subnet['cidr'], nameservers=[],
-            dhcp_members=[], gateway_ip=subnet['gateway_ip'],
-            relay_trel_ip=None, extattrs=None)
+            network_view, subnet['cidr'], [], [], subnet['gateway_ip'],
+            None, mock.ANY)
 
         self.ib_cxt.ibom.create_ip_range.assert_called_once_with(
             network_view,
             subnet['allocation_pools'][0]['start'],
             subnet['allocation_pools'][0]['end'],
-            subnet['cidr'], True, None)
+            subnet['cidr'],
+            True,
+            mock.ANY)
 
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     def test_create_subnet_new_network_view(self):
@@ -209,7 +211,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.ibom.get_network.assert_called_once_with(
             self.helper.options['network_view'], self.helper.subnet['cidr'])
         self.ib_cxt.ibom.update_network_options.assert_called_once_with(
-            mock.ANY, None)
+            mock.ANY, mock.ANY)
 
     def test_delete_subnet_for_private_network(self):
         test_opts = {'network_exists': True}
@@ -247,12 +249,15 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         ip_address = '11.11.1.3'
         mac = ':'.join(['00'] * 6)
-        dns_view = None
-        zone_auth = None
+        dns_view = self.ib_cxt.mapping.dns_view
+        zone_auth = 'ib.com'
         hostname = mock.ANY
-        ea_ip_address = None
+        ea_ip_address = mock.ANY
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
+        ipam_controller.pattern_builder = mock.Mock()
+        ipam_controller.pattern_builder.get_zone_name.return_value = zone_auth
+
         ipam_controller.allocate_specific_ip(ip_address, mac)
 
         self.ib_cxt.ip_alloc.allocate_given_ip.assert_called_once_with(
@@ -268,12 +273,15 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             {'first_ip': '11.11.1.1', 'last_ip': '11.11.1.150'},
             {'first_ip': '11.11.1.151', 'last_ip': '11.11.1.253'}]
         mac = ':'.join(['00'] * 6)
-        dns_view = None
-        zone_auth = None
+        dns_view = self.ib_cxt.mapping.dns_view
+        zone_auth = 'ib.com'
         hostname = mock.ANY
-        ea_ip_address = None
+        ea_ip_address = mock.ANY
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
+        ipam_controller.pattern_builder = mock.Mock()
+        ipam_controller.pattern_builder.get_zone_name.return_value = zone_auth
+
         ipam_controller.allocate_ip_from_pool(subnet_id, allocation_pools, mac)
 
         self.ib_cxt.ip_alloc.allocate_ip_from_range.assert_called_once_with(
