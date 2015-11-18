@@ -13,13 +13,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
+
+from infoblox_client import objects as ib_objects
+from neutron.i18n import _LE
+from neutron.i18n import _LI
+from neutron.ipam import exceptions as ipam_exc
+from neutron.ipam import utils as ipam_utils
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import uuidutils
 
-from neutron.i18n import _LE
-from neutron.i18n import _LI
-from neutron.ipam import exceptions as ipam_exc
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import ea_manager as eam
@@ -40,7 +44,7 @@ class IpamSyncController(object):
         self.grid_id = self.grid_config.grid_id
         self.pattern_builder = pattern.PatternBuilder(self.ib_cxt)
 
-    def create_subnet(self):
+    def create_subnet(self, subnet_request):
         """Creates subnet equivalent NIOS objects.
 
         infoblox context contains subnet dictionary from ipam driver and
@@ -53,10 +57,8 @@ class IpamSyncController(object):
         """
         session = self.ib_cxt.context.session
         network = self.ib_cxt.network
-        subnet = self.ib_cxt.subnet
 
         network_id = network.get('id')
-        subnet_id = subnet.get('id')
 
         network_view_exists = (True if self.ib_cxt.mapping.network_view_id
                                else False)
@@ -79,17 +81,22 @@ class IpamSyncController(object):
             dbi.associate_network_view(session,
                                        self.ib_cxt.mapping.network_view_id,
                                        network_id,
-                                       subnet_id)
+                                       subnet_request.subnet_id)
 
-            self._create_ib_ip_range()
+            if not subnet_request.allocation_pools:
+                pools = ipam_utils.generate_pools(subnet_request.subnet_cidr,
+                                                  subnet_request.gateway_ip)
+            else:
+                pools = subnet_request.allocation_pools
+            self._allocate_pools(pools, subnet_request.subnet_cidr)
+            return ib_network
         except Exception as ex:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("An exception occurred during subnet "
                                   "creation: %s"), ex)
                 # deleting network deletes its child objects like ip ranges
                 if ib_network:
-                    self.ib_cxt.ibom.delete_network(
-                        self.ib_cxt.mapping.network_view, subnet.get('cidr'))
+                    ib_network.delete()
 
     def _create_ib_network_view(self):
         ea_network_view = eam.get_ea_for_network_view(self.ib_cxt.tenant_id)
@@ -97,7 +104,7 @@ class IpamSyncController(object):
             self.ib_cxt.mapping.network_view, ea_network_view)
         LOG.info(_LI("Created a network view: %s"), ib_network_view)
 
-    def _create_ib_network(self):
+    def _create_ib_network(self, subnet_request):
         session = self.ib_cxt.context.session
         network = self.ib_cxt.network
         subnet = self.ib_cxt.subnet
@@ -105,8 +112,7 @@ class IpamSyncController(object):
         network_id = network.get('id')
         is_shared = network.get('shared')
         is_external = network.get('router:external')
-        cidr = subnet.get('cidr')
-        gateway_ip = subnet.get('gateway_ip')
+        cidr = subnet_request.subnet_cidr
 
         ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
                                             self.ib_cxt.tenant_id,
@@ -148,7 +154,7 @@ class IpamSyncController(object):
             cidr,
             nameservers,
             dhcp_members,
-            gateway_ip,
+            subnet_request.gateway_ip,
             relay_trel_ip,
             ea_network)
 
@@ -157,26 +163,23 @@ class IpamSyncController(object):
 
         return ib_network
 
-    def _create_ib_ip_range(self):
-        subnet = self.ib_cxt.subnet
-        cidr = subnet.get('cidr')
-        allocation_pools = subnet.get('allocation_pools')
+    def _allocate_pools(self, pools, cidr):
+        ip_version = cidr.version
+        allocated = []
 
         ea_range = eam.get_ea_for_range(self.ib_cxt.user_id,
                                         self.ib_cxt.tenant_id,
                                         self.ib_cxt.network)
-
-        for ip_range in allocation_pools:
-            start_ip = ip_range['start']
-            end_ip = ip_range['end']
-            disable = True
-            self.ib_cxt.ibom.create_ip_range(
+        for pool in pools:
+            allocated.append(ib_objects.IPRange.create(
+                self.ib_cxt.connector,
                 self.ib_cxt.mapping.network_view,
-                start_ip,
-                end_ip,
-                cidr,
-                disable,
-                ea_range)
+                network=str(cidr),
+                start_addr=netaddr.IPAddress(pool.first, ip_version).format(),
+                end_addr=netaddr.IPAddress(pool.last, ip_version).format(),
+                disable=True,
+                extattrs=ea_range))
+        return allocated
 
     def update_subnet(self):
         pass

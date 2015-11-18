@@ -20,10 +20,12 @@ from neutron.ipam import driver
 from neutron.ipam import exceptions as ipam_exc
 from neutron.ipam import requests as ipam_req
 from neutron.ipam import subnet_alloc
-from neutron.ipam import utils as ipam_utils
 from neutron import manager
 
 from networking_infoblox.ipam import requests
+from networking_infoblox.neutron.common import context
+from networking_infoblox.neutron.common import grid
+from networking_infoblox.neutron.common import ipam
 from networking_infoblox.neutron.common import utils
 
 
@@ -90,20 +92,19 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
             raise ipam_exc.InvalidSubnetRequestType(
                 subnet_type=type(subnet_request))
 
-        ea = objects.EA({'Subnet ID': subnet_request.subnet_id})
-        infoblox_network = objects.Network.create(
-            self._conn,
-            network_view='default',
-            network=str(subnet_request.subnet_cidr),
-            extattrs=ea)
-
-        if not subnet_request.allocation_pools:
-            pools = ipam_utils.generate_pools(subnet_request.subnet_cidr,
-                                              subnet_request.gateway_ip)
-        else:
-            pools = subnet_request.allocation_pools
-
-        self._allocate_pools(pools, subnet_request.subnet_cidr)
+        # TODO(pbondar): get real user_id
+        user_id = None
+        network = None
+        grid_config = None
+        # No subnet created in database at this point, so creating stub
+        subnet = {'id': subnet_request.subnet_id,
+                  'cidr': subnet_request.subnet_cidr}
+        grid_config = grid.GridConfiguration(self._conn)
+        grid_config.sync()
+        ib_context = context.InfobloxContext(self._conn, user_id, network,
+                                             subnet, grid_config)
+        ipam_controller = ipam.IpamSyncController(ib_context)
+        infoblox_network = ipam_controller.create_subnet(subnet_request)
 
         return InfobloxSubnet(subnet_request, infoblox_network)
 
