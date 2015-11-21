@@ -17,6 +17,8 @@ from neutron.common import constants as n_const
 from neutron.plugins.common import constants as p_const
 
 
+CLOUD_PLATFORM_NAME = 'OpenStack'
+
 AGENT_BINARY_NAME = 'infoblox-ipam-agent'
 AGENT_TYPE_INFOBLOX_IPAM = 'Infoblox IPAM agent'
 AGENT_TOPIC = 'infoblox_ipam_agent'
@@ -41,7 +43,6 @@ MEMBER_LICENSE_TYPE_CLOUD = 'CLOUD'
 # Cloud platform for CPM
 MEMBER_LICENSE_TYPE_CLOUD_API = 'CLOUD_API'
 
-EA_CLOUD_MGMT_PLATFORM_TYPE = 'CMP Type'
 EA_GRID_CONFIG_GRID_SYNC_SUPPORT = 'Grid Sync Support'
 EA_GRID_CONFIG_GRID_SYNC_MINIMUM_WAIT_TIME = 'Grid Sync Minimum Wait Time'
 EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE = 'Default Network View Scope'

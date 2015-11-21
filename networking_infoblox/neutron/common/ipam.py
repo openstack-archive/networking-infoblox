@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import netaddr
+
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import uuidutils
@@ -20,6 +22,9 @@ from oslo_utils import uuidutils
 from neutron.i18n import _LE
 from neutron.i18n import _LI
 from neutron.ipam import exceptions as ipam_exc
+from neutron.ipam import utils as ipam_utils
+
+from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import ea_manager as eam
@@ -39,6 +44,10 @@ class IpamSyncController(object):
         self.grid_config = self.ib_cxt.grid_config
         self.grid_id = self.grid_config.grid_id
         self.pattern_builder = pattern.PatternBuilder(self.ib_cxt)
+
+    def get_subnet(self):
+        return self.ib_cxt.ibom.get_network(self.ib_cxt.mapping.network_view,
+                                            self.ib_cxt.subnet.get('cidr'))
 
     def create_subnet(self):
         """Creates subnet equivalent NIOS objects.
@@ -71,7 +80,6 @@ class IpamSyncController(object):
             self._create_ib_network_view()
 
         ib_network = None
-
         try:
             ib_network = self._create_ib_network()
 
@@ -84,12 +92,13 @@ class IpamSyncController(object):
             self._create_ib_ip_range()
         except Exception as ex:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("An exception occurred during subnet "
-                                  "creation: %s"), ex)
+                LOG.error(_LE("An exception occurred during subnet "
+                              "creation: %s"), ex)
                 # deleting network deletes its child objects like ip ranges
                 if ib_network:
                     self.ib_cxt.ibom.delete_network(
                         self.ib_cxt.mapping.network_view, subnet.get('cidr'))
+        return ib_network
 
     def _create_ib_network_view(self):
         ea_network_view = eam.get_ea_for_network_view(self.ib_cxt.tenant_id)
@@ -112,7 +121,6 @@ class IpamSyncController(object):
                                             self.ib_cxt.tenant_id,
                                             network,
                                             subnet)
-
         network_template = self.grid_config.network_template
 
         # check if network already exists
@@ -160,16 +168,23 @@ class IpamSyncController(object):
     def _create_ib_ip_range(self):
         subnet = self.ib_cxt.subnet
         cidr = subnet.get('cidr')
+        ip_version = subnet.get('ip_version')
+        gateway_ip = subnet.get('gateway_ip')
         allocation_pools = subnet.get('allocation_pools')
+        if not allocation_pools:
+            allocation_pools = ipam_utils.generate_pools(cidr, gateway_ip)
+        self._allocate_pools(allocation_pools, cidr, ip_version)
 
+    def _allocate_pools(self, pools, cidr, ip_version):
         ea_range = eam.get_ea_for_range(self.ib_cxt.user_id,
                                         self.ib_cxt.tenant_id,
                                         self.ib_cxt.network)
 
-        for ip_range in allocation_pools:
-            start_ip = ip_range['start']
-            end_ip = ip_range['end']
+        for pool in pools:
             disable = True
+            start_ip = netaddr.IPAddress(pool.first, ip_version).format()
+            end_ip = netaddr.IPAddress(pool.last, ip_version).format()
+
             self.ib_cxt.ibom.create_ip_range(
                 self.ib_cxt.mapping.network_view,
                 start_ip,
@@ -178,8 +193,66 @@ class IpamSyncController(object):
                 disable,
                 ea_range)
 
-    def update_subnet(self):
-        pass
+    def update_subnet_allocation_pools(self):
+        cidr = self.ib_cxt.subnet.get('cidr')
+        ip_version = self.ib_cxt.subnet.get('ip_version')
+        allocation_pools = self.ib_cxt.subnet.get('allocation_pools')
+
+        # take care of allocation pools
+        ib_pools = ib_objects.IPRange.search_all(
+            self.ib_cxt.connector,
+            network_view=self.ib_cxt.mapping.network_view,
+            network=str(cidr))
+
+        added_pool, removed_pool = self._get_changed_pools(
+            ib_pools,
+            allocation_pools,
+            ip_version)
+
+        for pool in removed_pool:
+            pool.delete()
+
+        self._allocate_pools(added_pool, cidr, ip_version)
+
+    def update_subnet_eas(self, ib_network):
+        ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
+                                            self.ib_cxt.tenant_id,
+                                            self.ib_cxt.network,
+                                            self.ib_cxt.subnet)
+        self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
+
+    @staticmethod
+    def _get_changed_pools(ib_pools, pools_from_request, ip_version):
+        """Calculates difference between nios and neutron ranges.
+
+        :param nios_pools: list of objects.IPRange returned by NIOS
+        :param pools_from_request: list of netaddr.IPRange from subnet request
+        :return: tuple with two elements:
+            - add_list with netaddr.IPRange objects;
+            - remove_list with objects.IPRange objects;
+        """
+        if pools_from_request is None:
+            pools_from_request = []
+
+        ib_pool_map = {'%s-%s' % (pool.start_addr, pool.end_addr): pool
+                       for pool in ib_pools}
+
+        request_pool_map = {}
+        for pool in pools_from_request:
+            first_ip = netaddr.IPAddress(pool.first, ip_version).format()
+            last_ip = netaddr.IPAddress(pool.last, ip_version).format()
+            pool_str = '%s-%s' % (first_ip, last_ip)
+            request_pool_map[pool_str] = pool
+
+        old_pools = set(ib_pool_map.keys())
+        new_pools = set(request_pool_map.keys())
+
+        added_pool = new_pools - old_pools
+        removed_pool = old_pools - new_pools
+
+        added_list = [request_pool_map[pool] for pool in added_pool]
+        removed_list = [ib_pool_map[pool] for pool in removed_pool]
+        return added_list, removed_list
 
     def delete_subnet(self):
         session = self.ib_cxt.context.session

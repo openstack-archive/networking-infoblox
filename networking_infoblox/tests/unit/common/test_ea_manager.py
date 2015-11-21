@@ -31,9 +31,10 @@ class EaManagerTestCase(base.TestCase):
     def test_get_common_ea_for_network(self):
         network = {'router:external': True,
                    'shared': True}
-        expected_ea = {'Is External': True,
-                       'Is Shared': True,
-                       'Cloud API Owned': False,
+        expected_ea = {'Is External': 'True',
+                       'Is Shared': 'True',
+                       'CMP Type': 'OpenStack',
+                       'Cloud API Owned': 'False',
                        'Tenant ID': self.tenant_id,
                        'Account': self.user_id}
         generated_ea = ea_manager.get_common_ea(network,
@@ -43,9 +44,10 @@ class EaManagerTestCase(base.TestCase):
         self.assertEqual(expected_ea, generated_ea)
 
     def test_get_common_ea(self):
-        network = {'router:external': True,
-                   'shared': True}
-        expected_ea = {'Cloud API Owned': False,
+        network = {'router:external': 'True',
+                   'shared': 'True'}
+        expected_ea = {'CMP Type': 'OpenStack',
+                       'Cloud API Owned': 'False',
                        'Tenant ID': self.tenant_id,
                        'Account': self.user_id}
         generated_ea = ea_manager.get_common_ea(network,
@@ -54,9 +56,10 @@ class EaManagerTestCase(base.TestCase):
         self.assertEqual(expected_ea, generated_ea)
 
     def test_get_common_ea_no_network(self):
-        expected_ea = {'Is External': False,
-                       'Is Shared': False,
-                       'Cloud API Owned': True,
+        expected_ea = {'Is External': 'False',
+                       'Is Shared': 'False',
+                       'CMP Type': 'OpenStack',
+                       'Cloud API Owned': 'True',
                        'Tenant ID': self.tenant_id,
                        'Account': self.user_id}
         generated_ea = ea_manager.get_common_ea(None,
@@ -72,7 +75,7 @@ class EaManagerTestCase(base.TestCase):
                       {})
         for network in owned_true:
             generated_ea = ea_manager.get_common_ea(network, None, None)
-            self.assertEqual(True, generated_ea['Cloud API Owned'])
+            self.assertEqual(str(True), generated_ea['Cloud API Owned'])
 
     def test_get_common_ea_cloud_api_owned_false(self):
         owned_false = ({'router:external': True,
@@ -83,12 +86,12 @@ class EaManagerTestCase(base.TestCase):
                         'shared': True})
         for network in owned_false:
             generated_ea = ea_manager.get_common_ea(network, None, None)
-            self.assertEqual(False, generated_ea['Cloud API Owned'])
+            self.assertEqual(str(False), generated_ea['Cloud API Owned'])
 
     def test_get_ea_for_network_view(self):
         ea = ea_manager.get_ea_for_network_view(self.tenant_id)
         self.assertEqual(self.tenant_id, ea.get('Tenant ID'))
-        self.assertEqual(False, ea.get('Cloud API Owned'))
+        self.assertEqual(str(False), ea.get('Cloud API Owned'))
 
     def test_get_ea_for_network(self):
         network = {'id': mock.Mock(),
@@ -110,9 +113,9 @@ class EaManagerTestCase(base.TestCase):
                        network['provider:physical_network']),
                    'Tenant ID': self.tenant_id,
                    'Account': self.user_id,
-                   'Is External': True,
-                   'Is Shared': True,
-                   'Cloud API Owned': False}
+                   'Is External': str(True),
+                   'Is Shared': str(True),
+                   'Cloud API Owned': str(False)}
         ea = ea_manager.get_ea_for_network(self.user_id, self.tenant_id,
                                            network, subnet)
         for key, value in mapping.items():
@@ -123,7 +126,7 @@ class EaManagerTestCase(base.TestCase):
                    'shared': False}
         ea = ea_manager.get_ea_for_range(self.user_id, self.tenant_id, network)
         self.assertIsInstance(ea, ib_objects.EA)
-        self.assertEqual(True, ea.get('Cloud API Owned'))
+        self.assertEqual(str(True), ea.get('Cloud API Owned'))
         self.assertEqual(self.tenant_id, ea.get('Tenant ID'))
         self.assertEqual(self.user_id, ea.get('Account'))
 
@@ -133,7 +136,7 @@ class EaManagerTestCase(base.TestCase):
                        'Port ID': None,
                        'Port Attached Device - Device Owner': None,
                        'Port Attached Device - Device ID': None,
-                       'Cloud API Owned': True,
+                       'Cloud API Owned': str(True),
                        'IP Type': 'Fixed',
                        'VM ID': None}
         ea = ea_manager.get_default_ea_for_ip(self.user_id, self.tenant_id)
@@ -151,7 +154,7 @@ class EaManagerTestCase(base.TestCase):
                        'Port ID': port_id,
                        'Port Attached Device - Device Owner': device_owner,
                        'Port Attached Device - Device ID': device_id,
-                       'Cloud API Owned': True,
+                       'Cloud API Owned': str(True),
                        'IP Type': 'Fixed',
                        'VM ID': device_id}
 
@@ -172,7 +175,7 @@ class EaManagerTestCase(base.TestCase):
                        'Port ID': port_id,
                        'Port Attached Device - Device Owner': device_owner,
                        'Port Attached Device - Device ID': device_id,
-                       'Cloud API Owned': True,
+                       'Cloud API Owned': str(True),
                        'IP Type': 'Floating',
                        'VM ID': instance_id}
         ea = ea_manager.get_ea_for_floatingip(self.user_id, self.tenant_id,
@@ -186,7 +189,7 @@ class EaManagerTestCase(base.TestCase):
                    'shared': False}
         expected_ea = {'Tenant ID': self.tenant_id,
                        'Account': self.user_id,
-                       'Cloud API Owned': True}
+                       'Cloud API Owned': str(True)}
         ea = ea_manager.get_ea_for_zone(self.user_id, self.tenant_id, network)
         for key, value in expected_ea.items():
             self.assertEqual(value, ea.get(key))

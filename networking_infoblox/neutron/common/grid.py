@@ -73,7 +73,6 @@ class GridManager(object):
         Before this call is made, the grid member must be in sync.
         """
         self.grid_config.sync()
-        return self.grid_config
 
     @staticmethod
     def _create_grid_configuration(context):
@@ -95,17 +94,25 @@ class GridManager(object):
         grid_conf.http_pool_connections = grid_opts['http_pool_connections']
         grid_conf.http_pool_maxsize = grid_opts['http_pool_maxsize']
 
+        # if cloud API is supported, cloud API needs to be used to connect
+        # GM but the cloud user must have a "Grid Admin" role.
+        wapi_username = grid_conf.admin_user_name
+        wapi_password = grid_conf.admin_password
+        if grid_conf.is_cloud_wapi:
+            wapi_username = grid_conf.cloud_user_name
+            wapi_password = grid_conf.cloud_user_password
+
         # create connector to GM
-        admin_opts = {
+        gm_connection_opts = {
             'host': grid_conf.grid_master_host,
-            'username': grid_conf.admin_user_name,
-            'password': grid_conf.admin_password,
+            'username': wapi_username,
+            'password': wapi_password,
             'wapi_version': grid_conf.wapi_version,
             'ssl_verify': grid_conf.ssl_verify,
             'http_request_timeout': grid_conf.http_request_timeout,
             'http_pool_connections': grid_conf.http_pool_connections,
             'http_pool_maxsize': grid_conf.http_pool_maxsize}
-        grid_conf.gm_connector = connector.Connector(admin_opts)
+        grid_conf.gm_connector = connector.Connector(gm_connection_opts)
         return grid_conf
 
 
