@@ -89,13 +89,14 @@ class DnsController(object):
                 if ib_zone_cidr:
                     self.ib_cxt.ibom.delete_dns_zone(dns_view, cidr)
 
-    def delete_dns_zones(self):
+    def delete_dns_zones(self, dns_zone=None):
         dns_view = self.ib_cxt.mapping.dns_view
         cidr = self.ib_cxt.subnet['cidr']
+        dns_zone = dns_zone if dns_zone else self.dns_zone
 
         # delete forward zone
         if self._is_zone_removable():
-            self.ib_cxt.ibom.delete_dns_zone(dns_view, self.dns_zone)
+            self.ib_cxt.ibom.delete_dns_zone(dns_view, dns_zone)
 
         # delete reverse zone
         self.ib_cxt.ibom.delete_dns_zone(dns_view, cidr)

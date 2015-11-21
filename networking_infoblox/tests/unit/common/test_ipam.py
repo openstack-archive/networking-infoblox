@@ -17,7 +17,10 @@ import mock
 import netaddr
 
 from neutron import context
+from neutron.ipam import utils as ipam_utils
 from neutron.tests.unit import testlib_api
+
+from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import ipam
@@ -110,8 +113,7 @@ class IpamControllerTestHelper(object):
             'tenant_id': self.tenant_id,
             'dns_nameservers': dns_nameservers,
             'ipv6_ra_mode': 'None',
-            'allocation_pools': [{'start': ip_range[2],
-                                  'end': ip_range[-2]}],
+            'allocation_pools': ipam_utils.generate_pools(cidr, ip_range[1]),
             'gateway_ip': ip_range[1],
             'ipv6_address_mode': 'None',
             'ip_version': ip_network.version,
@@ -158,10 +160,15 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             network_view, subnet['cidr'], [], [], subnet['gateway_ip'],
             None, mock.ANY)
 
+        allocation_pools = subnet['allocation_pools'][0]
+        first_ip = netaddr.IPAddress(allocation_pools.first,
+                                     subnet['ip_version']).format()
+        last_ip = netaddr.IPAddress(allocation_pools.last,
+                                    subnet['ip_version']).format()
         self.ib_cxt.ibom.create_ip_range.assert_called_once_with(
             network_view,
-            subnet['allocation_pools'][0]['start'],
-            subnet['allocation_pools'][0]['end'],
+            first_ip,
+            last_ip,
             subnet['cidr'],
             True,
             mock.ANY)
@@ -212,6 +219,40 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             self.helper.options['network_view'], self.helper.subnet['cidr'])
         self.ib_cxt.ibom.update_network_options.assert_called_once_with(
             mock.ANY, mock.ANY)
+
+    def test_update_subnet_allocation_pools(self):
+        test_opts = {'network_exists': True}
+        self.helper.prepare_test(test_opts)
+
+        new_pools = (netaddr.IPRange('11.11.1.25', '11.11.1.30'),
+                     netaddr.IPRange('11.11.1.45', '11.11.1.60'))
+        self.ib_cxt.subnet['allocation_pools'] = new_pools
+        ip_version = self.ib_cxt.subnet['ip_version']
+
+        connector = mock.Mock()
+        ib_pools = (ib_objects.IPRange(connector,
+                                       start_addr='11.11.1.3',
+                                       end_addr='11.11.1.19'),
+                    ib_objects.IPRange(connector,
+                                       start_addr='11.11.1.25',
+                                       end_addr='11.11.1.30'))
+
+        ipam_controller = ipam.IpamSyncController(self.ib_cxt)
+        with mock.patch.object(ib_objects.IPRange,
+                               'search_all',
+                               return_value=ib_pools):
+            ipam_controller.update_subnet_allocation_pools()
+
+            # 1st range from ib_pools should be removed
+            ib_pools[0].connector.delete_object.assert_called_once_with(None)
+
+            # 2nd pool from new_pools should be added
+            self.ib_cxt.ibom.create_ip_range.assert_called_once_with(
+                self.helper.options['network_view'],
+                netaddr.IPAddress(new_pools[1].first, ip_version).format(),
+                netaddr.IPAddress(new_pools[1].last, ip_version).format(),
+                self.helper.subnet['cidr'],
+                mock.ANY, mock.ANY)
 
     def test_delete_subnet_for_private_network(self):
         test_opts = {'network_exists': True}

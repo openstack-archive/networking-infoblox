@@ -30,6 +30,8 @@ class TestIpamEventHandler(base.TestCase):
         self.context = mock.Mock()
         self.plugin = mock.Mock()
         self.grid_manager = mock.Mock()
+        self.grid_manager.grid_config.gm_connector = mock.Mock()
+        self.grid_manager.grid_config.gm_connector.wapi_version = '2.0'
 
         self.ipam_handler = handler.IpamEventHandler(self.context, self.plugin,
                                                      self.grid_manager)

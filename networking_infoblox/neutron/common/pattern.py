@@ -50,16 +50,19 @@ class PatternBuilder(object):
         return self._build(pattern, ip_address, instance_name, port_id,
                            device_id)
 
-    def get_zone_name(self):
-        return self._build(self.grid_config.default_domain_name_pattern)
+    def get_zone_name(self, subnet_name=None):
+        return self._build(self.grid_config.default_domain_name_pattern,
+                           subnet_name=subnet_name)
 
     def _build(self, pattern, ip_address=None, instance_name=None,
-               port_id=None, device_id=None):
+               port_id=None, device_id=None, subnet_name=None):
         self._validate_pattern(pattern)
 
         subnet = self.ib_cxt.subnet
         network = self.ib_cxt.network
-        subnet_name = subnet['name'] if subnet.get('name') else subnet['id']
+        if not subnet_name:
+            subnet_name = (subnet['name'] if subnet.get('name')
+                           else subnet['id'])
         network_name = (network['name'] if network.get('name')
                         else network['id'])
 

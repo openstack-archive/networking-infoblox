@@ -138,17 +138,6 @@ class TestUtils(testlib_api.SqlTestCase):
         grid_connection = jsonutils.loads(grid_obj[0].grid_connection)
         self.assertEqual('admin', grid_connection["wapi_admin_user"]["name"])
 
-    def test_construct_ea(self):
-        attributes = {"key1": "value1", "key2": "value2"}
-        ea = utils.construct_ea(attributes)
-        self.assertEqual({'value': 'value1'}, ea['key1'])
-        self.assertEqual({'value': 'value2'}, ea['key2'])
-        self.assertEqual({'value': 'OpenStack'}, ea['CMP Type'])
-
-        attributes = dict()
-        ea = utils.construct_ea(attributes)
-        self.assertEqual({'CMP Type': {'value': 'OpenStack'}}, ea)
-
     def test_get_string_or_none(self):
         value = ""
         my_string = utils.get_string_or_none(value)

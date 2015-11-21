@@ -16,6 +16,24 @@
 from neutron.ipam import requests
 
 
+class InfobloxSubnetRequestFactory(requests.SubnetRequestFactory):
+    """Infoblox Address Request Factory
+
+    Introduce custom address request types specific for Infoblox IPAM Driver
+    """
+    @classmethod
+    def get_request(cls, context, subnet, subnetpool):
+        request = super(InfobloxSubnetRequestFactory, cls).get_request(
+            context, subnet, subnetpool)
+        request.name = subnet['name']
+        # update_subnet does not pass network_id. community code can be
+        # improved to include it
+        request.network_id = subnet.get('network_id')
+        request.subnetpool_id = subnetpool['id'] if subnetpool else None
+        request.enable_dhcp = subnet['enable_dhcp']
+        return request
+
+
 class RouterGatewayAddressRequest(requests.SpecificAddressRequest):
     """Used to request allocating the special router gateway address."""
 
