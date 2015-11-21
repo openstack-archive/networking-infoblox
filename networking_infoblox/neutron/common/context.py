@@ -129,6 +129,12 @@ class InfobloxContext(object):
         """Finds mapping and load managers that can interact with NIOS grid."""
         if not self.network and self.subnet:
             network_id = self.subnet.get('network_id')
+            if not network_id:
+                # update_subnet does not pass network_id
+                db_subnet = dbi.get_subnet_by_id(self.context.session,
+                                                 self.subnet['id'])
+                network_id = db_subnet.network_id
+                self.subnet['network_id'] = network_id
             self.network = self.plugin.get_network(self.context, network_id)
 
         if self.network:
