@@ -22,6 +22,7 @@ from neutron.db import models_v2
 from neutron.tests.unit import testlib_api
 
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db
 
@@ -290,6 +291,56 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         actual_network_views = infoblox_db.get_network_views(
             self.ctx.session, network_view=removing_netview_name)
         self.assertEqual([], actual_network_views)
+
+    def test_network_view_mapping(self):
+        # prepare grid
+        self._create_default_grid()
+
+        # prepare members
+        self._create_simple_members()
+        db_members = infoblox_db.get_members(self.ctx.session)
+        gm_member = utils.find_one_in_list('member_type', 'GM', db_members)
+
+        # prepare network
+        network = models_v2.Network(name="Test Network", status="ON",
+                                    admin_state_up=True)
+        self.ctx.session.add(network)
+        self.ctx.session.flush()
+
+        # prepare network view
+        netview_dict = {'hs-view-1': gm_member.member_id}
+        self._create_network_views(netview_dict)
+
+        db_network_views = infoblox_db.get_network_views(self.ctx.session)
+        network_view_id = db_network_views[0].id
+
+        # test associate network view
+        network_id = network.id
+        subnet_id = 'test-subnet-id'
+        infoblox_db.associate_network_view(self.ctx.session, network_view_id,
+                                           network_id, subnet_id)
+        db_network_view_mappings = infoblox_db.get_network_view_mappings(
+            self.ctx.session)
+        self.assertEqual(network_id, db_network_view_mappings[0].network_id)
+        self.assertEqual(subnet_id, db_network_view_mappings[0].subnet_id)
+
+        # test network view search by mapping
+        self.assertRaises(exc.MultipleNetworkViewMappingFound,
+                          infoblox_db.get_network_view_by_mapping,
+                          self.ctx.session, network_view_id=network_view_id)
+
+        db_network_views = infoblox_db.get_network_view_by_mapping(
+            self.ctx.session,
+            network_id=network_id,
+            subnet_id=subnet_id)
+        self.assertEqual(network_view_id, db_network_views[0].id)
+
+        # test dissociate network view
+        infoblox_db.dissociate_network_view(self.ctx.session, network_id,
+                                            subnet_id)
+        db_network_view_mappings = infoblox_db.get_network_view_mappings(
+            self.ctx.session, network_id=network_id, subnet_id=subnet_id)
+        self.assertEqual([], db_network_view_mappings)
 
     def test_mapping_management_mapping_conditions(self):
         # prepare grid

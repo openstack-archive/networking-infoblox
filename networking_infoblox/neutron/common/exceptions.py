@@ -36,6 +36,15 @@ class InfobloxCannotReserveAuthorityMember(exceptions.NeutronException):
                 "%(network_view)s")
 
 
+class InfobloxNetworkViewMappingNotFound(exceptions.NeutronException):
+    message = _("Cannot find a network view mapped for subnet %(subnet_id)s")
+
+
+class MultipleNetworkViewMappingFound(exceptions.Conflict):
+    message = _("Multiple network view mapping found. You need to add more "
+                "filters to narrow down the search")
+
+
 class InfobloxPrivateSubnetAlreadyExist(exceptions.Conflict):
     message = _("Network with the same CIDR already exists on NIOS.")
 

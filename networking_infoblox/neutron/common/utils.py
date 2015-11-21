@@ -120,17 +120,6 @@ def db_records_to_json(records):
     return jsonutils.loads(json_str)
 
 
-def construct_ea(attributes):
-    ea = {}
-    for name, value in six.iteritems(attributes):
-        str_val = get_string_or_none(value)
-        if str_val:
-            ea[name] = {'value': str_val}
-
-    ea[const.EA_CLOUD_MGMT_PLATFORM_TYPE] = {'value': 'OpenStack'}
-    return ea
-
-
 def get_string_or_none(value):
     ret_val = None
     if isinstance(value, six.string_types):

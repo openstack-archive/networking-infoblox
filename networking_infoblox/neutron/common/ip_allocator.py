@@ -120,13 +120,13 @@ class HostRecordIPAllocator(IPAllocator):
             hr = self.manager.create_host_record_from_range(
                 dns_view, network_view, zone_auth, hostname, mac,
                 first_ip, last_ip, extattrs, use_dhcp)
-        return hr.ips[-1].ip
+        return hr.ip[-1].ip
 
     def allocate_given_ip(self, network_view, dns_view, zone_auth,
                           hostname, mac, ip, extattrs=None, use_dhcp=True):
         hr = self.manager.create_host_record_for_given_ip(
             dns_view, zone_auth, hostname, mac, ip, extattrs, use_dhcp)
-        return hr.ips[-1].ip
+        return hr.ip[-1].ip
 
     def deallocate_ip(self, network_view, dns_view_name, ip):
         host_record = self.manager.get_host_record(dns_view_name, ip)

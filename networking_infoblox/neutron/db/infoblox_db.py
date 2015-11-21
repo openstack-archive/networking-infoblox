@@ -23,6 +23,7 @@ from neutron.db import external_net_db
 from neutron.db import models_v2
 
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.db import infoblox_models as ib_models
 
 
@@ -153,9 +154,11 @@ def remove_members(session, member_ids):
 
 
 # Network Views
-def get_network_views(session, network_view=None, grid_id=None,
-                      authority_member_id=None, shared=None):
+def get_network_views(session, network_view_id=None, network_view=None,
+                      grid_id=None, authority_member_id=None, shared=None):
     q = session.query(ib_models.InfobloxNetworkView)
+    if network_view_id:
+        q = q.filter(ib_models.InfobloxNetworkView.id == network_view_id)
     if network_view:
         q = q.filter(ib_models.InfobloxNetworkView.network_view ==
                      network_view)
@@ -167,6 +170,28 @@ def get_network_views(session, network_view=None, grid_id=None,
     if grid_id:
         q = q.filter(ib_models.InfobloxNetworkView.grid_id == grid_id)
     return q.all()
+
+
+def get_network_view_by_mapping(session, network_view_id=None, grid_id=None,
+                                network_id=None, subnet_id=None):
+    netview_mapping = get_network_view_mappings(
+        session,
+        grid_id=grid_id,
+        network_view_id=network_view_id,
+        network_id=network_id,
+        subnet_id=subnet_id)
+    if not netview_mapping:
+        return None
+
+    if len(netview_mapping) > 1:
+        raise exc.MultipleNetworkViewMappingFound()
+
+    netview_id = netview_mapping[0].network_view_id
+    netviews = get_network_views(
+        session,
+        network_view_id=netview_id,
+        grid_id=grid_id)
+    return netviews
 
 
 def update_network_view(session, network_view, grid_id, authority_member_id,
@@ -465,6 +490,11 @@ def record_last_sync_time(session, sync_time=None):
 def get_subnets_by_network_id(session, network_id):
     q = session.query(models_v2.Subnet).filter_by(network_id=network_id)
     return q.all()
+
+
+def get_subnet_by_id(session, subnet_id):
+    q = session.query(models_v2.Subnet).filter_by(id=subnet_id)
+    return q.one()
 
 
 def get_subnets_by_tenant_id(session, tenant_id):
