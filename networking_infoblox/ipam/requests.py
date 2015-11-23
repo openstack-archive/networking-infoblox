@@ -13,20 +13,80 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron.common import constants as n_const
 from neutron.ipam import requests
 
 
-class RouterGatewayAddressRequest(requests.SpecificAddressRequest):
+class InfobloxFixedAddressRequest(requests.SpecificAddressRequest):
+
+    def __init__(self, address, mac, port_id, device_id, device_owner):
+        super(InfobloxFixedAddressRequest, self).__init__(address)
+        self.mac = mac
+        self.port_id = port_id
+        self.device_id = device_id
+        self.device_owner = device_owner
+
+
+class InfobloxFloatingAddressRequest(InfobloxFixedAddressRequest):
+    """Used to request allocating the floating ip address."""
+
+
+class InfobloxRouterGatewayAddressRequest(InfobloxFixedAddressRequest):
     """Used to request allocating the special router gateway address."""
 
 
+class InfobloxAnyAddressRequest(requests.AnyAddressRequest):
+    """Used to request allocating any address from subnet."""
+
+    def __init__(self, mac, port_id, device_id, device_owner):
+        super(InfobloxAnyAddressRequest, self).__init__()
+        self.mac = mac
+        self.port_id = port_id
+        self.device_id = device_id
+        self.device_owner = device_owner
+
+
+class InfobloxAutomaticAddressRequest(requests.AutomaticAddressRequest):
+    """Used to request automatic address for auto-addressed subnets."""
+
+    def __init__(self, mac, port_id, device_id, device_owner, prefix):
+        super(InfobloxAutomaticAddressRequest, self).__init__(prefix=prefix,
+                                                              mac=mac)
+        self.mac = mac
+        self.port_id = port_id
+        self.device_id = device_id
+        self.device_owner = device_owner
+
+
 class InfobloxAddressRequestFactory(requests.AddressRequestFactory):
-    """Infoblox Address Request Factory
+    """Infoblox Address Request Factory.
 
     Introduce custom address request types specific for Infoblox IPAM Driver
     """
 
     @classmethod
     def get_request(cls, context, port, ip_dict):
-        return super(InfobloxAddressRequestFactory, cls).get_request(
-            context, port, ip_dict)
+        if ip_dict.get('ip_address'):
+            if port['device_owner'] == n_const.DEVICE_OWNER_DHCP:
+                request_class = InfobloxRouterGatewayAddressRequest
+            elif port['device_owner'] == n_const.DEVICE_OWNER_FLOATINGIP:
+                request_class = InfobloxFloatingAddressRequest
+            else:
+                request_class = InfobloxFixedAddressRequest
+            return request_class(ip_dict['ip_address'],
+                                 port['mac_address'],
+                                 port['port_id'],
+                                 port['device_id'],
+                                 port['device_owner'])
+        elif ip_dict.get('eui64_address'):
+            return InfobloxAutomaticAddressRequest(
+                port['mac_address'],
+                port['port_id'],
+                port['device_id'],
+                port['device_owner'],
+                ip_dict['subnet_cidr'])
+        else:
+            return InfobloxAnyAddressRequest(port['mac_address'],
+                                             port['port_id'],
+                                             port['device_id'],
+                                             port['device_owner'])
