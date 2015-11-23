@@ -112,8 +112,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
             "http_pool_connections": 100,
             "http_pool_maxsize": 100,
             "http_request_timeout": 120,
-            "admin_user": {"name": "admin", "password": "infoblox"},
-            "cloud_user": {"name": "cloud-api-user", "password": "infoblox"}
+            "admin_user": {"name": "admin", "password": "infoblox"}
         }
         grid_connection_json_string = jsonutils.dumps(grid_connection_json)
 

@@ -61,10 +61,7 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
             "http_request_timeout":
                 self.test_grid_config.http_request_timeout,
             "admin_user": {"name": self.test_grid_config.admin_user_name,
-                           "password": self.test_grid_config.admin_password},
-            "cloud_user": {"name": self.test_grid_config.cloud_user_name,
-                           "password":
-                               self.test_grid_config.cloud_user_password}
+                           "password": self.test_grid_config.admin_password}
         }
         actual_grid_connection = jsonutils.loads(grids[0]['grid_connection'])
         self.assertEqual(expected_grid_connection, actual_grid_connection)
@@ -99,10 +96,7 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
             "http_request_timeout":
                 new_active_grid_config.http_request_timeout,
             "admin_user": {"name": new_active_grid_config.admin_user_name,
-                           "password": new_active_grid_config.admin_password},
-            "cloud_user": {"name": new_active_grid_config.cloud_user_name,
-                           "password":
-                               new_active_grid_config.cloud_user_password}
+                           "password": new_active_grid_config.admin_password}
         }
         actual_grid_connection = jsonutils.loads(grids[1]['grid_connection'])
         self.assertEqual(expected_grid_connection, actual_grid_connection)

@@ -19,9 +19,6 @@ from oslo_utils import encodeutils
 
 from neutron import manager
 
-from infoblox_client import object_manager
-
-from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import ipam
@@ -45,11 +42,6 @@ class IpamEventHandler(object):
 
         self.grid_config = self.grid_mgr.grid_config
         self.grid_id = self.grid_config.grid_id
-
-        if utils.get_features(self.grid_config.gm_connector).create_ea_def:
-            obj_mgr = object_manager.InfobloxObjectManager(
-                self.grid_config.admin_connector)
-            obj_mgr.create_required_ea_definitions(const.REQUIRED_EA_DEFS)
 
         self._cached_grid_members = None
         self._cached_network_views = None

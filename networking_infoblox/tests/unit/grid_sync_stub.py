@@ -59,8 +59,6 @@ class GridSyncStub(object):
         cfg.CONF.set_override('data_center_name', 'admin', data_center)
         cfg.CONF.set_override('admin_user_name', 'admin', data_center)
         cfg.CONF.set_override('admin_password', 'infoblox', data_center)
-        cfg.CONF.set_override('cloud_user_name', 'cloud', data_center)
-        cfg.CONF.set_override('cloud_user_password', 'cloud', data_center)
         cfg.CONF.set_override('wapi_version', self.wapi_version, data_center)
 
     def _prepare_discovery_resources(self):
