@@ -166,10 +166,6 @@ class InfobloxContext(object):
         if self.grid_config.is_cloud_wapi is False:
             return self.grid_config.gm_connector
 
-        grid_connection = self.grid_config.get_grid_connection()
-        if grid_connection.get('cloud_user') is None:
-            return self.grid_config.gm_connector
-
         # if mapping network view does not exist yet, connect to GM
         if self.mapping.network_view_id is None:
             return self.grid_config.gm_connector
@@ -189,13 +185,14 @@ class InfobloxContext(object):
                          if self.mapping.authority_member.member_ip
                          else self.mapping.authority_member.member_ipv6)
 
-        cloud_user = grid_connection['cloud_user'].get('name')
-        cloud_pwd = grid_connection['cloud_user'].get('password')
+        grid_connection = self.grid_config.get_grid_connection()
+        wapi_user = grid_connection['admin_user'].get('name')
+        wapi_pwd = grid_connection['admin_user'].get('password')
         opts = {
             'host': cpm_member_ip,
             'wapi_version': grid_connection['wapi_version'],
-            'username': cloud_user,
-            'password': cloud_pwd,
+            'username': wapi_user,
+            'password': wapi_pwd,
             'ssl_verify': grid_connection['ssl_verify'],
             'http_pool_connections':
                 grid_connection['http_pool_connections'],
