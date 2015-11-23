@@ -35,17 +35,12 @@ data_center_opts = [
                help=_('Host IP or name of the grid master.')),
     cfg.StrOpt('admin_user_name',
                default='',
-               help=_("Admin user name to access grid master.")),
+               help=_("Admin user name to access the grid master or "
+                      "cloud platform appliance.")),
     cfg.StrOpt('admin_password',
                default='',
-               help=_("Admin user password to access grid master.")),
-    cfg.StrOpt('cloud_user_name',
-               default='',
-               help=_("Cloud user name to access cloud platform members.")),
-    cfg.StrOpt('cloud_user_password',
-               default='',
-               help=_("Cloud user password to access cloud platform "
-                      "members.")),
+               help=_("Admin user password to access the grid master or "
+                      "cloud platform appliance.")),
     cfg.StrOpt('wapi_version',
                default='',
                help=_("WAPI (Web API) version.")),
