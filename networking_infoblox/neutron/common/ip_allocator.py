@@ -93,7 +93,7 @@ class HostRecordIPAllocator(IPAllocator):
             return
 
         if reserved_hostname_hr:
-            for hr_ip in reserved_ip_hr.ips:
+            for hr_ip in reserved_ip_hr.ip:
                 if hr_ip == ip:
                     self.manager.delete_host_record(dns_view, ip)
                     self.manager.add_ip_to_record(
@@ -120,17 +120,17 @@ class HostRecordIPAllocator(IPAllocator):
             hr = self.manager.create_host_record_from_range(
                 dns_view, network_view, zone_auth, hostname, mac,
                 first_ip, last_ip, extattrs, use_dhcp)
-        return hr.ips[-1].ip
+        return hr.ip[-1].ip
 
     def allocate_given_ip(self, network_view, dns_view, zone_auth,
                           hostname, mac, ip, extattrs=None, use_dhcp=True):
         hr = self.manager.create_host_record_for_given_ip(
             dns_view, zone_auth, hostname, mac, ip, extattrs, use_dhcp)
-        return hr.ips[-1].ip
+        return hr.ip[-1].ip
 
     def deallocate_ip(self, network_view, dns_view_name, ip):
         host_record = self.manager.get_host_record(dns_view_name, ip)
-        if host_record and len(host_record.ips) > 1:
+        if host_record and len(host_record.ip) > 1:
             self.manager.delete_ip_from_host_record(host_record, ip)
         else:
             self.manager.delete_host_record(dns_view_name, ip)
