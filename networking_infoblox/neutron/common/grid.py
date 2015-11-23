@@ -86,16 +86,15 @@ class GridManager(object):
         grid_conf.grid_master_host = grid_opts['grid_master_host']
         grid_conf.admin_user_name = grid_opts['admin_user_name']
         grid_conf.admin_password = grid_opts['admin_password']
-        grid_conf.cloud_user_name = grid_opts['cloud_user_name']
-        grid_conf.cloud_user_password = grid_opts['cloud_user_password']
         grid_conf.wapi_version = grid_opts['wapi_version']
         grid_conf.ssl_verify = grid_opts['ssl_verify']
         grid_conf.http_request_timeout = grid_opts['http_request_timeout']
         grid_conf.http_pool_connections = grid_opts['http_pool_connections']
         grid_conf.http_pool_maxsize = grid_opts['http_pool_maxsize']
 
-        # create admin connector
-        admin_connection_opts = {
+        # cloud user is used as admin, it needs to have proper permissions to
+        # deal with non-delegated objects.
+        gm_connection_opts = {
             'host': grid_conf.grid_master_host,
             'username': grid_conf.admin_user_name,
             'password': grid_conf.admin_password,
@@ -104,24 +103,7 @@ class GridManager(object):
             'http_request_timeout': grid_conf.http_request_timeout,
             'http_pool_connections': grid_conf.http_pool_connections,
             'http_pool_maxsize': grid_conf.http_pool_maxsize}
-        grid_conf.admin_connector = connector.Connector(admin_connection_opts)
-
-        # create connector to GM
-        if grid_conf.is_cloud_wapi:
-            # cloud user needs to have proper permissions to deal with
-            # non-delegated objects.
-            gm_connection_opts = {
-                'host': grid_conf.grid_master_host,
-                'username': grid_conf.cloud_user_name,
-                'password': grid_conf.cloud_user_password,
-                'wapi_version': grid_conf.wapi_version,
-                'ssl_verify': grid_conf.ssl_verify,
-                'http_request_timeout': grid_conf.http_request_timeout,
-                'http_pool_connections': grid_conf.http_pool_connections,
-                'http_pool_maxsize': grid_conf.http_pool_maxsize}
-            grid_conf.gm_connector = connector.Connector(gm_connection_opts)
-        else:
-            grid_conf.gm_connector = grid_conf.admin_connector
+        grid_conf.gm_connector = connector.Connector(gm_connection_opts)
         return grid_conf
 
 
@@ -168,15 +150,12 @@ class GridConfiguration(object):
         # grid connection from neutron conf
         self.admin_user_name = None
         self.admin_password = None
-        self.cloud_user_name = None
-        self.cloud_user_password = None
         self.ssl_verify = False
         self.http_request_timeout = 120
         self.http_pool_connections = 100
         self.http_pool_maxsize = 100
 
         # connector object to GM
-        self.admin_connector = None
         self.gm_connector = None
         self._wapi_version = None
         self._is_cloud_wapi = False
@@ -236,9 +215,7 @@ class GridConfiguration(object):
             "http_pool_maxsize": self.http_pool_maxsize,
             "http_request_timeout": self.http_request_timeout,
             "admin_user": {"name": self.admin_user_name,
-                           "password": self.admin_password},
-            "cloud_user": {"name": self.cloud_user_name,
-                           "password": self.cloud_user_password}
+                           "password": self.admin_password}
         }
         return grid_connection
 
