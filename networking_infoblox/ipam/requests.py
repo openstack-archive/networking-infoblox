@@ -35,6 +35,23 @@ class InfobloxSubnetRequestFactory(requests.SubnetRequestFactory):
         return request
 
 
+class InfobloxAddressRequestFactory(requests.AddressRequestFactory):
+    """Infoblox Address Request Factory
+
+    Introduce custom address request types specific for Infoblox IPAM Driver
+    """
+    @classmethod
+    def get_request(cls, context, port, ip_dict):
+        request = super(InfobloxAddressRequestFactory, cls).get_request(
+            context, port, ip_dict)
+        request.mac = port.get('mac_address')
+        request.tenant_id = port.get('tenant_id') or context.tenant_id
+        request.port_id = port.get('id')
+        request.device_id = port.get('device_id')
+        request.device_owner = port.get('device_owner')
+        return request
+
+
 class InfobloxFixedAddressRequest(requests.SpecificAddressRequest):
 
     def __init__(self, address, mac, port_id, device_id, device_owner):
@@ -80,7 +97,7 @@ class InfobloxAutomaticAddressRequest(requests.AutomaticAddressRequest):
         self.device_owner = device_owner
 
 
-class InfobloxAddressRequestFactory(requests.AddressRequestFactory):
+class InfobloxAddressRequestFactoryV2(requests.AddressRequestFactory):
     """Infoblox Address Request Factory.
 
     Introduce custom address request types specific for Infoblox IPAM Driver

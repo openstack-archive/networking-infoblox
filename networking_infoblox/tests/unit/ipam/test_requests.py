@@ -45,9 +45,9 @@ class TestDriver(base.TestCase):
         port = self._get_mocked_port(device_owner=device_owner)
         ip_dict = {'ip_address': '192.168.1.10',
                    'subnet_id': mock.Mock()}
-        req = requests.InfobloxAddressRequestFactory.get_request(context,
-                                                                 port,
-                                                                 ip_dict)
+        req = requests.InfobloxAddressRequestFactoryV2.get_request(context,
+                                                                   port,
+                                                                   ip_dict)
         self.assertIsInstance(req, request_class)
         self.assertEqual(req.address,
                          netaddr.IPAddress(ip_dict['ip_address']))
@@ -75,9 +75,9 @@ class TestDriver(base.TestCase):
         context = mock.Mock()
         port = self._get_mocked_port()
         ip_dict = {}
-        req = requests.InfobloxAddressRequestFactory.get_request(context,
-                                                                 port,
-                                                                 ip_dict)
+        req = requests.InfobloxAddressRequestFactoryV2.get_request(context,
+                                                                   port,
+                                                                   ip_dict)
         self.assertIsInstance(req, requests.InfobloxAnyAddressRequest)
         self._validate_ib_fields_in_request(port, req)
 
@@ -88,9 +88,9 @@ class TestDriver(base.TestCase):
         ip_dict = {'eui64_address': True,
                    'subnet_cidr': 'fffe::/64',
                    'mac': mac}
-        req = requests.InfobloxAddressRequestFactory.get_request(context,
-                                                                 port,
-                                                                 ip_dict)
+        req = requests.InfobloxAddressRequestFactoryV2.get_request(context,
+                                                                   port,
+                                                                   ip_dict)
         self.assertIsInstance(req, requests.InfobloxAutomaticAddressRequest)
         self.assertEqual(req.address,
                          netaddr.IPAddress('fffe::a8ab:dcff:fe11:2233'))

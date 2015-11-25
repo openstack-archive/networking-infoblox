@@ -32,7 +32,6 @@ from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import ipam
-from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
 
@@ -72,7 +71,8 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         ipam_controller = ipam.IpamSyncController(ib_context)
         ib_network = ipam_controller.get_subnet()
         if ib_network:
-            return InfobloxSubnet(subnet_request, ib_network)
+            return InfobloxSubnet(subnet_request, neutron_subnet, ib_network,
+                                  ib_context)
 
     def _build_request_from_subnet(self, neutron_subnet):
         alloc_pools = None
@@ -134,7 +134,8 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         ib_network = ipam_controller.create_subnet()
         dns_controller.create_dns_zones()
 
-        return InfobloxSubnet(subnet_request, ib_network)
+        return InfobloxSubnet(subnet_request, neutron_subnet, ib_network,
+                              ib_context)
 
     def _build_subnet_from_request(self, subnet_request):
         return {'id': subnet_request.subnet_id,
@@ -249,16 +250,18 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
 class InfobloxSubnet(driver.Subnet):
     """Infoblox IPAM subnet."""
 
-    def __init__(self, subnet_details, infoblox_network):
+    def __init__(self, subnet_details, neutron_subnet, ib_network,
+                 ib_context):
         self._validate_subnet_data(subnet_details)
         self._subnet_details = subnet_details
-        self._infoblox_network = infoblox_network
-        self._conn = utils.get_connector()
+        self._neutron_subnet = neutron_subnet
+        self._ib_network = ib_network
+        self._ib_context = ib_context
 
     def _validate_subnet_data(self, subnet_details):
         if not isinstance(subnet_details, ipam_req.SpecificSubnetRequest):
-            raise ValueError("Subnet details should be passed"
-                             " as SpecificSubnetRequest")
+            raise ValueError("Subnet details should be passed as "
+                             "SpecificSubnetRequest")
 
     def allocate(self, address_request):
         """Allocate an IP address based on the request passed in.
@@ -267,36 +270,37 @@ class InfobloxSubnet(driver.Subnet):
         :type address_request: A subclass of AddressRequest
         :returns: A netaddr.IPAddress
         """
+        ipam_controller = ipam.IpamSyncController(self._ib_context)
+        dns_controller = dns.DnsController(self._ib_context)
+
         if isinstance(address_request, ipam_req.SpecificAddressRequest):
-            ip = str(address_request.address)
-            fa = self._allocate_fixed_ip(ip)
+            allocated_ip = ipam_controller.allocate_specific_ip(
+                str(address_request.address),
+                address_request.mac,
+                address_request.port_id,
+                address_request.tenant_id,
+                address_request.device_id,
+                address_request.device_owner)
         else:
-            fa = self._allocate_ip_from_subnet_pools()
-        return fa.ip
+            allocated_ip = ipam_controller.allocate_ip_from_pool(
+                self._neutron_subnet.get('id'),
+                self._neutron_subnet.get('allocation_pools'),
+                address_request.mac,
+                address_request.port_id,
+                address_request.tenant_id,
+                address_request.device_id,
+                address_request.device_owner)
 
-    def _allocate_fixed_ip(self, ip):
-        # Create address with stubbed mac address, to be updated by ipam agent
-        mac = ':'.join(['00'] * 6)
-        return ib_objects.FixedAddress.create(self._conn,
-                                              network_view='default',
-                                              ip=ip,
-                                              mac=mac,
-                                              check_if_exists=False)
-
-    def _allocate_ip_from_subnet_pools(self):
-        cidr = self._infoblox_network.network
-        pools = ib_objects.IPRange.search_all(self._conn,
-                                              network_view='default',
-                                              network=cidr)
-        for pool in pools:
-            try:
-                ip_req = ib_objects.IPAllocation.next_available_ip_from_range(
-                    'default', pool.start_addr, pool.end_addr)
-                return self._allocate_fixed_ip(ip_req)
-            except Exception:
-                continue
-        raise ipam_exc.IpAddressGenerationFailure(
-            subnet_id=self._subnet_details.subnet_id)
+        if allocated_ip and address_request.device_owner:
+            # we can deal with instance name as hostname in the ipam agent.
+            hostname = None
+            dns_controller.bind_names(allocated_ip,
+                                      hostname,
+                                      address_request.port_id,
+                                      address_request.tenant_id,
+                                      address_request.device_id,
+                                      address_request.device_owner)
+        return allocated_ip
 
     def deallocate(self, address):
         """Deallocate previously allocated address.
@@ -305,10 +309,42 @@ class InfobloxSubnet(driver.Subnet):
         :type address: A subclass of netaddr.IPAddress or convertible to one.
         :returns: None
         """
-        fa = ib_objects.FixedAddress.search(self._conn,
-                                            network_view='default',
-                                            ip=str(address))
-        fa.delete()
+        ip_addr = str(address)
+        address_request = self._build_address_request_from_ib_address(ip_addr)
+
+        ipam_controller = ipam.IpamSyncController(self._ib_context)
+        dns_controller = dns.DnsController(self._ib_context)
+
+        ipam_controller.deallocate_ip(ip_addr)
+        dns_controller.unbind_names(ip_addr,
+                                    None,
+                                    address_request.port_id,
+                                    address_request.tenant_id,
+                                    address_request.device_id,
+                                    address_request.device_owner)
+
+    def _build_address_request_from_ib_address(self, ip_address):
+        connector = self._ib_context.connector
+        netview = self._ib_context.mapping.network_view
+        dns_view = self._ib_context.mapping.dns_view
+
+        ib_address = ib_objects.FixedAddress.search(connector,
+                                                    network_view=netview,
+                                                    ip=ip_address)
+        if not ib_address:
+            ib_address = ib_objects.HostRecord.search(connector,
+                                                      view=dns_view,
+                                                      ip=ip_address)
+            if not ib_address:
+                return exc.InfobloxCannotFindFixedIp(ip=ip_address)
+
+        addr_req = ipam_req.AddressRequest()
+        addr_req.port_id = ib_address.extattrs.get(const.EA_PORT_ID)
+        addr_req.tenant_id = ib_address.extattrs.get(const.EA_TENANT_ID)
+        addr_req.device_id = ib_address.extattrs.get(const.EA_PORT_DEVICE_ID)
+        addr_req.device_owner = ib_address.extattrs.get(
+            const.EA_PORT_DEVICE_OWNER)
+        return addr_req
 
     def get_details(self):
         """Return subnet detail as a SpecificSubnetRequest.

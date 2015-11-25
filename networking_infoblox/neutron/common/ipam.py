@@ -19,6 +19,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import uuidutils
 
+from neutron.common import constants as n_const
 from neutron.i18n import _LE
 from neutron.i18n import _LI
 from neutron.ipam import exceptions as ipam_exc
@@ -273,11 +274,11 @@ class IpamSyncController(object):
             dbi.dissociate_network_view(session, network_id, subnet_id)
 
     def allocate_specific_ip(self, ip_address, mac, port_id=None,
-                             device_id=None, device_owner=None):
+                             port_tenant_id=None, device_id=None,
+                             device_owner=None):
         hostname = uuidutils.generate_uuid()
-
         ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
-                                          self.ib_cxt.tenant_id,
+                                          port_tenant_id,
                                           self.ib_cxt.network, port_id,
                                           device_id, device_owner)
         dns_view = self.ib_cxt.mapping.dns_view
@@ -298,22 +299,25 @@ class IpamSyncController(object):
         return allocated_ip
 
     def allocate_ip_from_pool(self, subnet_id, allocation_pools, mac,
-                              port_id=None, device_id=None, device_owner=None):
+                              port_id=None, port_tenant_id=None,
+                              device_id=None, device_owner=None):
         hostname = uuidutils.generate_uuid()
-
         ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
-                                          self.ib_cxt.tenant_id,
+                                          port_tenant_id,
                                           self.ib_cxt.network, port_id,
                                           device_id, device_owner)
         dns_view = self.ib_cxt.mapping.dns_view
         zone_auth = self.pattern_builder.get_zone_name()
         allocated_ip = None
 
+        ip_alloc = (self.ib_cxt.dhcp_port_ip_alloc
+                    if device_owner == n_const.DEVICE_OWNER_DHCP
+                    else self.ib_cxt.ip_alloc)
         for pool in allocation_pools:
-            first_ip = pool['first_ip']
-            last_ip = pool['last_ip']
+            first_ip = pool['start']
+            last_ip = pool['end']
             try:
-                allocated_ip = self.ib_cxt.ip_alloc.allocate_ip_from_range(
+                allocated_ip = ip_alloc.allocate_ip_from_range(
                     self.ib_cxt.mapping.network_view,
                     dns_view,
                     zone_auth,
@@ -339,7 +343,7 @@ class IpamSyncController(object):
         return allocated_ip
 
     def deallocate_ip(self, ip_address):
-        dns_view = None
+        dns_view = self.ib_cxt.mapping.dns_view
         self.ib_cxt.ip_alloc.deallocate_ip(self.ib_cxt.mapping.network_view,
                                            dns_view,
                                            ip_address)
@@ -351,9 +355,6 @@ class IpamAsyncController(object):
         self.ib_cxt = ib_context
         self.grid_config = self.ib_cxt.grid_config
         self.grid_id = self.grid_config.grid_id
-
-    def create_network_sync(self):
-        pass
 
     def update_network_sync(self):
         """Updates EAs for each subnet that belongs to the updated network."""
@@ -410,17 +411,40 @@ class IpamAsyncController(object):
         # dissociate network view on network level
         dbi.dissociate_network_view(session, network_id, const.NONE_ID)
 
-    def create_subnet_sync(self):
+    def update_port_sync(self, port):
+        if not port or not port.get('fixed_ips'):
+            return
+
+        session = self.ib_cxt.context.session
+
+        for fip in port['fixed_ips']:
+            subnet_id = fip['subnet_id']
+            ip_address = fip['ip_address']
+
+            netview_mappings = dbi.get_network_view_mappings(
+                session,
+                grid_id=self.grid_id,
+                network_id=port['network_id'],
+                subnet_id=subnet_id)
+            if not netview_mappings:
+                continue
+
+            netview_row = utils.find_one_in_list(
+                'id', netview_mappings[0].network_view_id,
+                self.ib_cxt.discovered_network_views)
+            network_view = netview_row.network_view
+
+            ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
+                                              port['tenant_id'],
+                                              network_view,
+                                              port['id'],
+                                              port['device_id'],
+                                              port['device_owner'])
+            self.ib_cxt.ibom.update_fixed_address_eas(network_view, ip_address,
+                                                      ea_ip_address)
+
+    def associate_floatingip_sync(self, floatingip):
         pass
 
-    def delete_subnet_sync(self):
-        pass
-
-    def create_floatingip_sync(self, port):
-        pass
-
-    def update_floatingip_sync(self, port_id):
-        pass
-
-    def delete_floatingip_sync(self, port_id):
+    def dissociate_floatingip_sync(self, floatingip):
         pass
