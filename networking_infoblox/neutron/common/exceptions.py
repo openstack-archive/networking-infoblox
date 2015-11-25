@@ -51,3 +51,7 @@ class InfobloxPrivateSubnetAlreadyExist(exceptions.Conflict):
 
 class InfobloxCannotAllocateIp(exceptions.NeutronException):
     message = _("Cannot allocate IP %(ip_data)s")
+
+
+class InfobloxCannotFindFixedIp(exceptions.NeutronException):
+    message = _("Cannot find the fixed IP %(ip)s")

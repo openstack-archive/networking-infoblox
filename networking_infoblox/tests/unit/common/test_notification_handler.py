@@ -48,13 +48,6 @@ class TestIpamEventHandler(base.TestCase):
         self.ipam_handler.create_subnet_alert(payload)
         self.ipam_handler._resync.assert_called_once_with()
 
-    def test_create_network_sync(self):
-        payload = {'network': {}}
-        with mock.patch.object(ipam.IpamAsyncController,
-                               'create_network_sync') as controller_mock:
-            self.ipam_handler.create_network_sync(payload)
-        controller_mock.assert_called_once_with()
-
     def test_update_network_sync(self):
         payload = {'network': {}}
         with mock.patch.object(ipam.IpamAsyncController,

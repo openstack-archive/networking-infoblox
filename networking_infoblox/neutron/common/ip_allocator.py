@@ -130,7 +130,7 @@ class HostRecordIPAllocator(IPAllocator):
 
     def deallocate_ip(self, network_view, dns_view_name, ip):
         host_record = self.manager.get_host_record(dns_view_name, ip)
-        if host_record and len(host_record.ips) > 1:
+        if host_record and len(host_record.ip) > 1:
             self.manager.delete_ip_from_host_record(host_record, ip)
         else:
             self.manager.delete_host_record(dns_view_name, ip)

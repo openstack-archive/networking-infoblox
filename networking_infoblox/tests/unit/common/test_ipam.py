@@ -311,8 +311,8 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         subnet_id = 'subnet-id'
         allocation_pools = [
-            {'first_ip': '11.11.1.1', 'last_ip': '11.11.1.150'},
-            {'first_ip': '11.11.1.151', 'last_ip': '11.11.1.253'}]
+            {'start': '11.11.1.1', 'end': '11.11.1.150'},
+            {'start': '11.11.1.151', 'end': '11.11.1.253'}]
         mac = ':'.join(['00'] * 6)
         dns_view = self.ib_cxt.mapping.dns_view
         zone_auth = 'ib.com'
@@ -327,15 +327,15 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         self.ib_cxt.ip_alloc.allocate_ip_from_range.assert_called_once_with(
             self.helper.options['network_view'], dns_view, zone_auth,
-            hostname, mac, allocation_pools[0]['first_ip'],
-            allocation_pools[0]['last_ip'], ea_ip_address)
+            hostname, mac, allocation_pools[0]['start'],
+            allocation_pools[0]['end'], ea_ip_address)
 
     def test_deallocate_ip(self):
         test_opts = dict()
         self.helper.prepare_test(test_opts)
 
         ip_address = '11.11.1.1'
-        dns_view = None
+        dns_view = self.ib_cxt.mapping.dns_view
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
         ipam_controller.deallocate_ip(ip_address)

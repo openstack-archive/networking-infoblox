@@ -82,7 +82,7 @@ class IpamEventHandler(object):
 
         if self.traceable:
             for network in networks:
-                LOG.debug("network: %s" % network)
+                LOG.info("network: %s" % network)
 
         self._resync()
 
@@ -98,7 +98,7 @@ class IpamEventHandler(object):
 
         if self.traceable:
             for subnet in subnets:
-                LOG.debug("subnet: %s" % subnet)
+                LOG.info("subnet: %s" % subnet)
 
         self._resync()
 
@@ -111,20 +111,14 @@ class IpamEventHandler(object):
 
         for network in networks:
             if self.traceable:
-                LOG.debug("network: %s" % network)
-
-            ib_context = context.InfobloxContext(self.context, self.user_id,
-                                                 network, None,
-                                                 self.grid_config, self.plugin)
-            ipam_controller = ipam.IpamAsyncController(ib_context)
-            ipam_controller.create_network_sync()
+                LOG.info("network: %s" % network)
 
     def update_network_sync(self, payload):
         """Notifies that the network property has been updated."""
         network = payload.get('network')
 
         if self.traceable:
-            LOG.debug("network: %s" % network)
+            LOG.info("network: %s" % network)
 
         ib_context = context.InfobloxContext(self.context, self.user_id,
                                              network, None, self.grid_config,
@@ -137,51 +131,32 @@ class IpamEventHandler(object):
         network_id = payload.get('network_id')
 
         if self.traceable:
-            LOG.debug("network_id: %s" % network_id)
+            LOG.info("network_id: %s" % network_id)
 
         # At this point, NIOS subnets that belong to the networks
         # should have been removed; check if still exists and remove them
         # if necessary.
         ib_context = context.InfobloxContext(self.context, self.user_id,
                                              None, None, self.grid_config,
-                                             self.plugin)
+                                             self.plugin,
+                                             self._cached_grid_members,
+                                             self._cached_network_views,
+                                             self._cached_mapping_conditions)
         ipam_controller = ipam.IpamAsyncController(ib_context)
         ipam_controller.delete_network_sync(network_id)
 
         self._resync()
 
     def create_subnet_sync(self, payload):
-        """Notifies that new subnets have been created.
-
-        We have two ways to get physical network info.
-        1. Create/update network sync can get this info and cache it in DB.
-        2. Call plugin.get_network() directly
-
-        If we choose 2, then we can actually do this in ipam driver but not
-        sure if this is acceptable by community. We can do this in the
-        notification handler.
-        """
+        """Notifies that new subnets have been created."""
         if 'subnets' in payload:
             subnets = payload.get('subnets')
         else:
             subnets = [payload.get('subnet')]
 
-        # get network from plugin so that physical network info is available.
-        network_id = subnets[0].get('network_id')
-        network = self.plugin.get_network(self.context, network_id)
-
         for subnet in subnets:
             if self.traceable:
-                LOG.debug("subnet: %s" % subnet)
-
-            ib_context = context.InfobloxContext(
-                self.context, self.user_id, network, subnet,
-                self.grid_config, self.plugin, self._cached_grid_members,
-                self._cached_network_views,
-                self._cached_mapping_conditions)
-
-            ipam_controller = ipam.IpamAsyncController(ib_context)
-            ipam_controller.create_subnet_sync()
+                LOG.info("subnet: %s" % subnet)
 
         self._resync(True)
 
@@ -190,14 +165,14 @@ class IpamEventHandler(object):
         subnet = payload.get('subnet')
 
         if self.traceable:
-            LOG.debug("subnet: %s" % subnet)
+            LOG.info("subnet: %s" % subnet)
 
     def delete_subnet_sync(self, payload):
         """Notifies that the subnet has been deleted."""
         subnet_id = payload.get('subnet_id')
 
         if self.traceable:
-            LOG.debug("subnet_id: %s" % subnet_id)
+            LOG.info("subnet_id: %s" % subnet_id)
 
         # At this point, NIOS subnets should have been removed.
         # Check if still exists and remove them if necessary.
@@ -205,7 +180,12 @@ class IpamEventHandler(object):
         self._resync(True)
 
     def create_port_sync(self, payload):
-        """Notifies that new ports have been created."""
+        """Notifies that new ports have been created.
+
+        When allocating an ip address from IPAM driver, port creation is not
+        committed so port id is not yet available. So we update Port ID EA in
+        this event.
+        """
         if 'ports' in payload:
             ports = payload.get('ports')
         else:
@@ -213,21 +193,33 @@ class IpamEventHandler(object):
 
         for port in ports:
             if self.traceable:
-                LOG.debug("port: %s" % port)
+                LOG.info("port: %s" % port)
+
+            network = self.plugin.get_network(self.context, port['network_id'])
+
+            # TODO(hhwang): We may need to support 'allowed_address_pairs'
+
+            ib_context = context.InfobloxContext(
+                self.context, self.user_id, network, None,
+                self.grid_config, self.plugin,
+                network_views=self._cached_network_views)
+
+            ipam_controller = ipam.IpamAsyncController(ib_context)
+            ipam_controller.update_port_sync(port)
 
     def update_port_sync(self, payload):
         """Notifies that the port has been updated."""
         port = payload.get('port')
 
         if self.traceable:
-            LOG.debug("port: %s" % port)
+            LOG.info("port: %s" % port)
 
     def delete_port_sync(self, payload):
         """Notifies that the port has been deleted."""
         port_id = payload.get('port_id')
 
         if self.traceable:
-            LOG.debug("port_id: %s" % port_id)
+            LOG.info("port_id: %s" % port_id)
 
     def create_floatingip_sync(self, payload):
         """Notifies that a new floating ip has been created.
@@ -236,22 +228,23 @@ class IpamEventHandler(object):
         1. floating ip creation: this response comes with no port_id and
         fixed_ip_address.
 
-        2. floating ip association with fixed_ip_address: this repsponse
+        2. floating ip association with fixed_ip_address: this response
         contains port_id and fixed_ip_address.
         """
         floatingip = payload.get('floatingip')
 
         if self.traceable:
-            LOG.debug("floatingip: %s" % floatingip)
+            LOG.info("floatingip: %s" % floatingip)
 
         port_id = floatingip.get('port_id')
+        if not port_id:
+            return
 
-        if port_id is None:
-            # call floating ip creation
-            pass
-        else:
-            # call floating ip association
-            pass
+        ib_context = context.InfobloxContext(self.context, self.user_id,
+                                             None, None, self.grid_config,
+                                             self.plugin)
+        ipam_controller = ipam.IpamAsyncController(ib_context)
+        ipam_controller.associate_floatingip_sync(floatingip)
 
     def update_floatingip_sync(self, payload):
         """Notifies that the floating ip has been updated.
@@ -262,14 +255,25 @@ class IpamEventHandler(object):
         floatingip = payload.get('floatingip')
 
         if self.traceable:
-            LOG.debug("floatingip: %s" % floatingip)
+            LOG.info("floatingip: %s" % floatingip)
+
+        ib_context = context.InfobloxContext(self.context, self.user_id,
+                                             None, None, self.grid_config,
+                                             self.plugin)
+        ipam_controller = ipam.IpamAsyncController(ib_context)
+
+        port_id = floatingip.get('port_id')
+        if port_id:
+            ipam_controller.associate_floatingip_sync(floatingip)
+        else:
+            ipam_controller.dissociate_floatingip_sync(floatingip)
 
     def delete_floatingip_sync(self, payload):
         """Notifies that the floating ip has been deleted."""
         floatingip_id = payload.get('floatingip_id')
 
         if self.traceable:
-            LOG.debug("floatingip_id: %s" % floatingip_id)
+            LOG.info("floatingip_id: %s" % floatingip_id)
 
     def create_instance_sync(self, payload):
         """Notifies that an instance has been created."""
@@ -277,11 +281,11 @@ class IpamEventHandler(object):
         host = payload.get('host')
 
         if self.traceable:
-            LOG.debug("instance_id: %s, host: %s" % (instance_id, host))
+            LOG.info("instance_id: %s, host: %s" % (instance_id, host))
 
     def delete_instance_sync(self, payload):
         """Notifies that an instance has been deleted."""
         instance_id = payload.get('instance_id')
 
         if self.traceable:
-            LOG.debug("instance_id: %s" % instance_id)
+            LOG.info("instance_id: %s" % instance_id)

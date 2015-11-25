@@ -46,6 +46,7 @@ class InfobloxContext(object):
         self.connector = None
         self.ibom = None
         self.ip_alloc = None
+        self.dhcp_port_ip_alloc = None
 
         self.grid_id = self.grid_config.grid_id
         self.mapping = utils.json_to_obj(
@@ -64,7 +65,7 @@ class InfobloxContext(object):
 
         self.tenant_id = (self.network.get('tenant_id') or
                           self.subnet.get('tenant_id') or
-                          self.context.get('tenant_id'))
+                          self.context.tenant_id)
 
     @property
     def discovered_grid_members(self):
@@ -140,18 +141,22 @@ class InfobloxContext(object):
         if self.network:
             if self.subnet:
                 self._find_mapping()
-            self._load_managers()
+
+        self._load_managers()
 
     def _load_managers(self):
         self.connector = self._get_connector()
         self.ibom = obj_mgr.InfobloxObjectManager(self.connector)
         self.ip_alloc = self._get_ip_allocator()
+        self.dhcp_port_ip_alloc = self._get_ip_allocator(True)
 
-    def _get_ip_allocator(self):
+    def _get_ip_allocator(self, for_dhcp_port=False):
         options = dict()
-        if (self.grid_config.ip_allocation_strategy ==
+        if (for_dhcp_port or self.grid_config.ip_allocation_strategy ==
                 const.IP_ALLOCATION_STRATEGY_HOST_RECORD):
             options['use_host_record'] = True
+            if for_dhcp_port:
+                options['configure_for_dhcp'] = False
         else:
             options['use_host_record'] = False
             options['dns_record_binding_types'] = (
