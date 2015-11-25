@@ -28,6 +28,7 @@ class IPAllocator(object):
 
     DEFAULT_OPTIONS = {
         'use_host_record': True,
+        'configure_for_dhcp': True,
         'dns_record_binding_types': [],
         'dns_record_unbinding_types': [],
         'dns_record_removable_types': []}
@@ -109,7 +110,8 @@ class HostRecordIPAllocator(IPAllocator):
 
     def allocate_ip_from_range(self, network_view, dns_view,
                                zone_auth, hostname, mac, first_ip, last_ip,
-                               extattrs=None, use_dhcp=True):
+                               extattrs=None):
+        use_dhcp = self.opts['configure_for_dhcp']
         fqdn = hostname + '.' + zone_auth
         host_record = self.manager.find_hostname(
             dns_view, fqdn, first_ip)
@@ -123,7 +125,8 @@ class HostRecordIPAllocator(IPAllocator):
         return hr.ip[-1].ip
 
     def allocate_given_ip(self, network_view, dns_view, zone_auth,
-                          hostname, mac, ip, extattrs=None, use_dhcp=True):
+                          hostname, mac, ip, extattrs=None):
+        use_dhcp = self.opts['configure_for_dhcp']
         hr = self.manager.create_host_record_for_given_ip(
             dns_view, zone_auth, hostname, mac, ip, extattrs, use_dhcp)
         return hr.ip[-1].ip
