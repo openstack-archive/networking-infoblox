@@ -209,10 +209,17 @@ class GridMappingManager(object):
         if self._grid_config.is_cloud_wapi:
             return_fields.append('cloud_info')
 
+        # TODO(pbondar): Consider using NetworkV4 and NetworkV6 objects
+        #                from infoblox-client to interact with NIOS
         ipv4networks = self._connector.get_object('network',
                                                   return_fields=return_fields)
         ipv6networks = self._connector.get_object('ipv6network',
                                                   return_fields=return_fields)
+        # get_object returns None if nothing was found, so convert results
+        if not ipv4networks:
+            ipv4networks = []
+        if not ipv6networks:
+            ipv6networks = []
         return ipv4networks + ipv6networks
 
     def _get_mapping_members(self, discovered_networks,
