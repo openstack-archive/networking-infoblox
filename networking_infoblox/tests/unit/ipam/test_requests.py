@@ -30,13 +30,14 @@ class TestDriver(base.TestCase):
         if mac is None:
             mac = mock.Mock()
         return {'mac_address': mac,
-                'port_id': mock.Mock(),
+                'tenant_id': mock.Mock(),
+                'id': mock.Mock(),
                 'device_id': mock.Mock(),
                 'device_owner': device_owner}
 
     def _validate_ib_fields_in_request(self, port, request):
         self.assertEqual(port['mac_address'], request.mac)
-        self.assertEqual(port['port_id'], request.port_id)
+        self.assertEqual(port['id'], request.port_id)
         self.assertEqual(port['device_id'], request.device_id)
         self.assertEqual(port['device_owner'], request.device_owner)
 

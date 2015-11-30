@@ -54,8 +54,10 @@ class InfobloxAddressRequestFactory(requests.AddressRequestFactory):
 
 class InfobloxFixedAddressRequest(requests.SpecificAddressRequest):
 
-    def __init__(self, address, mac, port_id, device_id, device_owner):
+    def __init__(self, address, tenant_id, mac, port_id,
+                 device_id, device_owner):
         super(InfobloxFixedAddressRequest, self).__init__(address)
+        self.tenant_id = tenant_id
         self.mac = mac
         self.port_id = port_id
         self.device_id = device_id
@@ -77,8 +79,9 @@ class InfobloxDhcpPortAddressRequest(InfobloxFixedAddressRequest):
 class InfobloxAnyAddressRequest(requests.AnyAddressRequest):
     """Used to request allocating any address from subnet."""
 
-    def __init__(self, mac, port_id, device_id, device_owner):
+    def __init__(self, tenant_id, mac, port_id, device_id, device_owner):
         super(InfobloxAnyAddressRequest, self).__init__()
+        self.tenant_id = tenant_id
         self.mac = mac
         self.port_id = port_id
         self.device_id = device_id
@@ -88,9 +91,11 @@ class InfobloxAnyAddressRequest(requests.AnyAddressRequest):
 class InfobloxAutomaticAddressRequest(requests.AutomaticAddressRequest):
     """Used to request automatic address for auto-addressed subnets."""
 
-    def __init__(self, mac, port_id, device_id, device_owner, prefix):
+    def __init__(self, tenant_id, mac, port_id,
+                 device_id, device_owner, prefix):
         super(InfobloxAutomaticAddressRequest, self).__init__(prefix=prefix,
                                                               mac=mac)
+        self.tenant_id = tenant_id
         self.mac = mac
         self.port_id = port_id
         self.device_id = device_id
@@ -105,6 +110,7 @@ class InfobloxAddressRequestFactoryV2(requests.AddressRequestFactory):
 
     @classmethod
     def get_request(cls, context, port, ip_dict):
+        tenant_id = port.get('tenant_id') or context.tenant_id
         if ip_dict.get('ip_address'):
             if port['device_owner'] == n_const.DEVICE_OWNER_DHCP:
                 request_class = InfobloxDhcpPortAddressRequest
@@ -115,19 +121,22 @@ class InfobloxAddressRequestFactoryV2(requests.AddressRequestFactory):
             else:
                 request_class = InfobloxFixedAddressRequest
             return request_class(ip_dict['ip_address'],
+                                 tenant_id,
                                  port['mac_address'],
-                                 port['port_id'],
+                                 port['id'],
                                  port['device_id'],
                                  port['device_owner'])
         elif ip_dict.get('eui64_address'):
             return InfobloxAutomaticAddressRequest(
+                tenant_id,
                 port['mac_address'],
-                port['port_id'],
+                port['id'],
                 port['device_id'],
                 port['device_owner'],
                 ip_dict['subnet_cidr'])
         else:
-            return InfobloxAnyAddressRequest(port['mac_address'],
-                                             port['port_id'],
+            return InfobloxAnyAddressRequest(tenant_id,
+                                             port['mac_address'],
+                                             port['id'],
                                              port['device_id'],
                                              port['device_owner'])
