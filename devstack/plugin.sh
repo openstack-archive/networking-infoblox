@@ -16,7 +16,7 @@ function run_db_migration_for_networking_infoblox {
 function configure_networking_infoblox {
     echo_summary "Running db migration for Infoblox Networking"
 
-    # run_db_migration_for_networking_infoblox
+    run_db_migration_for_networking_infoblox
 
     # Main Configurations
     iniset $NEUTRON_CONF DEFAULT ipam_driver ""
