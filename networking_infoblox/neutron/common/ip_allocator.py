@@ -19,6 +19,9 @@ import six
 from neutron.common import constants as n_const
 from oslo_log import log as logging
 
+from networking_infoblox.neutron.common import constants as const
+
+
 LOG = logging.getLogger(__name__)
 
 
@@ -143,8 +146,8 @@ class FixedAddressIPAllocator(IPAllocator):
 
     def bind_names(self, network_view, dns_view, ip, name, extattrs):
         bind_cfg = self.opts['dns_record_binding_types']
-        if extattrs.get('Port Attached Device - Device Owner').\
-                get('value') == n_const.DEVICE_OWNER_FLOATINGIP:
+        device_owner = extattrs.get(const.EA_PORT_DEVICE_OWNER)
+        if device_owner == n_const.DEVICE_OWNER_FLOATINGIP:
             self.manager.update_fixed_address_eas(
                 network_view, ip, extattrs)
             self.manager.update_dns_record_eas(
