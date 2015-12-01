@@ -264,8 +264,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         hostname = 'test-vm'
         port_id = 'port-id'
         device_owner = n_const.DEVICE_OWNER_DHCP
-        self.controller.pattern_builder.get_hostname.return_value = hostname
         fqdn = str.format("{}.{}", hostname, self.test_dns_zone)
+        self.controller.pattern_builder.get_hostname.return_value = fqdn
 
         self.controller.bind_names(ip_address, hostname, port_id,
                                    device_owner=None)
@@ -286,8 +286,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         hostname = 'test-vm'
         port_id = 'port-id'
         device_owner = n_const.DEVICE_OWNER_DHCP
-        self.controller.pattern_builder.get_hostname.return_value = hostname
         fqdn = str.format("{}.{}", hostname, self.test_dns_zone)
+        self.controller.pattern_builder.get_hostname.return_value = fqdn
 
         self.controller.unbind_names(ip_address, hostname, port_id,
                                      device_owner=None)

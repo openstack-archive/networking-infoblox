@@ -177,9 +177,7 @@ class DnsController(object):
         network_view = self.ib_cxt.mapping.network_view
         dns_view = self.ib_cxt.mapping.dns_view
 
-        hostname = self.pattern_builder.get_hostname(ip_address, hostname,
-                                                     port_id, device_owner,
-                                                     device_id)
-        fqdn = str.format("{}.{}", hostname, self.dns_zone)
+        fqdn = self.pattern_builder.get_hostname(ip_address, hostname, port_id,
+                                                 device_owner, device_id)
 
         binding_func(network_view, dns_view, ip_address, fqdn, ea_ip_address)
