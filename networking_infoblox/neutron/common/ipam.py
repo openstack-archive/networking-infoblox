@@ -83,14 +83,14 @@ class IpamSyncController(object):
         ib_network = None
         try:
             ib_network = self._create_ib_network()
+            if ib_network:
+                self._create_ib_ip_range()
 
             # associate the network view to neutron
             dbi.associate_network_view(session,
                                        self.ib_cxt.mapping.network_view_id,
                                        network_id,
                                        subnet_id)
-
-            self._create_ib_ip_range()
             return ib_network
         except Exception as ex:
             with excutils.save_and_reraise_exception():
