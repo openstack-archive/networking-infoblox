@@ -16,6 +16,7 @@
 from oslo_log import log as logging
 from oslo_utils import excutils
 
+from neutron.common import constants as n_const
 from neutron.i18n import _LE
 
 from infoblox_client import exceptions as ibc_exc
@@ -145,7 +146,7 @@ class DnsController(object):
 
     def bind_names(self, ip_address, hostname=None, port_id=None,
                    port_tenant_id=None, device_id=None, device_owner=None):
-        if not device_owner:
+        if not device_owner or device_owner == n_const.DEVICE_OWNER_DHCP:
             return
 
         tenant_id = port_tenant_id or self.ib_cxt.context.tenant_id
@@ -164,7 +165,7 @@ class DnsController(object):
 
     def unbind_names(self, ip_address, hostname=None, port_id=None,
                      port_tenant_id=None, device_id=None, device_owner=None):
-        if not device_owner:
+        if not device_owner or device_owner == n_const.DEVICE_OWNER_DHCP:
             return
 
         self._bind_names(self.ib_cxt.ip_alloc.unbind_names, ip_address,
