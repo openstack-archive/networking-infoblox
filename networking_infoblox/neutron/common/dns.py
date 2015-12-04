@@ -144,41 +144,45 @@ class DnsController(object):
         # now check for static zone
         return dbi.is_last_subnet_in_private_networks(session, subnet_id)
 
-    def bind_names(self, ip_address, hostname=None, port_id=None,
+    def bind_names(self, ip_address, instance_name=None, port_id=None,
                    port_tenant_id=None, device_id=None, device_owner=None):
         if not device_owner or device_owner == n_const.DEVICE_OWNER_DHCP:
             return
 
         tenant_id = port_tenant_id or self.ib_cxt.context.tenant_id
-        ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id, tenant_id,
-                                          self.ib_cxt.network, port_id,
-                                          device_id, device_owner)
+        ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
+                                          tenant_id,
+                                          self.ib_cxt.network,
+                                          port_id,
+                                          device_id,
+                                          device_owner)
 
         try:
             self._bind_names(self.ib_cxt.ip_alloc.bind_names, ip_address,
-                             hostname, port_id, port_tenant_id, device_id,
+                             instance_name, port_id, port_tenant_id, device_id,
                              device_owner, ea_ip_address)
         except ibc_exc.InfobloxCannotCreateObject:
             with excutils.save_and_reraise_exception():
-                self.unbind_names(ip_address, hostname, port_id,
+                self.unbind_names(ip_address, instance_name, port_id,
                                   port_tenant_id, device_id, device_owner)
 
-    def unbind_names(self, ip_address, hostname=None, port_id=None,
+    def unbind_names(self, ip_address, instance_name=None, port_id=None,
                      port_tenant_id=None, device_id=None, device_owner=None):
         if not device_owner or device_owner == n_const.DEVICE_OWNER_DHCP:
             return
 
         self._bind_names(self.ib_cxt.ip_alloc.unbind_names, ip_address,
-                         hostname, port_id, port_tenant_id, device_id,
+                         instance_name, port_id, port_tenant_id, device_id,
                          device_owner)
 
-    def _bind_names(self, binding_func, ip_address, hostname=None,
+    def _bind_names(self, binding_func, ip_address, instance_name=None,
                     port_id=None, port_tenant_id=None, device_id=None,
                     device_owner=None, ea_ip_address=None):
         network_view = self.ib_cxt.mapping.network_view
         dns_view = self.ib_cxt.mapping.dns_view
 
-        fqdn = self.pattern_builder.get_hostname(ip_address, hostname, port_id,
-                                                 device_owner, device_id)
+        fqdn = self.pattern_builder.get_hostname(ip_address, instance_name,
+                                                 port_id, device_owner,
+                                                 device_id)
 
         binding_func(network_view, dns_view, ip_address, fqdn, ea_ip_address)

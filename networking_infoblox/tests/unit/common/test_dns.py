@@ -261,21 +261,21 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
     def test_bind_names(self):
         ip_address = '11.11.1.2'
-        hostname = 'test-vm'
+        instance_name = 'test-vm'
         port_id = 'port-id'
 
-        fqdn = str.format("{}.{}", hostname, self.test_dns_zone)
+        fqdn = str.format("{}.{}", instance_name, self.test_dns_zone)
         self.controller.pattern_builder.get_hostname.return_value = fqdn
 
-        self.controller.bind_names(ip_address, hostname, port_id,
+        self.controller.bind_names(ip_address, instance_name, port_id,
                                    device_owner=None)
         assert self.ib_cxt.ip_alloc.method_calls == []
 
-        self.controller.bind_names(ip_address, hostname, port_id,
+        self.controller.bind_names(ip_address, instance_name, port_id,
                                    device_owner=n_const.DEVICE_OWNER_DHCP)
         assert self.ib_cxt.ip_alloc.method_calls == []
 
-        self.controller.bind_names(ip_address, hostname, port_id,
+        self.controller.bind_names(ip_address, instance_name, port_id,
                                    device_owner=n_const.DEVICE_OWNER_ROUTER_GW)
         assert self.ib_cxt.ip_alloc.method_calls == [
             mock.call.bind_names(mock.ANY,
@@ -287,22 +287,22 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
     def test_unbind_names(self):
         ip_address = '11.11.1.2'
-        hostname = 'test-vm'
+        instance_name = 'test-vm'
         port_id = 'port-id'
 
-        fqdn = str.format("{}.{}", hostname, self.test_dns_zone)
+        fqdn = str.format("{}.{}", instance_name, self.test_dns_zone)
         self.controller.pattern_builder.get_hostname.return_value = fqdn
 
-        self.controller.unbind_names(ip_address, hostname, port_id,
+        self.controller.unbind_names(ip_address, instance_name, port_id,
                                      device_owner=None)
         assert self.ib_cxt.ip_alloc.method_calls == []
 
-        self.controller.unbind_names(ip_address, hostname, port_id,
+        self.controller.unbind_names(ip_address, instance_name, port_id,
                                      device_owner=n_const.DEVICE_OWNER_DHCP)
         assert self.ib_cxt.ip_alloc.method_calls == []
 
         self.controller.unbind_names(
-            ip_address, hostname, port_id,
+            ip_address, instance_name, port_id,
             device_owner=n_const.DEVICE_OWNER_ROUTER_GW)
         assert self.ib_cxt.ip_alloc.method_calls == [
             mock.call.unbind_names(mock.ANY,
