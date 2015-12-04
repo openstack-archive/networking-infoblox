@@ -15,6 +15,7 @@
 
 from infoblox_client import objects as ib_objects
 from neutron.api.v2 import attributes
+from neutron.common import constants as n_const
 from neutron.extensions import external_net
 from neutron.extensions import providernet
 
@@ -88,20 +89,17 @@ def get_default_ea_for_ip(user_id, tenant_id):
 
 def get_ea_for_ip(user_id, tenant_id, network, port_id, device_id,
                   device_owner):
-    # for gateway ip, no instance id exists
-    instance_id = device_id
+    instance_id = None
+    ip_type = const.IP_TYPE_FIXED
+    if device_owner in [n_const.DEVICE_OWNER_FLOATINGIP,
+                        const.NEUTRON_DEVICE_OWNER_COMPUTE]:
+        ip_type = const.IP_TYPE_FLOATING
+        if device_owner == const.NEUTRON_DEVICE_OWNER_COMPUTE:
+            instance_id = device_id
+
     common_ea = get_common_ea(network, user_id, tenant_id)
     ip_dict = get_dict_for_ip(port_id, device_owner, device_id,
-                              instance_id, const.IP_TYPE_FIXED)
-    common_ea.update(ip_dict)
-    return ib_objects.EA(common_ea)
-
-
-def get_ea_for_floatingip(user_id, tenant_id, network, port_id, device_id,
-                          device_owner, instance_id):
-    common_ea = get_common_ea(network, user_id, tenant_id)
-    ip_dict = get_dict_for_ip(port_id, device_owner, device_id,
-                              instance_id, const.IP_TYPE_FLOATING)
+                              instance_id, ip_type)
     common_ea.update(ip_dict)
     return ib_objects.EA(common_ea)
 

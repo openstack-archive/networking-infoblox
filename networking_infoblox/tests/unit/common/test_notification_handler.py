@@ -15,6 +15,7 @@
 
 import mock
 
+from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import ipam
 from networking_infoblox.neutron.common import notification_handler as handler
 from networking_infoblox.tests import base
@@ -56,8 +57,39 @@ class TestIpamEventHandler(base.TestCase):
         controller_mock.assert_called_once_with()
 
     def test_delete_network_sync(self):
-        payload = {'network': {}, 'network_id': 'network-id'}
+        payload = {'network_id': 'network-id'}
         with mock.patch.object(ipam.IpamAsyncController,
                                'delete_network_sync') as controller_mock:
             self.ipam_handler.delete_network_sync(payload)
+            self.ipam_handler._resync.assert_called_once_with()
         controller_mock.assert_called_once_with(payload['network_id'])
+
+    def test_create_subnet_sync_should_call_resync(self):
+        payload = {'subnet': {}}
+        self.ipam_handler.create_subnet_sync(payload)
+        self.ipam_handler._resync.assert_called_once_with(True)
+
+    def test_delete_subnet_sync(self):
+        payload = {'subnet_id': 'subnet-id'}
+        self.ipam_handler.delete_subnet_sync(payload)
+        self.ipam_handler._resync.assert_called_once_with(True)
+
+    @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
+    def test_update_floatingip_sync(self, ib_cxt_mock):
+        payload = {'floatingip': {'id': 'floatingip-id',
+                                  'tenant_id': 'tenant-id',
+                                  'port_id': 'port-id',
+                                  'floating_network_id': 'floating-network-id',
+                                  'floating_ip_address': '8.8.8.3'}}
+        ib_cxt_mock.grid_config.default_domain_name_pattern = 'global.com'
+        self.ipam_handler._get_mapping_neutron_subnet = mock.Mock()
+        with mock.patch.object(dns.DnsController,
+                               'bind_names') as bind_name_mock:
+            self.ipam_handler.update_floatingip_sync(payload)
+        bind_name_mock.assert_called_with(
+            payload['floatingip']['floating_ip_address'],
+            None,
+            mock.ANY,
+            payload['floatingip']['tenant_id'],
+            mock.ANY,
+            mock.ANY)

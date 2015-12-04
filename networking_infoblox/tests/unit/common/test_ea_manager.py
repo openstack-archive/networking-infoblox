@@ -15,8 +15,11 @@
 
 import mock
 
+from neutron.common import constants as n_const
+
 from infoblox_client import objects as ib_objects
 
+from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import ea_manager
 from networking_infoblox.tests import base
 
@@ -156,31 +159,93 @@ class EaManagerTestCase(base.TestCase):
                        'Port Attached Device - Device ID': device_id,
                        'Cloud API Owned': str(True),
                        'IP Type': 'Fixed',
-                       'VM ID': device_id}
+                       'VM ID': None}
 
         ea = ea_manager.get_ea_for_ip(self.user_id, self.tenant_id, network,
                                       port_id, device_id, device_owner)
         for key, value in expected_ea.items():
             self.assertEqual(value, ea.get(key))
 
-    def test_get_ea_for_floatingip(self):
+    def test_get_ea_for_ip_with_router_gateway_ip(self):
         network = {'router:external': False,
                    'shared': False}
         port_id = mock.Mock()
         device_id = mock.Mock()
-        device_owner = mock.Mock()
-        instance_id = mock.Mock()
+        device_owner = n_const.DEVICE_OWNER_ROUTER_GW
         expected_ea = {'Tenant ID': self.tenant_id,
                        'Account': self.user_id,
                        'Port ID': port_id,
                        'Port Attached Device - Device Owner': device_owner,
                        'Port Attached Device - Device ID': device_id,
                        'Cloud API Owned': str(True),
+                       'IP Type': 'Fixed',
+                       'VM ID': None}
+
+        ea = ea_manager.get_ea_for_ip(self.user_id, self.tenant_id, network,
+                                      port_id, device_id, device_owner)
+        for key, value in expected_ea.items():
+            self.assertEqual(value, ea.get(key))
+
+    def test_get_ea_for_ip_with_floatingip_creation(self):
+        network = {'router:external': True,
+                   'shared': False}
+        port_id = mock.Mock()
+        device_id = mock.Mock()
+        device_owner = n_const.DEVICE_OWNER_FLOATINGIP
+        expected_ea = {'Tenant ID': self.tenant_id,
+                       'Account': self.user_id,
+                       'Port ID': port_id,
+                       'Port Attached Device - Device Owner': device_owner,
+                       'Port Attached Device - Device ID': device_id,
+                       'Cloud API Owned': str(False),
                        'IP Type': 'Floating',
-                       'VM ID': instance_id}
-        ea = ea_manager.get_ea_for_floatingip(self.user_id, self.tenant_id,
-                                              network, port_id, device_id,
-                                              device_owner, instance_id)
+                       'VM ID': None}
+
+        ea = ea_manager.get_ea_for_ip(self.user_id, self.tenant_id,
+                                      network, port_id, device_id,
+                                      device_owner)
+        for key, value in expected_ea.items():
+            self.assertEqual(value, ea.get(key))
+
+    def test_get_ea_for_ip_with_floatingip_association(self):
+        network = {'router:external': True,
+                   'shared': False}
+        port_id = mock.Mock()
+        device_id = mock.Mock()
+        device_owner = const.NEUTRON_DEVICE_OWNER_COMPUTE
+        expected_ea = {'Tenant ID': self.tenant_id,
+                       'Account': self.user_id,
+                       'Port ID': port_id,
+                       'Port Attached Device - Device Owner': device_owner,
+                       'Port Attached Device - Device ID': device_id,
+                       'Cloud API Owned': str(False),
+                       'IP Type': 'Floating',
+                       'VM ID': device_id}
+
+        ea = ea_manager.get_ea_for_ip(self.user_id, self.tenant_id,
+                                      network, port_id, device_id,
+                                      device_owner)
+        for key, value in expected_ea.items():
+            self.assertEqual(value, ea.get(key))
+
+    def test_get_ea_for_ip_with_floatingip_dissociation(self):
+        network = {'router:external': True,
+                   'shared': False}
+        port_id = mock.Mock()
+        device_id = mock.Mock()
+        device_owner = n_const.DEVICE_OWNER_FLOATINGIP
+        expected_ea = {'Tenant ID': self.tenant_id,
+                       'Account': self.user_id,
+                       'Port ID': port_id,
+                       'Port Attached Device - Device Owner': device_owner,
+                       'Port Attached Device - Device ID': device_id,
+                       'Cloud API Owned': str(False),
+                       'IP Type': 'Floating',
+                       'VM ID': None}
+
+        ea = ea_manager.get_ea_for_ip(self.user_id, self.tenant_id,
+                                      network, port_id, device_id,
+                                      device_owner)
         for key, value in expected_ea.items():
             self.assertEqual(value, ea.get(key))
 
