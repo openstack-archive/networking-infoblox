@@ -20,6 +20,7 @@ from sqlalchemy import func
 
 from neutron.db import address_scope_db
 from neutron.db import external_net_db
+from neutron.db import l3_db
 from neutron.db import models_v2
 
 from networking_infoblox.neutron.common import constants as const
@@ -500,6 +501,16 @@ def get_subnet_by_id(session, subnet_id):
 def get_subnets_by_tenant_id(session, tenant_id):
     q = session.query(models_v2.Subnet).filter_by(tenant_id=tenant_id)
     return q.all()
+
+
+def get_port_by_id(session, port_id):
+    q = session.query(models_v2.Port)
+    return q.filter_by(id=port_id).one()
+
+
+def get_floatingip_by_id(session, floatingip_id):
+    q = session.query(l3_db.FloatingIP)
+    return q.filter_by(id=floatingip_id).one()
 
 
 def get_address_scope_by_subnetpool_id(session, subnetpool_id):
