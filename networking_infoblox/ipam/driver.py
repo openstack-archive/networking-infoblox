@@ -293,9 +293,9 @@ class InfobloxSubnet(driver.Subnet):
 
         if allocated_ip and address_request.device_owner:
             # we can deal with instance name as hostname in the ipam agent.
-            hostname = None
+            instance_name = None
             dns_controller.bind_names(allocated_ip,
-                                      hostname,
+                                      instance_name,
                                       address_request.port_id,
                                       address_request.tenant_id,
                                       address_request.device_id,
