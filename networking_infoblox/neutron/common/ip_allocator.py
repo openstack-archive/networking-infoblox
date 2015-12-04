@@ -147,7 +147,8 @@ class FixedAddressIPAllocator(IPAllocator):
     def bind_names(self, network_view, dns_view, ip, name, extattrs):
         bind_cfg = self.opts['dns_record_binding_types']
         device_owner = extattrs.get(const.EA_PORT_DEVICE_OWNER)
-        if device_owner == n_const.DEVICE_OWNER_FLOATINGIP:
+        if device_owner in [n_const.DEVICE_OWNER_FLOATINGIP,
+                            const.NEUTRON_DEVICE_OWNER_COMPUTE]:
             self.manager.update_fixed_address_eas(
                 network_view, ip, extattrs)
             self.manager.update_dns_record_eas(
