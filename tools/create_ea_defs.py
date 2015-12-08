@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import getpass
 import sys
 
 from oslo_config import cfg
@@ -31,13 +32,26 @@ from networking_infoblox.neutron.common import utils
 LOG = logging.getLogger(__name__)
 
 
+credentials = None
+print("\n\n")
+print("In order to create Extensible Attribute definitions,")
+print("superuser privilege is required.\n")
+print("If the preconfigured credentials already has superuser privilege,")
+print("just hit <ENTER> when prompted for user name.\n")
+print("Otherwise, please enter user name and password of a user that \
+has superuser privilege.\n")
+username = raw_input("Enter user name: ")
+if len(username) > 0:
+    password = getpass.getpass("Enter password: ")
+    credentials = {'username': username, 'password': password}
+
 cfg.CONF(args=sys.argv[1:], default_config_files=['/etc/neutron/neutron.conf'])
 common_config.setup_logging()
 config.register_infoblox_ipam_opts(cfg.CONF)
 grid_id = cfg.CONF.infoblox.cloud_data_center_id
 config.register_infoblox_grid_opts(cfg.CONF, grid_id)
 
-conn = utils.get_connector()
+conn = utils.get_connector(credentials)
 if not (utils.get_features(conn).create_ea_def):
     LOG.error("WAPI Version '%s' is not supported - Script ABORTED!",
               conn.wapi_version)
