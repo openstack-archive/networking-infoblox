@@ -22,6 +22,8 @@ from oslo_log import log as logging
 from neutron.common import config as common_config
 
 from infoblox_client import object_manager
+from infoblox_client import objects
+from infoblox_client import utils as ib_utils
 from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import utils
@@ -43,3 +45,27 @@ if not (utils.get_features(conn).create_ea_def):
 
 mgr = object_manager.InfobloxObjectManager(conn)
 mgr.create_required_ea_definitions(const.REQUIRED_EA_DEFS)
+
+
+host_ip = getattr(conn, 'host')
+if ib_utils.determine_ip_version(host_ip) == 4:
+    member = objects.Member.search(conn, ipv4_address=host_ip)
+else:
+    member = objects.Member.search(conn, ipv6_address=host_ip)
+
+ea_exist = False
+for ea, val in const.GRID_CONFIG_DEFAULTS.items():
+    if ea in member.extattrs:
+        ea_exist = True
+        break
+
+if not ea_exist:
+    update_ea = {}
+    for ea, val in const.GRID_CONFIG_DEFAULTS.items():
+        if not (val is None or val == []):
+            update_ea[ea] = val
+    member.extattrs = objects.EA(update_ea)
+    LOG.info("Adding Extensible Attributes for default Grid Configuration.")
+    member.update()
+else:
+    LOG.info("Extensible Attributes for Grid Configuration already exists.")
