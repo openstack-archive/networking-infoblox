@@ -161,23 +161,40 @@ class GridConfiguration(object):
         self._is_cloud_wapi = False
 
         # default settings from nios grid master
-        self.grid_sync_support = True
-        self.grid_sync_minimum_wait_time = 60
-        self.default_network_view_scope = const.NETWORK_VIEW_SCOPE_SINGLE
-        self.default_network_view = const.DEFAULT_NETWORK_VIEW
-        self.default_host_name_pattern = 'host-{ip_address}'
-        self.default_domain_name_pattern = '{subnet_id}.cloud.global.com'
-        self.ns_group = None
-        self.dns_view = const.DEFAULT_NETWORK_VIEW
-        self.network_template = None
-        self.admin_network_deletion = False
-        self.ip_allocation_strategy = const.IP_ALLOCATION_STRATEGY_HOST_RECORD
-        self.dns_record_binding_types = []
-        self.dns_record_unbinding_types = []
-        self.dns_record_removable_types = []
-        self.dhcp_relay_management_network_view = None
-        self.dhcp_relay_management_network = None
-        self.dhcp_support = False
+        self.grid_sync_support = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_GRID_SYNC_SUPPORT]
+        self.grid_sync_minimum_wait_time = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_GRID_SYNC_MINIMUM_WAIT_TIME]
+        self.default_network_view_scope = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE]
+        self.default_network_view = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW]
+        self.default_host_name_pattern = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN]
+        self.default_domain_name_pattern = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DEFAULT_DOMAIN_NAME_PATTERN]
+        self.ns_group = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_NS_GROUP]
+        self.dns_view = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DNS_VIEW]
+        self.network_template = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_NETWORK_TEMPLATE]
+        self.admin_network_deletion = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_ADMIN_NETWORK_DELETION]
+        self.ip_allocation_strategy = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_IP_ALLOCATION_STRATEGY]
+        self.dns_record_binding_types = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DNS_RECORD_BINDING_TYPES]
+        self.dns_record_unbinding_types = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DNS_RECORD_UNBINDING_TYPES]
+        self.dns_record_removable_types = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES]
+        self.dhcp_relay_management_network_view = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK_VIEW]
+        self.dhcp_relay_management_network = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK]
+        self.dhcp_support = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DHCP_SUPPORT]
 
     @property
     def wapi_version(self):
@@ -195,14 +212,7 @@ class GridConfiguration(object):
         return self._is_cloud_wapi
 
     def sync(self):
-        session = self.context.session
-        members = dbi.get_members(session,
-                                  grid_id=self.grid_id,
-                                  member_type=const.MEMBER_TYPE_GRID_MASTER)
-        if not members or len(members) != 1:
-            raise exc.InfobloxCannotFindMember(member="GM")
-
-        discovered_config = self._discover_config(members[0])
+        discovered_config = self._discover_config(self._get_gm_member())
         if discovered_config:
             self._update_fields(discovered_config)
             LOG.debug(_LI("grid config synced: %s"), self.__dict__)
@@ -240,3 +250,12 @@ class GridConfiguration(object):
         value = utils.get_ea_value(ea_name, extattrs)
         if value:
             setattr(self, field, value)
+
+    def _get_gm_member(self):
+        session = self.context.session
+        members = dbi.get_members(session,
+                                  grid_id=self.grid_id,
+                                  member_type=const.MEMBER_TYPE_GRID_MASTER)
+        if not members or len(members) != 1:
+            raise exc.InfobloxCannotFindMember(member="GM")
+        return members[0]
