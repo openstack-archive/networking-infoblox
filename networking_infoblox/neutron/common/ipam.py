@@ -279,8 +279,10 @@ class IpamSyncController(object):
         hostname = uuidutils.generate_uuid()
         ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
                                           port_tenant_id,
-                                          self.ib_cxt.network, port_id,
-                                          device_id, device_owner)
+                                          self.ib_cxt.network,
+                                          port_id,
+                                          device_id,
+                                          device_owner)
         dns_view = self.ib_cxt.mapping.dns_view
         zone_auth = self.pattern_builder.get_zone_name()
 
@@ -304,8 +306,11 @@ class IpamSyncController(object):
         hostname = uuidutils.generate_uuid()
         ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
                                           port_tenant_id,
-                                          self.ib_cxt.network, port_id,
-                                          device_id, device_owner)
+                                          self.ib_cxt.network,
+                                          port_id,
+                                          device_id,
+                                          device_owner)
+
         dns_view = self.ib_cxt.mapping.dns_view
         zone_auth = self.pattern_builder.get_zone_name()
         allocated_ip = None
@@ -340,6 +345,7 @@ class IpamSyncController(object):
             LOG.debug("All IPs from subnet %(subnet_id)s allocated",
                       {'subnet_id': subnet_id})
             raise ipam_exc.IpAddressGenerationFailure(subnet_id=subnet_id)
+
         return allocated_ip
 
     def deallocate_ip(self, ip_address):
@@ -442,9 +448,3 @@ class IpamAsyncController(object):
                                               port['device_owner'])
             self.ib_cxt.ibom.update_fixed_address_eas(network_view, ip_address,
                                                       ea_ip_address)
-
-    def associate_floatingip_sync(self, floatingip):
-        pass
-
-    def dissociate_floatingip_sync(self, floatingip):
-        pass
