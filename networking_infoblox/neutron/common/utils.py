@@ -417,7 +417,7 @@ def generate_network_view_name(object_id, object_name=None):
     return netview_name
 
 
-def get_connector():
+def get_connector(credentials=None):
     grid_id = cfg.CONF.infoblox.cloud_data_center_id
     grid_opts = cfg.get_infoblox_grid_opts(grid_id)
     # map connector opions to config
@@ -433,6 +433,9 @@ def get_connector():
     opts = {field: grid_opts[mapping[field]]
             if mapping[field] else grid_opts[field]
             for field in mapping}
+    if credentials:
+        opts['username'] = credentials['username']
+        opts['password'] = credentials['password']
     return conn.Connector(opts)
 
 
