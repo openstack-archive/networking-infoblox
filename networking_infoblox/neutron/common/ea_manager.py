@@ -19,6 +19,13 @@ from neutron.extensions import external_net
 from neutron.extensions import providernet
 
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import keystone_manager
+from networking_infoblox.neutron.common import nova_manager
+
+
+def get_tenant_name(tenant_id):
+    if tenant_id:
+        return keystone_manager.get_tenant_name_by_tenant_id(tenant_id)
 
 
 def get_ea_for_network_view(tenant_id):
@@ -31,6 +38,7 @@ def get_ea_for_network_view(tenant_id):
     # OpenStack should not own entire network view,
     # since shared or external networks may be created in it
     attributes = {const.EA_TENANT_ID: tenant_id,
+                  const.EA_TENANT_NAME: get_tenant_name(tenant_id),
                   const.EA_CLOUD_API_OWNED: 'False'}
     return ib_objects.EA(attributes)
 
@@ -72,10 +80,16 @@ def get_ea_for_range(user_id, tenant_id, network):
 
 def get_dict_for_ip(port_id, device_owner, device_id,
                     vm_id, ip_type):
+    vm_name = None
+    if vm_id:
+        mgr = nova_manager.NovaManager()
+        vm_name = mgr.get_instance_name_by_id(vm_id)
+
     return {const.EA_PORT_ID: port_id,
             const.EA_PORT_DEVICE_OWNER: device_owner,
             const.EA_PORT_DEVICE_ID: device_id,
             const.EA_VM_ID: vm_id,
+            const.EA_VM_NAME: vm_name,
             const.EA_IP_TYPE: ip_type}
 
 
@@ -121,6 +135,7 @@ def get_common_ea(network, user_id, tenant_id, for_network=False):
     is_cloud_owned = not (is_external or is_shared)
     ea_dict = {const.EA_CMP_TYPE: const.CLOUD_PLATFORM_NAME,
                const.EA_TENANT_ID: tenant_id,
+               const.EA_TENANT_NAME: get_tenant_name(tenant_id),
                const.EA_ACCOUNT: user_id,
                const.EA_CLOUD_API_OWNED: str(is_cloud_owned)}
     if for_network:
