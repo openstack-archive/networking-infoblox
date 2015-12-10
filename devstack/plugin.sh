@@ -7,6 +7,7 @@ function install_networking_infoblox {
 
 function init_networking_infoblox {
     echo "init_networking_infoblox"
+    screen_it net-infoblox "/usr/local/bin/infoblox-ipam-agent --config-file=$NEUTRON_CONF"
 }
 
 function run_db_migration_for_networking_infoblox {
@@ -38,7 +39,7 @@ function configure_networking_infoblox {
 DIR_INFOBLOX=$DEST/networking-infoblox
 
 # check for service enabled
-if is_service_enabled networking-infoblox; then
+if is_service_enabled net-infoblox; then
 
     if [[ "$1" == "stack" && "$2" == "pre-install" ]]; then
         # Set up system services
@@ -56,9 +57,11 @@ if is_service_enabled networking-infoblox; then
         configure_networking_infoblox
 
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
-        # Initialize and start the networking-infoblox service
+        # Initialize and start the net-infoblox service
         echo_summary "Initializing Infoblox Networking"
-        init_networking_infoblox
+        if is_service_enabled net-infoblox; then
+            init_networking_infoblox
+        fi
     fi
 
     if [[ "$1" == "unstack" ]]; then
