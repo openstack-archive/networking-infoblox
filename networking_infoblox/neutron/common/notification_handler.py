@@ -297,10 +297,36 @@ class IpamEventHandler(object):
     def create_instance_sync(self, payload):
         """Notifies that an instance has been created."""
         instance_id = payload.get('instance_id')
-        host = payload.get('host')
+        instance_name = payload.get('hostname')
 
         if self.traceable:
-            LOG.info("created instance: %s, host: %s", instance_id, host)
+            LOG.info("created instance: %s, host: %s",
+                     instance_id, instance_name)
+
+        ips = payload.get('fixed_ips')
+        if not ips:
+            return
+
+        ip_address = ips[0]['address']
+        macs = [ip.get('vif_mac') for ip in ips if ip.get('vif_mac')]
+        port_filter = {'mac_address': macs}
+        ports = self.plugin.get_ports(self.context, filters=port_filter)
+        subnet = {}
+        if ports[0]['fixed_ips']:
+            subnet_ids = [ip['subnet_id']for ip in ports[0]['fixed_ips']
+                          if ip['ip_address'] == ip_address]
+            subnet = self.plugin.get_subnet(self.context, subnet_ids[0])
+        ib_context = context.InfobloxContext(
+            self.context, self.user_id, None,
+            subnet, self.grid_config, self.plugin)
+
+        dns_controller = dns.DnsController(ib_context)
+        dns_controller.bind_names(ip_address,
+                                  instance_name,
+                                  ports[0]['id'],
+                                  ports[0]['tenant_id'],
+                                  ports[0]['device_id'],
+                                  ports[0]['device_owner'])
 
     def delete_instance_sync(self, payload):
         """Notifies that an instance has been deleted."""
