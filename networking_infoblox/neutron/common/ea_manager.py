@@ -74,12 +74,13 @@ def get_ea_for_range(user_id, tenant_id, network):
 
 
 def get_dict_for_ip(port_id, device_owner, device_id,
-                    vm_id, ip_type):
+                    vm_id, ip_type, instance_name=None):
     return {const.EA_PORT_ID: port_id,
             const.EA_PORT_DEVICE_OWNER: device_owner,
             const.EA_PORT_DEVICE_ID: device_id,
             const.EA_VM_ID: vm_id,
-            const.EA_IP_TYPE: ip_type}
+            const.EA_IP_TYPE: ip_type,
+            const.EA_VM_NAME: instance_name}
 
 
 def get_default_ea_for_ip(user_id, tenant_id):
@@ -90,7 +91,7 @@ def get_default_ea_for_ip(user_id, tenant_id):
 
 
 def get_ea_for_ip(user_id, tenant_id, network, port_id, device_id,
-                  device_owner, is_floating_ip=False):
+                  device_owner, is_floating_ip=False, instance_name=None):
     instance_id = None
     ip_type = const.IP_TYPE_FIXED
     if is_floating_ip or device_owner == n_const.DEVICE_OWNER_FLOATINGIP:
@@ -100,7 +101,7 @@ def get_ea_for_ip(user_id, tenant_id, network, port_id, device_id,
 
     common_ea = get_common_ea(network, user_id, tenant_id)
     ip_dict = get_dict_for_ip(port_id, device_owner, device_id,
-                              instance_id, ip_type)
+                              instance_id, ip_type, instance_name)
     common_ea.update(ip_dict)
     return ib_objects.EA(common_ea)
 
