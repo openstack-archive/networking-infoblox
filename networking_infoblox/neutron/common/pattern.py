@@ -82,6 +82,10 @@ class PatternBuilder(object):
             if instance_name:
                 pattern_dict['instance_name'] = re.sub("[^A-Za-z0-9-]", "-",
                                                        instance_name.strip())
+            else:
+                # During port_creation for instance_name is not available,
+                # so set it to instance_id
+                pattern_dict['instance_name'] = pattern_dict['instance_id']
 
         if ip_address:
             octets = ip_address.split('.')

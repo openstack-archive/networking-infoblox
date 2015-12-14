@@ -157,7 +157,8 @@ class DnsController(object):
                                           port_id,
                                           device_id,
                                           device_owner,
-                                          is_floating_ip)
+                                          is_floating_ip,
+                                          instance_name)
 
         ip_alloc = (self.ib_cxt.dhcp_port_ip_alloc
                     if device_owner == n_const.DEVICE_OWNER_DHCP
