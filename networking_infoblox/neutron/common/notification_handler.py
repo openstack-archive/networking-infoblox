@@ -18,8 +18,10 @@ from oslo_log import log as logging
 import oslo_messaging
 from oslo_utils import encodeutils
 
+from infoblox_client import objects as ib_objects
 from neutron import manager
 
+from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import grid
@@ -294,10 +296,42 @@ class IpamEventHandler(object):
     def create_instance_sync(self, payload):
         """Notifies that an instance has been created."""
         instance_id = payload.get('instance_id')
-        host = payload.get('host')
+        instance_name = str(payload.get('display_name'))
 
         if self.traceable:
-            LOG.info("created instance: %s, host: %s", instance_id, host)
+            LOG.info("created instance: %s, host: %s",
+                     instance_id, instance_name)
+
+        # Try to optimize search using ip address
+        ips = payload.get('fixed_ips')
+        ip = None
+        if ips:
+            ip = ips[0].get('address')
+
+        if (self.grid_config.ip_allocation_strategy ==
+                const.IP_ALLOCATION_STRATEGY_FIXED_ADDRESS):
+            ip_class = ib_objects.FixedAddress
+        else:
+            ip_class = ib_objects.HostRecord
+
+        ea = ib_objects.EA({const.EA_VM_ID: instance_id})
+        instance = ip_class.search(self.grid_config.gm_connector,
+                                   ip=ip,
+                                   search_extattrs=ea)
+        # TODO(pbondar): add logic for updating dns record if instance_name
+        #                is in the pattern.
+        if instance:
+            # TODO(pbondar): Remove this workaround once [1] is fixed.
+            # Extattrs field is not parsed yet into EA object for HostRecord
+            # and Fixed Address.
+            # [1] https://github.com/infobloxopen/infoblox-client/issues/36
+            if isinstance(instance.extattrs, dict):
+                instance.extattrs = ib_objects.EA.from_dict(instance.extattrs)
+
+            instance.extattrs.set(const.EA_VM_NAME, instance_name)
+            instance.update()
+        else:
+            LOG.warn("No ip object were found for instance %s", instance_id)
 
     def delete_instance_sync(self, payload):
         """Notifies that an instance has been deleted."""
