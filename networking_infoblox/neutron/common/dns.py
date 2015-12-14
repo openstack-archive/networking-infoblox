@@ -155,7 +155,8 @@ class DnsController(object):
                                           self.ib_cxt.network,
                                           port_id,
                                           device_id,
-                                          device_owner)
+                                          device_owner,
+                                          instance_name)
 
         try:
             self._bind_names(self.ib_cxt.ip_alloc.bind_names, ip_address,
