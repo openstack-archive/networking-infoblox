@@ -223,10 +223,19 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         network_view = db_netviews[0].network_view
         ea = ib_objects.EA({'Subnet ID': subnet_id})
 
-        ib_network = ib_objects.Network.search(
+        # TODO(pbondar): Consider replacing ineffective search
+        # by EA in network view with using some caching mechanism
+        # to store subnet_id -> nios_ref or subnet_id -> cidr
+        ib_network = ib_objects.NetworkV4.search(
             self._grid_config.gm_connector,
             network_view=network_view,
             search_extattrs=ea)
+        # Search IPv6 Network if no IPv4 network exist
+        if not ib_network:
+            ib_network = ib_objects.NetworkV6.search(
+                self._grid_config.gm_connector,
+                network_view=network_view,
+                search_extattrs=ea)
         return ib_network
 
     def _build_subnet_from_ib_network(self, ib_network):
