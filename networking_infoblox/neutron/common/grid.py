@@ -249,7 +249,16 @@ class GridConfiguration(object):
     def _update_from_ea(self, field, ea_name, extattrs):
         value = utils.get_ea_value(ea_name, extattrs)
         if value:
-            setattr(self, field, value)
+            setattr(self, field, self._value_to_bool(value))
+
+    @staticmethod
+    def _value_to_bool(value):
+        """Converts value returned by NIOS into boolean if possible."""
+        if value == 'True':
+            return True
+        elif value == 'False':
+            return False
+        return value
 
     def _get_gm_member(self):
         session = self.context.session
