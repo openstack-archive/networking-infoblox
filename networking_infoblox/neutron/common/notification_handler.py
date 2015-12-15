@@ -257,8 +257,10 @@ class IpamEventHandler(object):
         dns_controller = dns.DnsController(ib_context)
 
         if associated_port_id:
+            is_floating_ip = True
             db_port = dbi.get_port_by_id(session, associated_port_id)
         else:
+            is_floating_ip = False
             db_floatingip = dbi.get_floatingip_by_id(session, floating_ip_id)
             db_port = dbi.get_port_by_id(session,
                                          db_floatingip.floating_port_id)
@@ -268,7 +270,8 @@ class IpamEventHandler(object):
                                   db_port.id,
                                   tenant_id,
                                   db_port.device_id,
-                                  db_port.device_owner)
+                                  db_port.device_owner,
+                                  is_floating_ip)
 
     def _get_mapping_neutron_subnet(self, network_id, floating_ip):
         """Search subnet by network id and floating ip.

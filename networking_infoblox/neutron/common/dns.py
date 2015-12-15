@@ -145,7 +145,8 @@ class DnsController(object):
         return dbi.is_last_subnet_in_private_networks(session, subnet_id)
 
     def bind_names(self, ip_address, instance_name=None, port_id=None,
-                   port_tenant_id=None, device_id=None, device_owner=None):
+                   port_tenant_id=None, device_id=None, device_owner=None,
+                   is_floating_ip=False):
         if not device_owner:
             return
 
@@ -155,7 +156,8 @@ class DnsController(object):
                                           self.ib_cxt.network,
                                           port_id,
                                           device_id,
-                                          device_owner)
+                                          device_owner,
+                                          is_floating_ip)
 
         try:
             self._bind_names(self.ib_cxt.ip_alloc.bind_names, ip_address,
