@@ -146,7 +146,7 @@ class DnsController(object):
 
     def bind_names(self, ip_address, instance_name=None, port_id=None,
                    port_tenant_id=None, device_id=None, device_owner=None):
-        if not device_owner or device_owner == n_const.DEVICE_OWNER_DHCP:
+        if not device_owner:
             return
 
         tenant_id = port_tenant_id or self.ib_cxt.context.tenant_id
