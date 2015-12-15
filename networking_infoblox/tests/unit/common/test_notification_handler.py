@@ -92,4 +92,5 @@ class TestIpamEventHandler(base.TestCase):
             mock.ANY,
             payload['floatingip']['tenant_id'],
             mock.ANY,
-            mock.ANY)
+            mock.ANY,
+            True)

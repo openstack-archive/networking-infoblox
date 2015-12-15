@@ -213,6 +213,7 @@ class EaManagerTestCase(base.TestCase):
         port_id = mock.Mock()
         device_id = mock.Mock()
         device_owner = const.NEUTRON_DEVICE_OWNER_COMPUTE
+        is_floating_ip = True
         expected_ea = {'Tenant ID': self.tenant_id,
                        'Account': self.user_id,
                        'Port ID': port_id,
@@ -224,7 +225,7 @@ class EaManagerTestCase(base.TestCase):
 
         ea = ea_manager.get_ea_for_ip(self.user_id, self.tenant_id,
                                       network, port_id, device_id,
-                                      device_owner)
+                                      device_owner, is_floating_ip)
         for key, value in expected_ea.items():
             self.assertEqual(value, ea.get(key))
 
