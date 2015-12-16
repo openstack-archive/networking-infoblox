@@ -16,6 +16,7 @@
 from oslo_log import log as logging
 from oslo_utils import excutils
 
+from neutron.common import constants as n_const
 from neutron.i18n import _LE
 
 from infoblox_client import exceptions as ibc_exc
@@ -158,8 +159,11 @@ class DnsController(object):
                                           device_owner,
                                           is_floating_ip)
 
+        ip_alloc = (self.ib_cxt.dhcp_port_ip_alloc
+                    if device_owner == n_const.DEVICE_OWNER_DHCP
+                    else self.ib_cxt.ip_alloc)
         try:
-            self._bind_names(self.ib_cxt.ip_alloc.bind_names, ip_address,
+            self._bind_names(ip_alloc.bind_names, ip_address,
                              instance_name, port_id, port_tenant_id, device_id,
                              device_owner, ea_ip_address)
         except ibc_exc.InfobloxCannotCreateObject:
@@ -172,7 +176,10 @@ class DnsController(object):
         if not device_owner:
             return
 
-        self._bind_names(self.ib_cxt.ip_alloc.unbind_names, ip_address,
+        ip_alloc = (self.ib_cxt.dhcp_port_ip_alloc
+                    if device_owner == n_const.DEVICE_OWNER_DHCP
+                    else self.ib_cxt.ip_alloc)
+        self._bind_names(ip_alloc.unbind_names, ip_address,
                          instance_name, port_id, port_tenant_id, device_id,
                          device_owner)
 
