@@ -95,6 +95,7 @@ class EaManagerTestCase(base.TestCase):
         ea = ea_manager.get_ea_for_network_view(self.tenant_id)
         self.assertEqual(self.tenant_id, ea.get('Tenant ID'))
         self.assertEqual(str(False), ea.get('Cloud API Owned'))
+        self.assertEqual('OpenStack', ea.get('CMP Type'))
 
     def test_get_ea_for_network(self):
         network = {'id': mock.Mock(),
