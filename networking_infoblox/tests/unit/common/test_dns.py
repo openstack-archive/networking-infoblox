@@ -50,6 +50,9 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                          'cidr': '11.11.1.0/24',
                          'ip_version': 4}
         ib_cxt.mapping.dns_view = 'test-dns-view'
+        member = mock.Mock()
+        member.member_name = 'auth_member_name'
+        ib_cxt.mapping.authority_member = member
         ib_cxt.grid_config.ns_group = None
         ib_cxt.grid_config.default_domain_name_pattern = self.test_dns_zone
         return ib_cxt
@@ -61,13 +64,13 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             mock.call.create_dns_zone(
                 self.ib_cxt.mapping.dns_view,
                 self.test_dns_zone,
-                grid_primary=None,
+                grid_primary=[mock.ANY],
                 grid_secondaries=None,
                 extattrs=mock.ANY),
             mock.call.create_dns_zone(
                 self.ib_cxt.mapping.dns_view,
                 self.ib_cxt.subnet['cidr'],
-                grid_primary=None,
+                grid_primary=[mock.ANY],
                 prefix=None,
                 zone_format=self.test_zone_format,
                 extattrs=mock.ANY)
