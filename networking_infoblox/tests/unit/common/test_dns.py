@@ -282,7 +282,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                    port_tenant_id=tenant_id,
                                    device_id=device_id,
                                    device_owner=device_owner)
-        assert self.ib_cxt.ip_alloc.method_calls[0] == (
+        assert self.ib_cxt.dhcp_port_ip_alloc.method_calls[0] == (
             mock.call.bind_names(self.ib_cxt.mapping.network_view,
                                  self.ib_cxt.mapping.dns_view,
                                  ip_address,
@@ -295,13 +295,13 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                    port_tenant_id=tenant_id,
                                    device_id=device_id,
                                    device_owner=device_owner)
-        assert self.ib_cxt.ip_alloc.method_calls[1] == (
+        assert self.ib_cxt.ip_alloc.method_calls == [
             mock.call.bind_names(self.ib_cxt.mapping.network_view,
                                  self.ib_cxt.mapping.dns_view,
                                  ip_address,
                                  fqdn,
                                  mock.ANY)
-        )
+        ]
 
     def test_unbind_names(self):
         ip_address = '11.11.1.2'
@@ -317,21 +317,21 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         self.controller.unbind_names(ip_address, instance_name, port_id,
                                      device_owner=n_const.DEVICE_OWNER_DHCP)
-        assert self.ib_cxt.ip_alloc.method_calls[0] == (
+        assert self.ib_cxt.dhcp_port_ip_alloc.method_calls == [
             mock.call.unbind_names(self.ib_cxt.mapping.network_view,
                                    self.ib_cxt.mapping.dns_view,
                                    ip_address,
                                    fqdn,
                                    mock.ANY)
-        )
+        ]
 
         self.controller.unbind_names(
             ip_address, instance_name, port_id,
             device_owner=n_const.DEVICE_OWNER_ROUTER_GW)
-        assert self.ib_cxt.ip_alloc.method_calls[1] == (
+        assert self.ib_cxt.ip_alloc.method_calls == [
             mock.call.unbind_names(self.ib_cxt.mapping.network_view,
                                    self.ib_cxt.mapping.dns_view,
                                    ip_address,
                                    fqdn,
                                    mock.ANY)
-        )
+        ]
