@@ -72,8 +72,8 @@ class IpamControllerTestHelper(object):
                             self.options['network_view'],
                             self.options['network_view_exists'])
 
-        if self.options['network_exists']:
-            self.ib_cxt.ibom.network_exists.return_value = True
+        #if self.options['network_exists']:
+        #    self.ib_cxt.ibom.network_exists.return_value = True
 
     def _get_options(self, options):
         if not isinstance(options, dict):

@@ -125,13 +125,14 @@ class IpamSyncController(object):
         network_template = self.grid_config.network_template
 
         # check if network already exists
-        network_exists = self.ib_cxt.ibom.network_exists(
-            self.ib_cxt.mapping.network_view, cidr)
-        if network_exists:
+        ib_network = ib_objects.Network.search(
+            self.ib_cxt.connector,
+            network_view=self.ib_cxt.mapping.network_view,
+            network=cidr)
+        if ib_network:
             if is_shared or is_external:
-                ib_network = self.ib_cxt.ibom.get_network(
-                    self.ib_cxt.mapping.network_view, cidr)
-                self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
+                ib_network.extattrs = ea_network
+                ib_network.update()
                 return ib_network
             raise exc.InfobloxPrivateSubnetAlreadyExist()
 
