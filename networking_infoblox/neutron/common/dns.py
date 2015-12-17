@@ -20,6 +20,7 @@ from neutron.common import constants as n_const
 from neutron.i18n import _LE
 
 from infoblox_client import exceptions as ibc_exc
+from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import ea_manager as eam
 from networking_infoblox.neutron.common import pattern
@@ -48,6 +49,9 @@ class DnsController(object):
         dns_view = self.ib_cxt.mapping.dns_view
         ns_group = self.grid_config.ns_group
         zone_format = "IPV%s" % self.ib_cxt.subnet['ip_version']
+        member_name = self.ib_cxt.mapping.authority_member.member_name
+        grid_primary = [ib_objects.AnyMember(_struct='memberserver',
+                                             name=member_name)]
 
         prefix = utils.get_ipv4_network_prefix(cidr, subnet_name)
 
@@ -71,13 +75,13 @@ class DnsController(object):
                 ib_zone = self.ib_cxt.ibom.create_dns_zone(
                     dns_view,
                     self.dns_zone,
-                    grid_primary=None,
+                    grid_primary=grid_primary,
                     grid_secondaries=None,
                     extattrs=ea_zone)
                 ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
                     dns_view,
                     cidr,
-                    grid_primary=None,
+                    grid_primary=grid_primary,
                     prefix=prefix,
                     zone_format=zone_format,
                     extattrs=ea_zone)
