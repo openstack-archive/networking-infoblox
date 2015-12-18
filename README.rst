@@ -104,10 +104,6 @@ corresponding variables:
      - NETWORKING_INFOBLOX_DC_ADMIN_USER_NAME
    * - admin_password
      - NETWORKING_INFOBLOX_DC_ADMIN_PASSWORD
-   * - cloud_user_name
-     - NETWORKING_INFOBLOX_DC_CLOUD_USER_NAME
-   * - cloud_user_password
-     - NETWORKING_INFOBLOX_DC_CLOUD_USER_PASSWORD
    * - wapi_version
      - NETWORKING_INFOBLOX_DC_WAPI_VERSION
    * - ssl_verify
