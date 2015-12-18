@@ -199,6 +199,7 @@ class InfobloxContext(object):
             'username': wapi_user,
             'password': wapi_pwd,
             'ssl_verify': grid_connection['ssl_verify'],
+            'log_api_calls_as_info': True,
             'http_pool_connections':
                 grid_connection['http_pool_connections'],
             'http_pool_maxsize': grid_connection['http_pool_maxsize'],
