@@ -33,7 +33,7 @@ def get_ea_for_network_view(tenant_id):
     # OpenStack should not own entire network view,
     # since shared or external networks may be created in it
     attributes = {const.EA_CMP_TYPE: const.CLOUD_PLATFORM_NAME,
-                  const.EA_TENANT_ID: tenant_id,
+                  const.EA_TENANT_ID: tenant_id or 'None',
                   const.EA_CLOUD_API_OWNED: 'False'}
     return ib_objects.EA(attributes)
 
@@ -119,7 +119,7 @@ def get_common_ea(network, user_id, tenant_id, for_network=False):
 
     is_cloud_owned = not (is_external or is_shared)
     ea_dict = {const.EA_CMP_TYPE: const.CLOUD_PLATFORM_NAME,
-               const.EA_TENANT_ID: tenant_id,
+               const.EA_TENANT_ID: tenant_id or 'None',
                const.EA_ACCOUNT: user_id,
                const.EA_CLOUD_API_OWNED: str(is_cloud_owned)}
     if for_network:
