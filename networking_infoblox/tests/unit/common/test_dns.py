@@ -50,9 +50,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                          'cidr': '11.11.1.0/24',
                          'ip_version': 4}
         ib_cxt.mapping.dns_view = 'test-dns-view'
-        member = mock.Mock()
-        member.member_name = 'auth_member_name'
-        ib_cxt.mapping.authority_member = member
+        ib_cxt.get_dns_members.return_value = ([mock.ANY], None)
         ib_cxt.grid_config.ns_group = None
         ib_cxt.grid_config.default_domain_name_pattern = self.test_dns_zone
         return ib_cxt

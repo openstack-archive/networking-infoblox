@@ -22,10 +22,12 @@ import re
 import six
 import urllib
 
-from infoblox_client import connector as conn
-from infoblox_client import feature
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
+
+from infoblox_client import connector as conn
+from infoblox_client import feature
+from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import config as cfg
 from networking_infoblox.neutron.common import constants as const
@@ -150,7 +152,7 @@ def get_ea_value(name, extattrs, should_return_list_value=False):
 def get_ip_version(ip_address):
     valid = ip_address and isinstance(ip_address, six.string_types)
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if type(ip_address) is dict:
         ip = ip_address['ip_address']
@@ -179,7 +181,7 @@ def generate_duid(mac):
     """
     valid = mac and isinstance(mac, six.string_types)
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
     duid = [0x00,
             random.randint(0x00, 0x7f),
             random.randint(0x00, 0xff),
@@ -193,7 +195,7 @@ def get_list_from_string(data_string, delimiter_list):
              delimiter_list and
              isinstance(delimiter_list, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     list_data = remove_any_space(data_string)
     if isinstance(delimiter_list, six.string_types):
@@ -222,14 +224,14 @@ def get_list_from_string(data_string, delimiter_list):
         result_list[1] = [m for m in result_list[1] if m]
         return result_list
 
-    raise ValueError("Unsupported delimiter list type")
+    raise ValueError("Unsupported delimiter list type.")
 
 
 def exists_in_sequence(sub_sequence_to_find, full_list_in_sequence):
     valid = (isinstance(sub_sequence_to_find, list) and
              isinstance(full_list_in_sequence, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not sub_sequence_to_find or not full_list_in_sequence:
         return False
@@ -244,7 +246,7 @@ def exists_in_sequence(sub_sequence_to_find, full_list_in_sequence):
 def exists_in_list(list_to_find, full_list):
     valid = isinstance(list_to_find, list) and isinstance(full_list, list)
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not list_to_find or not full_list:
         return False
@@ -259,7 +261,7 @@ def find_one_in_list(search_key, search_value, search_list):
              isinstance(search_value, six.string_types) and
              isinstance(search_list, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not search_key or not search_value or not search_list:
         return None
@@ -279,7 +281,7 @@ def find_in_list_by_condition(search_key_value_pairs, search_list):
     valid = (isinstance(search_key_value_pairs, dict) and
              isinstance(search_list, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not search_key_value_pairs or not search_list:
         return None
@@ -308,12 +310,34 @@ def find_in_list(search_key, search_values, search_list):
              isinstance(search_values, list) and
              isinstance(search_list, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not search_key or not search_values or not search_list:
         return None
 
     found_list = [m for m in search_list if m.get(search_key) in search_values]
+    return found_list
+
+
+def find_in_list_by_value(search_value, search_list,
+                          first_occurrence_only=True):
+    """Find item(s) that match(es) the search value from the search list."""
+    valid = (isinstance(search_value, six.string_types) and
+             isinstance(search_list, list))
+    if not valid:
+        raise ValueError("Invalid argument was passed.")
+
+    if not search_value or not search_list:
+        return None
+
+    if isinstance(search_list[0], dict):
+        found_list = [m for m in search_list if search_value in m.values()]
+    else:
+        found_list = [m for m in search_list
+                      if search_value in m.__dict__.values()]
+
+    if first_occurrence_only:
+        return found_list[0] if found_list else None
     return found_list
 
 
@@ -327,7 +351,7 @@ def find_key_from_list(search_key, search_list):
     valid = (isinstance(search_key, six.string_types) and
              isinstance(search_list, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not search_key or not search_list:
         return None
@@ -341,7 +365,7 @@ def merge_list(*list_args):
     merge_lsit = []
     for lst in list_args:
         if not isinstance(lst, list):
-            raise ValueError("Invalid argument was passed")
+            raise ValueError("Invalid argument was passed.")
         merge_lsit += lst
     return list(set(merge_lsit))
 
@@ -443,7 +467,7 @@ def get_ipv4_network_prefix(cidr, subnet_name):
     """Add prefix for an ipv4 classless network mask greater than 24."""
     valid = cidr and isinstance(cidr, six.string_types)
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     try:
         ip_net = netaddr.IPNetwork(cidr)
@@ -464,3 +488,99 @@ def get_ipv4_network_prefix(cidr, subnet_name):
 
 def get_features(version):
     return feature.Feature(version)
+
+
+def get_dhcp_member_ips(ib_network):
+    """Get dhcp member ips from network json or ib network object."""
+    member_ips = []
+    if (not ib_network or not (isinstance(ib_network, dict) or
+                               isinstance(ib_network, ib_objects.Network))):
+        return member_ips
+
+    if isinstance(ib_network, dict):
+        if ib_network.get('members'):
+            for member in ib_network['members']:
+                if member.get('_struct') == 'dhcpmember':
+                    member_ip = (member.get('ipv4addr') or
+                                 member.get('ipv6addr'))
+                    if member_ip:
+                        member_ips.append(member_ip)
+    else:
+        for member in ib_network.members:
+            if member._struct == 'dhcpmember':
+                member_ip = member.ipv4addr or member.ipv6addr
+                if member_ip:
+                    member_ips.append(member_ip)
+    return member_ips
+
+
+def get_dns_member_ips(ib_network):
+    """Get dns member ips from network json or ib network object."""
+    member_ips = []
+    if (not ib_network or not (isinstance(ib_network, dict) or
+                               isinstance(ib_network, ib_objects.Network))):
+        return member_ips
+
+    if isinstance(ib_network, dict):
+        if ib_network.get('options'):
+            for option in ib_network['options']:
+                if option.get('name') == 'domain-name-servers':
+                    option_values = option.get('value')
+                    if option_values:
+                        member_ips = option_values.split(',')
+                    break
+    else:
+        for option in ib_network.options:
+            if option.name == 'domain-name-servers':
+                if option.value:
+                    member_ips = option.value.split(',')
+                break
+    return member_ips
+
+
+def get_router_ips(ib_network):
+    """Get gateway ips (routers) from network json or ib network object."""
+    router_ips = []
+    if (not ib_network or not (isinstance(ib_network, dict) or
+                               isinstance(ib_network, ib_objects.Network))):
+        return router_ips
+
+    if isinstance(ib_network, dict):
+        if ib_network.get('options'):
+            for option in ib_network['options']:
+                if option.get('name') == 'routers':
+                    option_values = option.get('value')
+                    if option_values:
+                        router_ips = option_values.split(',')
+                    break
+    else:
+        for option in ib_network.options:
+            if option.name == 'routers':
+                if option.value:
+                    router_ips = option.value.split(',')
+                break
+    return router_ips
+
+
+def find_member_by_ip_from_list(member_ip, members):
+    """Find a member by ip which could be either ipv4 or ip6."""
+    ip_ver = get_ip_version(member_ip)
+    if ip_ver == 4:
+        member = find_one_in_list('member_ip', member_ip, members)
+    else:
+        member = find_one_in_list('member_ipv6', member_ip, members)
+    return member
+
+
+def get_nameservers(user_nameservers, ib_dns_members, ip_version):
+    """User nameservers must come after infoblox dns members if specified."""
+    if (not isinstance(user_nameservers, list) or
+            not ib_dns_members or
+            not isinstance(ib_dns_members, list) or
+            ip_version not in [4, 6]):
+        raise ValueError("Invalid argument was passed.")
+
+    nameservers = [n for n in [m.member_ipv6 if ip_version == 6
+                               else m.member_ip for m in ib_dns_members] if n]
+    nameservers += [n for n in user_nameservers if n not in nameservers]
+    return nameservers

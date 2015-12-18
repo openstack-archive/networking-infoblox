@@ -23,6 +23,7 @@ from neutron.ipam import requests as ipam_req
 from neutron.ipam import subnet_alloc
 from neutron import manager
 
+from infoblox_client import exceptions as ib_exc
 from infoblox_client import objects as ib_objects
 
 from networking_infoblox.ipam import requests
@@ -131,8 +132,10 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         ipam_controller = ipam.IpamSyncController(ib_context)
         dns_controller = dns.DnsController(ib_context)
 
-        ib_network = ipam_controller.create_subnet()
-        dns_controller.create_dns_zones()
+        ib_network = self._create_ib_network(ipam_controller)
+        if ib_network:
+            dns_controller.create_dns_zones()
+            LOG.info("Created DNS zones.")
 
         return InfobloxSubnet(subnet_request, neutron_subnet, ib_network,
                               ib_context)
@@ -148,6 +151,25 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
                 'allocation_pools': subnet_request.allocation_pools,
                 'gateway_ip': subnet_request.gateway_ip,
                 'enable_dhcp': subnet_request.enable_dhcp}
+
+    @staticmethod
+    def _create_ib_network(ipam_controller):
+        retry = 1
+        while True:
+            try:
+                LOG.info("Attempting to create ib network...")
+                ib_network = ipam_controller.create_subnet()
+                LOG.info("Successfully created ib network.")
+                break
+            except ib_exc.InfobloxMemberAlreadyAssigned:
+                LOG.info("ib network creation failed due to member assignment "
+                         "issue, tried %s time(s)", retry)
+                retry += 1
+                if retry > const.MEMBER_RESERVATION_RETRY:
+                    raise exc.InfobloxCannotCreateSubnet(
+                        reason="The grid has no more member available "
+                               "to server the current subnet.")
+        return ib_network
 
     def update_subnet(self, subnet_request):
         """Update IPAM Subnet.
