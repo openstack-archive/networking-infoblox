@@ -131,8 +131,30 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         ipam_controller = ipam.IpamSyncController(ib_context)
         dns_controller = dns.DnsController(ib_context)
 
-        ib_network = ipam_controller.create_subnet()
+        # TODO(hhwang): We will add ib exception in connector to know if the
+        # failure is caused because the member is already in use and retry
+        # the member reservation in that case.
+        retry = 1
+        while True:
+            try:
+                LOG.info("Attempting to create ib network...")
+                ib_network = ipam_controller.create_subnet()
+                LOG.info("Successfully created ib network.")
+                break
+            except Exception as ex:
+                LOG.info("ib network creation tried %s time(s) but failed "
+                         "with exception: %s", retry, ex)
+                retry += 1
+                if retry > const.MEMBER_RESERVATION_RETRY:
+                    # FIXME(hhwang): change exception message when member
+                    # reservation failure exception is created from infoblox
+                    # client
+                    raise exc.InfobloxCannotCreateSubnet(
+                        reason="NIOS may be not stable or no member available "
+                               "to serve DHCP if DHCP is supported.")
+
         dns_controller.create_dns_zones()
+        LOG.info("Created DNS zones.")
 
         return InfobloxSubnet(subnet_request, neutron_subnet, ib_network,
                               ib_context)

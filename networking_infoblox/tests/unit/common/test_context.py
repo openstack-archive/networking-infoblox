@@ -22,6 +22,8 @@ from neutron import context
 from neutron import manager
 from neutron.tests.unit import testlib_api
 
+from infoblox_client import objects as ib_objects
+
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import context as ib_context
 from networking_infoblox.neutron.common import utils
@@ -317,3 +319,369 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                          ib_cxt.mapping.network_view)
         self.assertEqual(expected_authority_member_id,
                          ib_cxt.mapping.authority_member.member_id)
+
+    @mock.patch.object(dbi, 'add_network_view')
+    @mock.patch.object(dbi, 'get_next_authority_member_for_ipam')
+    def test_reserve_authority_member_without_dhcp_support(
+            self, dbi_next_authority_mock, dbi_network_view_mock):
+        user_id = 'test user'
+        self.grid_config.dhcp_support = False
+        self.grid_config.dns_view = 'test-view'
+
+        test_authority_member = utils.json_to_obj(
+            'AuthorityMember',
+            {'member_id': 'member-id', 'member_type': 'GM',
+             'member_ip': '11.11.1.10', 'member_ipv6': None})
+        dbi_next_authority_mock.return_value = test_authority_member
+
+        test_network_view = utils.json_to_obj(
+            'NetworkView',
+            {'id': 'test-id', 'network_view': 'test-view', 'shared': False})
+        dbi_network_view_mock.return_value = test_network_view
+
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, None, None,
+                                            self.grid_config, self.plugin)
+        ib_cxt.mapping.network_view = test_network_view.network_view
+
+        ib_cxt.reserve_authority_member()
+
+        self.assertEqual(test_network_view.id, ib_cxt.mapping.network_view_id)
+        self.assertEqual(test_authority_member.member_id,
+                         ib_cxt.mapping.authority_member.member_id)
+
+    @mock.patch.object(dbi, 'add_network_view')
+    @mock.patch.object(dbi, 'get_next_authority_member_for_dhcp')
+    def test_reserve_authority_member_with_dhcp_support(
+            self, dbi_next_authority_mock, dbi_network_view_mock):
+        user_id = 'test user'
+        tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
+
+        # prepare network
+        network_name = 'Test Network'
+        network = self.plugin_stub.create_network(tenant_id, network_name)
+
+        # prepare subnet with cidr tat is not used in mapping conditions
+        subnet_name = 'Test Subnet'
+        subnet_cidr = '11.11.2.0/24'
+        subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
+                                                network['id'], subnet_cidr)
+
+        self.grid_config.dhcp_support = True
+
+        test_authority_member = utils.json_to_obj(
+            'AuthorityMember',
+            {'member_id': 'member-id', 'member_type': 'CPM',
+             'member_ip': '11.11.1.11', 'member_ipv6': None,
+             'member_status': 'ON'})
+        dbi_next_authority_mock.return_value = test_authority_member
+
+        test_network_view = utils.json_to_obj(
+            'NetworkView',
+            {'id': 'test-id', 'network_view': 'test-view', 'shared': False})
+        dbi_network_view_mock.return_value = test_network_view
+
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+        ib_cxt.reserve_authority_member()
+
+        self.assertEqual(test_network_view.id,
+                         ib_cxt.mapping.network_view_id)
+        self.assertEqual(test_authority_member.member_id,
+                         ib_cxt.mapping.authority_member.member_id)
+
+    def test_reserve_service_members_without_ib_network_for_cpm_authortity(
+            self):
+        user_id = 'test user'
+        tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
+
+        # prepare network
+        network_name = 'Test Network'
+        network = self.plugin_stub.create_network(tenant_id, network_name)
+
+        # prepare subnet with cidr tat is not used in mapping conditions
+        subnet_name = 'Test Subnet'
+        subnet_cidr = '11.11.2.0/24'
+        subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
+                                                network['id'], subnet_cidr)
+
+        self.grid_config.dhcp_support = True
+
+        test_authority_member = utils.json_to_obj(
+            'AuthorityMember',
+            {'member_id': 'member-id', 'member_type': 'CPM',
+             'member_ip': '11.11.1.11', 'member_ipv6': None,
+             'member_status': 'ON'})
+
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+        ib_cxt.mapping.authority_member = test_authority_member
+        ib_cxt._register_services = mock.Mock()
+
+        ib_cxt.reserve_service_members()
+
+        self.assertEqual([test_authority_member], ib_cxt.mapping.dhcp_members)
+        self.assertEqual([test_authority_member], ib_cxt.mapping.dns_members)
+
+    @mock.patch.object(dbi, 'get_next_dhcp_member')
+    def test_reserve_service_members_without_ib_network_for_gm_authortity(
+            self, dbi_next_dhcp_member_mock):
+        user_id = 'test user'
+        tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
+
+        # prepare network
+        network_name = 'Test Network'
+        network = self.plugin_stub.create_network(tenant_id, network_name)
+
+        # prepare subnet with cidr tat is not used in mapping conditions
+        subnet_name = 'Test Subnet'
+        subnet_cidr = '11.11.1.0/24'
+        subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
+                                                network['id'], subnet_cidr)
+
+        self.grid_config.dhcp_support = True
+
+        test_authority_member = utils.json_to_obj(
+            'AuthorityMember',
+            {'member_id': 'member-id', 'member_type': 'GM',
+             'member_ip': '11.11.1.11', 'member_ipv6': None,
+             'member_status': 'ON'})
+        dbi_next_dhcp_member_mock.return_value = test_authority_member
+
+        test_dhcp_member = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'REGULAR',
+             'member_ip': '11.11.1.12', 'member_ipv6': None,
+             'member_status': 'ON'})
+        dbi_next_dhcp_member_mock.return_value = test_dhcp_member
+
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+        ib_cxt.mapping.authority_member = test_authority_member
+        ib_cxt._register_services = mock.Mock()
+
+        ib_cxt.reserve_service_members()
+
+        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dhcp_members)
+        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dns_members)
+
+    @mock.patch.object(dbi, 'get_next_dhcp_member')
+    def test_reserve_service_members_with_ib_network_no_member_no_option(
+            self, dbi_next_dhcp_member_mock):
+        user_id = 'test user'
+        tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
+
+        # prepare network
+        network_name = 'Test Network'
+        network = self.plugin_stub.create_network(tenant_id, network_name)
+
+        # prepare subnet with cidr tat is not used in mapping conditions
+        subnet_name = 'Test Subnet'
+        subnet_cidr = '11.11.1.0/24'
+        subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
+                                                network['id'], subnet_cidr)
+
+        self.grid_config.dhcp_support = True
+
+        test_dhcp_member = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'REGULAR',
+             'member_ip': '11.11.1.12', 'member_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON'})
+        dbi_next_dhcp_member_mock.return_value = test_dhcp_member
+
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+        ib_cxt._register_services = mock.Mock()
+
+        # ib network with no members and options
+        connector = mock.Mock()
+        test_ib_network = ib_objects.NetworkV4(connector,
+                                               network_view='test-view',
+                                               cidr='12.12.1.0/24')
+        test_ib_network.members = []
+        test_ib_network.options = []
+
+        ib_cxt.reserve_service_members(test_ib_network)
+
+        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dhcp_members)
+        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dns_members)
+        actual_opt_router = [opt for opt in test_ib_network.options
+                             if opt.name == 'routers']
+        self.assertEqual(subnet['gateway_ip'], actual_opt_router[0].value)
+
+    @mock.patch.object(dbi, 'get_next_dhcp_member')
+    def test_reserve_service_members_with_ib_network_dhcp_member_no_option(
+            self, dbi_next_dhcp_member_mock):
+        user_id = 'test user'
+        tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
+
+        # prepare network
+        network_name = 'Test Network'
+        network = self.plugin_stub.create_network(tenant_id, network_name)
+
+        # prepare subnet with cidr tat is not used in mapping conditions
+        subnet_name = 'Test Subnet'
+        subnet_cidr = '11.11.1.0/24'
+        subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
+                                                network['id'], subnet_cidr)
+
+        self.grid_config.dhcp_support = True
+
+        test_dhcp_member = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'REGULAR',
+             'member_ip': '11.11.1.12', 'member_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON'})
+        dbi_next_dhcp_member_mock.return_value = test_dhcp_member
+
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+        ib_cxt._register_services = mock.Mock()
+
+        # ib network with dhcp member assigned
+        connector = mock.Mock()
+        test_ib_network = ib_objects.NetworkV4(connector,
+                                               network_view='test-view',
+                                               cidr='12.12.1.0/24')
+        test_ib_network.members = [
+            ib_objects.AnyMember(_struct='dhcpmember',
+                                 name=test_dhcp_member.member_name)]
+        test_ib_network.options = []
+
+        ib_cxt.reserve_service_members(test_ib_network)
+
+        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dhcp_members)
+        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dns_members)
+        actual_opt_router = [opt for opt in test_ib_network.options
+                             if opt.name == 'routers']
+        self.assertEqual(subnet['gateway_ip'], actual_opt_router[0].value)
+
+    @mock.patch.object(dbi, 'get_next_dhcp_member')
+    def test_reserve_service_members_with_ib_network_dhcp_member_option(
+            self, dbi_next_dhcp_member_mock):
+        user_id = 'test user'
+        tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
+
+        # prepare network
+        network_name = 'Test Network'
+        network = self.plugin_stub.create_network(tenant_id, network_name)
+
+        # prepare subnet with cidr tat is not used in mapping conditions
+        subnet_name = 'Test Subnet'
+        subnet_cidr = '11.11.1.0/24'
+        subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
+                                                network['id'], subnet_cidr)
+
+        self.grid_config.dhcp_support = True
+
+        test_dhcp_member = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'REGULAR',
+             'member_ip': '11.11.1.12', 'member_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON'})
+        dbi_next_dhcp_member_mock.return_value = test_dhcp_member
+
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+        ib_cxt._register_services = mock.Mock()
+
+        # ib network with dhcp member and gateway ips assigned
+        connector = mock.Mock()
+        test_ib_network = ib_objects.NetworkV4(connector,
+                                               network_view='test-view',
+                                               cidr='12.12.1.0/24')
+        test_ib_network.members = [
+            ib_objects.AnyMember(_struct='dhcpmember',
+                                 name=test_dhcp_member.member_name)]
+        test_gateway_ip = '12.12.1.1'
+        test_ib_network.options = [
+            ib_objects.DhcpOption(name='routers',
+                                  value=test_gateway_ip)]
+
+        ib_cxt.reserve_service_members(test_ib_network)
+
+        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dhcp_members)
+        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dns_members)
+        actual_opt_router = [opt for opt in test_ib_network.options
+                             if opt.name == 'routers']
+        self.assertEqual([subnet['gateway_ip'], test_gateway_ip],
+                         actual_opt_router[0].value)
+
+    def test_get_dns_members_without_dhcp_support(self):
+        user_id = 'test user'
+        tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
+
+        # prepare network
+        network_name = 'Test Network'
+        network = self.plugin_stub.create_network(tenant_id, network_name)
+
+        # prepare subnet with cidr tat is not used in mapping conditions
+        subnet_name = 'Test Subnet'
+        subnet_cidr = '11.11.1.0/24'
+        subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
+                                                network['id'], subnet_cidr)
+
+        self.grid_config.dhcp_support = False
+
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+
+        test_authority_member = utils.json_to_obj(
+            'AuthorityMember',
+            {'member_id': 'member-id', 'member_type': 'GM',
+             'member_ip': '11.11.1.11', 'member_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON'})
+        ib_cxt.mapping.authority_member = test_authority_member
+
+        grid_primaries, grid_secondaries = ib_cxt.get_dns_members()
+
+        expected_grid_primaries = [
+            ib_objects.AnyMember(_struct='memberserver',
+                                 name=test_authority_member.member_name)]
+        self.assertEqual(expected_grid_primaries[0].name,
+                         grid_primaries[0].name)
+        self.assertEqual(None, grid_secondaries)
+
+    def test_get_dns_members_with_dhcp_support(self):
+        user_id = 'test user'
+        tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
+
+        # prepare network
+        network_name = 'Test Network'
+        network = self.plugin_stub.create_network(tenant_id, network_name)
+
+        # prepare subnet with cidr tat is not used in mapping conditions
+        subnet_name = 'Test Subnet'
+        subnet_cidr = '11.11.1.0/24'
+        subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
+                                                network['id'], subnet_cidr)
+
+        self.grid_config.dhcp_support = True
+
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+
+        test_authority_member = utils.json_to_obj(
+            'AuthorityMember',
+            {'member_id': 'member-id', 'member_type': 'GM',
+             'member_ip': '11.11.1.11', 'member_ipv6': None,
+             'member_status': 'ON'})
+        ib_cxt.mapping.authority_member = test_authority_member
+
+        test_dhcp_member_1 = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'REGULAR',
+             'member_ip': '11.11.1.12', 'member_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON'})
+        test_dhcp_member_2 = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'CPM',
+             'member_ip': '11.11.1.13', 'member_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON'})
+        ib_cxt.mapping.dhcp_members = [test_dhcp_member_1, test_dhcp_member_2]
+        ib_cxt.mapping.dns_members = [test_dhcp_member_1, test_dhcp_member_2]
+
+        grid_primaries, grid_secondaries = ib_cxt.get_dns_members()
+
+        self.assertEqual([test_dhcp_member_1], grid_primaries)
+        self.assertEqual([test_dhcp_member_2], grid_secondaries)

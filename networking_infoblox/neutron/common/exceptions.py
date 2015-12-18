@@ -36,6 +36,21 @@ class InfobloxCannotReserveAuthorityMember(exceptions.NeutronException):
                 "%(network_view)s")
 
 
+class InfobloxAuthorityMemberNotReserved(exceptions.NeutronException):
+    message = _("Authority member is not reserved for network view: "
+                "%(network_view)s")
+
+
+class InfobloxDHCPMemberNotReserved(exceptions.NeutronException):
+    message = _("DHCP member is not reserved for network view: "
+                "(%(network_view)s), cidr (%(cidr)s)")
+
+
+class InfobloxDNSMemberNotReserved(exceptions.NeutronException):
+    message = _("DNS member is not reserved for network view "
+                "(%(network_view)s), cidr (%(cidr)s)")
+
+
 class InfobloxNetworkViewMappingNotFound(exceptions.NeutronException):
     message = _("Cannot find a network view mapped for subnet %(subnet_id)s")
 
@@ -43,6 +58,10 @@ class InfobloxNetworkViewMappingNotFound(exceptions.NeutronException):
 class MultipleNetworkViewMappingFound(exceptions.Conflict):
     message = _("Multiple network view mapping found. You need to add more "
                 "filters to narrow down the search")
+
+
+class InfobloxCannotCreateSubnet(exceptions.NeutronException):
+    message = _("Cannot create a subnet because %(reason)s")
 
 
 class InfobloxPrivateSubnetAlreadyExist(exceptions.Conflict):

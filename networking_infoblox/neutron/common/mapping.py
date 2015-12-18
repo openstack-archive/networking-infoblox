@@ -75,7 +75,9 @@ class GridMappingManager(object):
             session, grid_id=self._grid_id)
         self.db_mapping_conditions = dbi.get_mapping_conditions(
             session, grid_id=self._grid_id)
-        self.db_mapping_members = dbi.get_mapping_members(
+        self.db_authority_members = dbi.get_mapping_members(
+            session, grid_id=self._grid_id)
+        self.db_service_members = dbi.get_service_members(
             session, grid_id=self._grid_id)
 
     def _sync_network_views(self, discovered_netviews):
@@ -168,32 +170,58 @@ class GridMappingManager(object):
         session = self._context.session
         self._load_persisted_mappings()
 
-        discovered_mapping = self._get_mapping_members(discovered_networks,
-                                                       discovered_delegations)
+        discovered_mapping = self._get_member_mapping(discovered_networks,
+                                                      discovered_delegations)
 
-        # add or remove mapping members
-        persisted_mapping_members = utils.get_composite_values_from_records(
+        # add or remove authority mapping members
+        persisted_authority_members = utils.get_composite_values_from_records(
             ['network_view_id', 'member_id', 'mapping_relation'],
-            self.db_mapping_members,
+            self.db_authority_members,
             DELIMITER)
-        persisted_set = set(persisted_mapping_members)
+        persisted_set = set(persisted_authority_members)
         discovered_set = set(discovered_mapping['authority_members'])
         addable_set = discovered_set.difference(persisted_set)
         removable_set = persisted_set.difference(discovered_set)
 
-        for mapping_member_info in addable_set:
-            mapping_member = mapping_member_info.split(DELIMITER)
-            network_view_id = mapping_member[0]
-            member_id = mapping_member[1]
-            mapping_relation = mapping_member[2]
+        for authority_member_info in addable_set:
+            authority_member = authority_member_info.split(DELIMITER)
+            network_view_id = authority_member[0]
+            member_id = authority_member[1]
+            mapping_relation = authority_member[2]
             dbi.add_mapping_member(session, network_view_id, member_id,
                                    mapping_relation)
 
-        for mapping_member_info in removable_set:
-            mapping_member = mapping_member_info.split(DELIMITER)
-            network_view_id = mapping_member[0]
-            member_id = mapping_member[1]
+        for authority_member_info in removable_set:
+            authority_member = authority_member_info.split(DELIMITER)
+            network_view_id = authority_member[0]
+            member_id = authority_member[1]
             dbi.remove_mapping_member(session, network_view_id, member_id)
+
+        # add or remove service members
+        persisted_service_members = utils.get_composite_values_from_records(
+            ['network_view_id', 'member_id', 'service'],
+            self.db_service_members,
+            DELIMITER)
+        persisted_set = set(persisted_service_members)
+        discovered_set = set(discovered_mapping['service_members'])
+        addable_set = discovered_set.difference(persisted_set)
+        removable_set = persisted_set.difference(discovered_set)
+
+        for service_member_info in addable_set:
+            service_member = service_member_info.split(DELIMITER)
+            network_view_id = service_member[0]
+            member_id = service_member[1]
+            service = service_member[2]
+            dbi.add_service_member(session, network_view_id, member_id,
+                                   service)
+
+        for service_member_info in removable_set:
+            service_member = service_member_info.split(DELIMITER)
+            network_view_id = service_member[0]
+            member_id = service_member[1]
+            service = service_member[2]
+            dbi.remove_service_member(session, network_view_id,
+                                      member_id=member_id, service=service)
 
     def _discover_network_views(self):
         return_fields = ['name', 'is_default', 'extattrs']
@@ -205,7 +233,7 @@ class GridMappingManager(object):
         return netviews
 
     def _discover_networks(self):
-        return_fields = ['members', 'network_view', 'network']
+        return_fields = ['members', 'network_view', 'network', 'options']
         if self._grid_config.is_cloud_wapi:
             return_fields.append('cloud_info')
 
@@ -222,19 +250,21 @@ class GridMappingManager(object):
             ipv6networks = []
         return ipv4networks + ipv6networks
 
-    def _get_mapping_members(self, discovered_networks,
-                             discovered_delegations):
-        """Returns authority members and dhcp members.
+    def _get_member_mapping(self, discovered_networks, discovered_delegations):
+        """Returns members that are used for authority and dhcp.
 
         Authority members own network views because they are either GM who owns
         non delegated network views or Cloud Platform Member(CPM) who owns
         delegated network views.
+
+        DHCP members are the members who serve DHCP protocols.
         """
         gm_row = utils.find_one_in_list('member_type',
                                         const.MEMBER_TYPE_GRID_MASTER,
                                         self.db_members)
         gm_member_id = gm_row.member_id
         mapping_authority_members = []
+        mapping_service_members = []
 
         # first get delegated authority members from Infoblox network views
         for netview in discovered_delegations:
@@ -248,12 +278,14 @@ class GridMappingManager(object):
                                 mapping_relation)
             mapping_authority_members.append(mapping_row_info)
 
-        # then get authority members from Infoblox networks
+        # then get authority and dhcp members from Infoblox networks
         for network in discovered_networks:
             netview = network['network_view']
             netview_row = utils.find_one_in_list('network_view', netview,
                                                  self.db_network_views)
             netview_id = netview_row.id
+
+            # get authority member
             mapping_relation = const.MAPPING_RELATION_GM_OWNED
             authority_member = gm_member_id
             delegated_member = self._get_delegated_member(network)
@@ -271,11 +303,26 @@ class GridMappingManager(object):
             if mapping_member_info not in mapping_authority_members:
                 mapping_authority_members.append(mapping_member_info)
 
-            # TODO(hhwang): for Phase 2, take care dhcp and dns members
-            # dhcp_members = self._get_dhcp_members(network)
+            # get dhcp member
+            dhcp_members = self._get_dhcp_members(network)
+            for member in dhcp_members:
+                mapping_member_info = (netview_id + DELIMITER +
+                                       member.member_id + DELIMITER +
+                                       const.SERVICE_TYPE_DHCP)
+                if mapping_member_info not in mapping_service_members:
+                    mapping_service_members.append(mapping_member_info)
+
+            # get dns member
+            dns_members = self._get_dns_members(network)
+            for member in dns_members:
+                mapping_member_info = (netview_id + DELIMITER +
+                                       member.member_id + DELIMITER +
+                                       const.SERVICE_TYPE_DNS)
+                if mapping_member_info not in mapping_service_members:
+                    mapping_service_members.append(mapping_member_info)
 
         return {'authority_members': mapping_authority_members,
-                'dhcp_members ': []}
+                'service_members': mapping_service_members}
 
     def _get_mapping_conditions(self, netview_dict):
         conditions = dict()
@@ -285,12 +332,12 @@ class GridMappingManager(object):
                 conditions[object_name] = object_value
         return conditions
 
-    def _get_delegated_member(self, netview_dict):
+    def _get_delegated_member(self, network_dict):
         delegated_member = None
-        if (netview_dict.get('cloud_info') and
-                netview_dict['cloud_info'].get('delegated_member')):
+        if (network_dict.get('cloud_info') and
+                network_dict['cloud_info'].get('delegated_member')):
             delegated_member_name = (
-                netview_dict['cloud_info']['delegated_member']['name'])
+                network_dict['cloud_info']['delegated_member']['name'])
             delegated_member = utils.find_one_in_list(
                 'member_name', delegated_member_name, self.db_members)
             if not delegated_member:
@@ -298,18 +345,31 @@ class GridMappingManager(object):
                     member=delegated_member_name)
         return delegated_member
 
-    def _get_dhcp_members(self, netview_dict):
+    def _get_dhcp_members(self, network_dict):
+        # multiple dhcp members can be assigned to a network
         dhcp_members = []
-        if netview_dict.get('members'):
-            for member in netview_dict['members']:
-                if member['_struct'] == 'dhcpmember':
-                    dhcp_member = utils.find_one_in_list(
-                        'member_name ', member['name'], self.db_members)
-                    if not dhcp_member:
-                        raise exc.InfobloxCannotFindMember(
-                            member=member['name'])
-                    dhcp_members.append(dhcp_member)
+        member_ips = utils.get_dhcp_member_ips(network_dict)
+        for member_ip in member_ips:
+            dhcp_member = utils.find_in_list_by_value(member_ip,
+                                                      self.db_members)
+            if not dhcp_member:
+                raise exc.InfobloxCannotFindMember(
+                    member=member_ip)
+            dhcp_members.append(dhcp_member)
         return dhcp_members
+
+    def _get_dns_members(self, network_dict):
+        # multiple dns members can be assigned to a network
+        dns_members = []
+        member_ips = utils.get_dns_member_ips(network_dict)
+        for member_ip in member_ips:
+            dns_member = utils.find_in_list_by_value(member_ip,
+                                                     self.db_members)
+            if not dns_member:
+                raise exc.InfobloxCannotFindMember(
+                    member=member_ip)
+            dns_members.append(dns_member)
+        return dns_members
 
     def _update_mapping_conditions(self, discovered_netview, netview_id):
         session = self._context.session
