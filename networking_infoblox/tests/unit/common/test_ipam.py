@@ -52,7 +52,6 @@ class IpamControllerTestHelper(object):
         self.ib_cxt.grid_config.admin_network_deletion = False
         self.ib_cxt.grid_config.network_template = None
         self.ib_cxt.grid_config.dhcp_relay_management_network = None
-        self.ib_cxt.ibom.network_exists.return_value = False
 
     def prepare_test(self, options):
         self.options = self._get_options(options)
@@ -132,10 +131,14 @@ class IpamControllerTestHelper(object):
         if network_view_exists is False:
             self.ib_cxt.mapping.network_view_id = None
             self.ib_cxt.mapping.authority_member = None
+            self.ib_cxt.mapping.dhcp_members = []
+            self.ib_cxt.mapping.dns_members = []
         else:
             self.ib_cxt.mapping.network_view_id = str.format("{}-id",
                                                              network_view)
             self.ib_cxt.mapping.authority_member = mock.Mock()
+            self.ib_cxt.mapping.dhcp_members = [mock.Mock()]
+            self.ib_cxt.mapping.dns_members = [mock.Mock()]
 
 
 class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
@@ -150,15 +153,13 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         if self.ib_cxt.mapping.network_view_id:
             self.ib_cxt.ibom.create_network_view.assert_not_called()
         else:
-            self.ib_cxt.ibom.create_network_view.assert_called_once_with(
-                network_view, mock.ANY)
+            self.ib_cxt.reserve_authority_member.assert_called_once_with()
 
-        self.ib_cxt.ibom.network_exists.assert_called_once_with(
-            network_view, subnet['cidr'])
+        self.ib_cxt.reserve_service_members.assert_called_once_with()
 
         self.ib_cxt.ibom.create_network.assert_called_once_with(
-            network_view, subnet['cidr'], [], [], subnet['gateway_ip'],
-            None, mock.ANY)
+            network_view, subnet['cidr'], mock.ANY, mock.ANY,
+            str(subnet['gateway_ip']), None, mock.ANY)
 
         allocation_pools = subnet['allocation_pools'][0]
         first_ip = netaddr.IPAddress(allocation_pools.first,
@@ -179,7 +180,10 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.helper.prepare_test(test_opts)
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
-        ipam_controller.create_subnet()
+        with mock.patch.object(ib_objects.Network,
+                               'search',
+                               return_value=None):
+            ipam_controller.create_subnet()
 
         self.validate_network_creation(self.helper.options['network_view'],
                                        self.helper.subnet)
@@ -190,7 +194,10 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.helper.prepare_test(test_opts)
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
-        ipam_controller.create_subnet()
+        with mock.patch.object(ib_objects.Network,
+                               'search',
+                               return_value=None):
+            ipam_controller.create_subnet()
 
         self.validate_network_creation(self.helper.options['network_view'],
                                        self.helper.subnet)
@@ -200,8 +207,11 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.helper.prepare_test(test_opts)
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
-        self.assertRaises(exc.InfobloxPrivateSubnetAlreadyExist,
-                          ipam_controller.create_subnet)
+        with mock.patch.object(ib_objects.Network,
+                               'search',
+                               return_value=mock.Mock()):
+            self.assertRaises(exc.InfobloxPrivateSubnetAlreadyExist,
+                              ipam_controller.create_subnet)
 
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     def test_create_subnet_existing_external_network(self):
@@ -213,10 +223,11 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.helper.prepare_test(test_opts)
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
-        ipam_controller.create_subnet()
+        with mock.patch.object(ib_objects.Network,
+                               'search',
+                               return_value=mock.Mock()):
+            ipam_controller.create_subnet()
 
-        self.ib_cxt.ibom.get_network.assert_called_once_with(
-            self.helper.options['network_view'], self.helper.subnet['cidr'])
         self.ib_cxt.ibom.update_network_options.assert_called_once_with(
             mock.ANY, mock.ANY)
 

@@ -15,7 +15,7 @@
 
 from datetime import datetime
 from oslo_log import log as logging
-
+import random
 from sqlalchemy import func
 
 from neutron.db import address_scope_db
@@ -409,32 +409,121 @@ def remove_mapping_member(session, network_view_id, member_id):
         q.delete(synchronize_session=False)
 
 
-# Member reservation
+# Member Reservation
 def get_next_authority_member_for_ipam(session, grid_id):
     q = (session.query(
-        ib_models.InfobloxGridMember,
-        ib_models.InfobloxGridMember.member_id,
-        func.count(ib_models.InfobloxNetworkView.id).label('count')).
-        outerjoin(ib_models.InfobloxNetworkView,
-                  ib_models.InfobloxNetworkView.authority_member_id ==
-                  ib_models.InfobloxGridMember.member_id).
-        filter(ib_models.InfobloxGridMember.grid_id == grid_id,
-               ib_models.InfobloxGridMember.member_status ==
-               const.MEMBER_STATUS_ON,
-               ib_models.InfobloxGridMember.member_type !=
-               const.MEMBER_TYPE_REGULAR_MEMBER).
-        group_by(ib_models.InfobloxNetworkView.authority_member_id).
-        order_by('count'))
+         ib_models.InfobloxGridMember,
+         ib_models.InfobloxGridMember.member_id,
+         func.count(ib_models.InfobloxNetworkView.id).label('count')).
+         outerjoin(ib_models.InfobloxNetworkView,
+                   ib_models.InfobloxNetworkView.authority_member_id ==
+                   ib_models.InfobloxGridMember.member_id).
+         filter(ib_models.InfobloxGridMember.grid_id == grid_id,
+                ib_models.InfobloxGridMember.member_status ==
+                const.MEMBER_STATUS_ON,
+                ib_models.InfobloxGridMember.member_type !=
+                const.MEMBER_TYPE_REGULAR_MEMBER).
+         group_by(ib_models.InfobloxNetworkView.authority_member_id).
+         order_by('count'))
     res = q.first()
     authority_member = res[0]
     return authority_member
 
 
 def get_next_authority_member_for_dhcp(session, grid_id):
-    raise NotImplementedError()
+    q = (session.query(ib_models.InfobloxGridMember).
+         outerjoin(ib_models.InfobloxMappingMember,
+                   ib_models.InfobloxMappingMember.member_id ==
+                   ib_models.InfobloxGridMember.member_id).
+         outerjoin(ib_models.InfobloxServiceMember,
+                   ib_models.InfobloxServiceMember.member_id ==
+                   ib_models.InfobloxGridMember.member_id).
+         filter(ib_models.InfobloxGridMember.grid_id == grid_id,
+                ib_models.InfobloxGridMember.member_status ==
+                const.MEMBER_STATUS_ON,
+                ib_models.InfobloxGridMember.member_type ==
+                const.MEMBER_TYPE_CP_MEMBER,
+                ib_models.InfobloxMappingMember.member_id.is_(None),
+                ib_models.InfobloxServiceMember.member_id.is_(None)))
+    row_count = int(q.count())
+    q = q.offset(int(row_count * random.random()))
+    authority_member = q.first()
+    return authority_member
+
+
+def get_next_dhcp_member(session, grid_id):
+    """Get a next available dhcp member.
+
+    For dhcp member, any member can be chosen but the priority is given to
+    REGUALR first, then CPM. However gm can be omitted from selection
+    if 'use_gm' parameter is set to False.
+    """
+    q = (session.query(ib_models.InfobloxGridMember).
+         outerjoin(ib_models.InfobloxMappingMember,
+                   ib_models.InfobloxMappingMember.member_id ==
+                   ib_models.InfobloxGridMember.member_id).
+         outerjoin(ib_models.InfobloxServiceMember,
+                   ib_models.InfobloxServiceMember.member_id ==
+                   ib_models.InfobloxGridMember.member_id).
+         filter(ib_models.InfobloxGridMember.grid_id == grid_id,
+                ib_models.InfobloxGridMember.member_status ==
+                const.MEMBER_STATUS_ON,
+                ib_models.InfobloxMappingMember.member_id.is_(None),
+                ib_models.InfobloxServiceMember.member_id.is_(None)))
+    q = q.order_by(ib_models.InfobloxGridMember.member_type.desc())
+    row_count = int(q.count())
+    q = q.offset(int(row_count * random.random()))
+    dhcp_member = q.first()
+    return dhcp_member
+
+
+# Service Member Management
+def get_service_members(session, network_view_id=None, member_id=None,
+                        grid_id=None, service=None):
+    q = session.query(ib_models.InfobloxServiceMember)
+    if network_view_id:
+        q = q.filter(ib_models.InfobloxServiceMember.network_view_id ==
+                     network_view_id)
+    if member_id:
+        q = q.filter(ib_models.InfobloxServiceMember.member_id == member_id)
+    if service:
+        q = q.filter(ib_models.InfobloxServiceMember.service == service)
+    if grid_id:
+        sub_qry = (session.query(ib_models.InfobloxGridMember.member_id).
+                   filter(ib_models.InfobloxGridMember.grid_id == grid_id))
+        q = q.filter(ib_models.InfobloxServiceMember.member_id.in_(sub_qry))
+    return q.all()
+
+
+def add_service_member(session, network_view_id, member_id, service):
+    service_member = ib_models.InfobloxServiceMember(
+        network_view_id=network_view_id,
+        member_id=member_id,
+        service=service)
+    session.add(service_member)
+    return service_member
+
+
+def remove_service_member(session, network_view_id, member_id=None,
+                          service=None):
+    with session.begin(subtransactions=True):
+        q = session.query(ib_models.InfobloxServiceMember)
+        q = q.filter(ib_models.InfobloxServiceMember.network_view_id ==
+                     network_view_id)
+        if member_id:
+            q = q.filter(ib_models.InfobloxServiceMember.member_id ==
+                         member_id)
+        if service:
+            q = q.filter(ib_models.InfobloxServiceMember.service == service)
+        q.delete(synchronize_session=False)
 
 
 # Management Network
+def get_management_ip(session, network_id):
+    q = session.query(ib_models.InfobloxManagementNetwork)
+    return q.filter_by(network_id=network_id).first()
+
+
 def add_management_ip(session, network_id, fixed_ip, ip_version,
                       fixed_ip_ref):
     mgmt_ip = ib_models.InfobloxManagementNetwork(
@@ -446,17 +535,12 @@ def add_management_ip(session, network_id, fixed_ip, ip_version,
     return mgmt_ip
 
 
-def delete_management_ip(session, network_id):
+def remove_management_ip(session, network_id):
     q = session.query(ib_models.InfobloxManagementNetwork)
-    q.filter_by(network_id=network_id).delete()
+    q.filter_by(network_id=network_id).delete(synchronize_session=False)
 
 
-def get_management_ip(session, network_id):
-    q = session.query(ib_models.InfobloxManagementNetwork)
-    return q.filter_by(network_id=network_id).first()
-
-
-# Operational data
+# Operational Setting Management
 def add_operation_type(session, op_type, op_value):
     operation = ib_models.InfobloxOperation(
         op_type=op_type,
@@ -487,7 +571,7 @@ def record_last_sync_time(session, sync_time=None):
         update({'op_value': sync_time_str})
 
 
-# Neutron general queries
+# Neutron General Queries
 def get_subnets_by_network_id(session, network_id):
     q = session.query(models_v2.Subnet).filter_by(network_id=network_id)
     return q.all()

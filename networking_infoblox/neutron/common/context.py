@@ -19,7 +19,9 @@ from neutron.i18n import _LI
 from neutron import manager
 
 from infoblox_client import connector
+
 from infoblox_client import object_manager as obj_mgr
+from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc
@@ -55,7 +57,11 @@ class InfobloxContext(object):
              'network_view': None,
              'authority_member': None,
              'shared': False,
-             'dns_view': None})
+             'dns_view': None,
+             'dhcp_members': [],
+             'dns_members': [],
+             'ib_dhcp_members': [],
+             'ib_nameservers': None})
 
         self._discovered_grid_members = grid_members
         self._discovered_network_views = network_views
@@ -105,8 +111,21 @@ class InfobloxContext(object):
             authority_member = dbi.get_next_authority_member_for_ipam(
                 session, self.grid_id)
         else:
-            authority_member = dbi.get_next_authority_member_for_dhcp(
-                session, self.grid_id)
+            # as default, authority member is 'GM'
+            gm_member = utils.find_one_in_list('member_type',
+                                               const.MEMBER_TYPE_GRID_MASTER,
+                                               self.discovered_grid_members)
+            authority_member = gm_member
+
+            cp_member = utils.find_one_in_list('member_type',
+                                               const.MEMBER_TYPE_CP_MEMBER,
+                                               self.discovered_grid_members)
+            if self.grid_config.is_cloud_wapi and cp_member:
+                authority_member = dbi.get_next_authority_member_for_dhcp(
+                    session, self.grid_id)
+                if not authority_member:
+                    # if no CPM available, use GM
+                    authority_member = gm_member
 
         if not authority_member:
             raise exc.InfobloxCannotReserveAuthorityMember(
@@ -121,10 +140,265 @@ class InfobloxContext(object):
         self.mapping.authority_member = authority_member
         self.mapping.dns_view = self._get_dns_view()
 
-        # change connector if authority member is CPM because currently
-        # gm_connector is used
-        if authority_member.member_type == const.MEMBER_TYPE_CP_MEMBER:
+        # change connector if authority member is changed.
+        if (self.connector.host not in
+                [self.mapping.authority_member.member_ip,
+                 self.mapping.authority_member.member_ipv6]):
             self._load_managers()
+
+    def reserve_service_members(self, ib_network=None):
+        """Reserve DHCP and DNS service members.
+
+        For the predefined network, dhcp member(s) may be assigned.
+        If assigned, then we need to get them from ib_network.members.
+        For dns member(s), ib_network.options may contain them.
+        If no dhcp member is assigned, then we will pick an available member.
+        If no dns member is assigned, the dhcp member will serve dns as well.
+
+        If network is not predefined, we need to assign service members.
+        If the authority member is CPM, dhcp/dns members are the same as
+        the authority member.
+        If the authority member is GM, we need to pick an available dhcp
+        member. For simplicity, we will use the dhcp member to serve dns as
+        well. More detailed reason for such dns member assignment logic is
+        explained below.
+
+        For a host record, a primary dns member must be the same as dhcp member
+        because both dhcp and dns record must be created under the same parent
+        which is the network view. To simplify dns member assignment logic, we
+        will always pick the dns member to be the same as dhcp member.
+        Only exception to this would be the predefined networks that are
+        created from NIOS side.
+        """
+        if self.grid_config.dhcp_support is False:
+            return
+
+        if self.mapping.authority_member is None:
+            raise exc.InfobloxAuthorityMemberNotReserved(
+                network_view=self.mapping.network_view)
+
+        session = self.context.session
+        dhcp_members = []
+        dns_members = []
+        nameservers = []
+
+        cidr = self.subnet.get('cidr')
+        user_nameservers = self.subnet.get('dns_nameservers', [])
+        ip_version = self.subnet.get('ip_version')
+
+        if ib_network is None:
+            # service member assignment for a new network
+            if (self.mapping.authority_member.member_type ==
+                    const.MEMBER_TYPE_CP_MEMBER):
+                # for CPM, dhcp member is always the authority member.
+                dhcp_member = self.mapping.authority_member
+            else:
+                # for GM,
+                # check if a network view is already serving dhcp.
+                #   if true, then use the same dhcp member.
+                #   if false, see if gm itself is serving dhcp for other
+                #   network view.
+                #     if true, then try to get the next available dhcp member.
+                #     if false, use gm for dhcp
+                dhcp_service_members = dbi.get_service_members(
+                    session,
+                    network_view_id=self.mapping.network_view_id,
+                    service=const.SERVICE_TYPE_DHCP)
+                if dhcp_service_members:
+                    dhcp_member = utils.find_one_in_list(
+                        'member_id',
+                        dhcp_service_members[0].member_id,
+                        self.discovered_grid_members)
+                else:
+                    dhcp_service_members = dbi.get_service_members(
+                        session,
+                        member_id=self.mapping.authority_member.member_id,
+                        service=const.SERVICE_TYPE_DHCP)
+                    if dhcp_service_members:
+                        # authority is GM, a dhcp member needs to be selected.
+                        dhcp_member = dbi.get_next_dhcp_member(session,
+                                                               self.grid_id)
+                        if not dhcp_member:
+                            raise exc.InfobloxDHCPMemberNotReserved(
+                                network_view=self.mapping.network_view,
+                                cidr=cidr)
+                    else:
+                        dhcp_member = self.mapping.authority_member
+
+            dhcp_members = [dhcp_member]
+            dns_members = dhcp_members
+            nameservers = utils.get_nameservers(user_nameservers,
+                                                dns_members,
+                                                ip_version)
+        else:
+            # service member assignment for the predefined network
+            # - first set dhcp servers option
+            dhcp_members = self._get_dhcp_members(ib_network)
+            if not dhcp_members:
+                dhcp_member = dbi.get_next_dhcp_member(session, self.grid_id)
+                if not dhcp_member:
+                    raise exc.InfobloxDHCPMemberNotReserved(
+                        network_view=self.mapping.network_view, cidr=cidr)
+                dhcp_members = [dhcp_member]
+
+                # assign dncp member
+                ib_network.members = [ib_objects.AnyMember(
+                    _struct='dhcpmember',
+                    name=dhcp_member.member_name)]
+
+            # - then set dns servers option
+            dns_members = self._get_dns_members(ib_network)
+            if not dns_members:
+                # for CPM as authority member, only one dhcp member can be
+                # assigned and dns member needs to be the same as dhcp member
+                # for host record.
+                # for GM as authority member, multiple dhcp members can be
+                # assigned but the first dhcp member will serve as the grid
+                # primary and the rest will serve as the grid secondaries.
+                dns_members = dhcp_members
+
+            nameservers = utils.get_nameservers(user_nameservers,
+                                                dns_members,
+                                                ip_version)
+            nameservers_option_val = ','.join(nameservers)
+
+            opt_dns = [opt for opt in ib_network.options
+                       if opt.name == 'domain-name-servers']
+            if not opt_dns:
+                ib_network.options.append(
+                    ib_objects.DhcpOption(name='domain-name-servers',
+                                          value=nameservers_option_val))
+            else:
+                opt_dns[0].value = nameservers_option_val
+
+            # - lastly set routers option
+            gateway_ip_str = str(self.subnet.get('gateway_ip'))
+            opt_routers = [opt for opt in ib_network.options
+                           if opt.name == 'routers']
+            if not opt_routers:
+                ib_network.options.append(
+                    ib_objects.DhcpOption(name='routers',
+                                          value=gateway_ip_str))
+            else:
+                router_ips = opt_routers[0].value.split(',')
+                router_ips_all = [gateway_ip_str] + [ip for ip in router_ips
+                                                     if ip != gateway_ip_str]
+                opt_routers[0].value = ','.join(router_ips_all)
+
+        ib_dhcp_members = []
+        for m in dhcp_members:
+            ib_dhcp_members.append(ib_objects.AnyMember(_struct='dhcpmember',
+                                                        name=m.member_name))
+
+        self.mapping.dhcp_members = dhcp_members
+        self.mapping.dns_members = dns_members
+        self.mapping.ib_dhcp_members = ib_dhcp_members
+        self.mapping.ib_nameservers = nameservers
+
+        self._register_services()
+
+    def get_dns_members(self):
+        """Gets the primary and secondary DNS members that serve DNS.
+
+        DNS has primary DNS member(s) and secondary DNS member(s). A primary
+        DNS member serves both WAPI and DNS protocol so a GM or CP member can
+        be served as primary. A REGULAR member is used as the primary then
+        only DNS protocol is served. A secondary DNS member serves only
+        DNS protocol.
+
+        For a host record, a primary DNS member must be the same as DHCP member
+        because both DHCP and DNS record writes require that they are under the
+        same parent which is the network view. Secondary DNS member can be any
+        members as long as they are not listed as a primary DNS member since
+        any member can serve DNS protocols.
+
+        DHCP and DNS member assignments are performed by
+        reserve_service_members already.
+
+        Here we just need to pick the first member from mapping dns members
+        as the primary and the rest as the secondary if multiple dns members
+        are assigned. If only one dns member is assigned, then no secondary
+        dns server.
+        """
+        if self.mapping.authority_member is None:
+            raise exc.InfobloxAuthorityMemberNotReserved(
+                network_view=self.mapping.network_view)
+
+        if self.grid_config.dhcp_support and not self.mapping.dns_members:
+            raise exc.InfobloxDNSMemberNotReserved(
+                network_view=self.mapping.network_view,
+                cidr=self.subnet.get('cidr'))
+
+        primary_members = None
+        secondary_members = None
+
+        if self.grid_config.dhcp_support is False:
+            member_name = self.mapping.authority_member.member_name
+            primary_members = [ib_objects.AnyMember(_struct='memberserver',
+                                                    name=member_name)]
+        else:
+            member_name = self.mapping.dns_members[0].member_name
+            primary_members = [ib_objects.AnyMember(_struct='memberserver',
+                                                    name=member_name)]
+            if len(self.mapping.dns_members) > 1:
+                secondary_members = []
+                secondary_dns_members = self.mapping.dns_members[1:]
+                for m in secondary_dns_members:
+                    secondary_members.append(
+                        ib_objects.AnyMember(_struct='memberserver',
+                                             name=m.member_name))
+
+        return primary_members, secondary_members
+
+    def _get_dhcp_members(self, ib_network):
+        dhcp_members = []
+        member_ips = utils.get_dhcp_member_ips(ib_network)
+        for member_ip in member_ips:
+            dhcp_member = utils.find_in_list_by_value(
+                member_ip, self.discovered_grid_members)
+            if not dhcp_member:
+                raise exc.InfobloxCannotFindMember(member=member_ip)
+            dhcp_members.append(dhcp_member)
+        return dhcp_members
+
+    def _get_dns_members(self, ib_network):
+        # multiple dns members can be assigned to a network
+        dns_members = []
+        member_ips = utils.get_dns_member_ips(ib_network)
+        for member_ip in member_ips:
+            dns_member = utils.find_in_list_by_value(
+                member_ip, self.discovered_grid_members)
+            if not dns_member:
+                raise exc.InfobloxCannotFindMember(member=member_ip)
+            dns_members.append(dns_member)
+        return dns_members
+
+    def _register_services(self):
+        session = self.context.session
+
+        service = const.SERVICE_TYPE_DHCP
+        for member in self.mapping.dhcp_members:
+            service_members = dbi.get_service_members(
+                session,
+                network_view_id=self.mapping.network_view_id,
+                member_id=member.member_id,
+                grid_id=self.grid_id,
+                service=service)
+            if not service_members:
+                dbi.add_service_member(session, self.mapping.network_view_id,
+                                       member.member_id, service)
+
+        service = const.SERVICE_TYPE_DNS
+        for member in self.mapping.dns_members:
+            service_members = dbi.get_service_members(
+                session,
+                network_view_id=self.mapping.network_view_id,
+                member_id=member.member_id,
+                grid_id=self.grid_id,
+                service=service)
+            if not service_members:
+                dbi.add_service_member(session, self.mapping.network_view_id,
+                                       member.member_id, service)
 
     def _update(self):
         """Finds mapping and load managers that can interact with NIOS grid."""
@@ -389,6 +663,15 @@ class InfobloxContext(object):
         return netview_name
 
     def _get_dns_view(self):
+        """Return dns view name.
+
+        The following matrix describes all the dns view naming rule.
+        | Network View Name | Grid Config DNS View Name | Final DNS View Name |
+        | default           | default                   | default             |
+        | default           | test_view                 | test_view           |
+        | net_view_1        | default                   | default.net_view_1  |
+        | net_view_2        | dns_view_2                | dns_view_2          |
+        """
         if (self.grid_config.dns_view == const.DEFAULT_DNS_VIEW and
                 self.mapping.network_view != const.DEFAULT_NETWORK_VIEW):
             return '.'.join(

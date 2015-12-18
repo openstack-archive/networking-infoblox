@@ -76,12 +76,13 @@ class IpamSyncController(object):
             # its connector and managers are loaded for the new member.
             self.ib_cxt.reserve_authority_member()
 
-        # create a network view if it does not exist
-        if not network_view_exists:
-            self._create_ib_network_view()
-
+        ib_network_view = None
         ib_network = None
         try:
+            # create a network view if it does not exist
+            if not network_view_exists:
+                ib_network_view = self._create_ib_network_view()
+
             ib_network = self._create_ib_network()
             if ib_network:
                 self._create_ib_ip_range()
@@ -96,27 +97,24 @@ class IpamSyncController(object):
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("An exception occurred during subnet "
                               "creation: %s"), ex)
-                # deleting network deletes its child objects like ip ranges
-                if ib_network:
-                    self.ib_cxt.ibom.delete_network(
-                        self.ib_cxt.mapping.network_view, subnet.get('cidr'))
+                self._rollback_subnet(ib_network_view, ib_network)
 
     def _create_ib_network_view(self):
         ea_network_view = eam.get_ea_for_network_view(self.ib_cxt.tenant_id)
         ib_network_view = self.ib_cxt.ibom.create_network_view(
             self.ib_cxt.mapping.network_view, ea_network_view)
         LOG.info(_LI("Created a network view: %s"), ib_network_view)
+        return ib_network_view
 
     def _create_ib_network(self):
-        session = self.ib_cxt.context.session
+        network_view = self.ib_cxt.mapping.network_view
         network = self.ib_cxt.network
         subnet = self.ib_cxt.subnet
 
-        network_id = network.get('id')
         is_shared = network.get('shared')
         is_external = network.get('router:external')
         cidr = subnet.get('cidr')
-        gateway_ip = subnet.get('gateway_ip')
+        gateway_ip_str = str(subnet.get('gateway_ip'))
 
         ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
                                             self.ib_cxt.tenant_id,
@@ -125,13 +123,15 @@ class IpamSyncController(object):
         network_template = self.grid_config.network_template
 
         # check if network already exists
-        network_exists = self.ib_cxt.ibom.network_exists(
-            self.ib_cxt.mapping.network_view, cidr)
-        if network_exists:
+        ib_network = ib_objects.Network.search(self.ib_cxt.connector,
+                                               network_view=network_view,
+                                               cidr=cidr)
+        if ib_network:
             if is_shared or is_external:
-                ib_network = self.ib_cxt.ibom.get_network(
-                    self.ib_cxt.mapping.network_view, cidr)
+                self.ib_cxt.reserve_service_members(ib_network)
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
+                LOG.info("ib network already exists so updated options: %s",
+                         ib_network)
                 return ib_network
             raise exc.InfobloxPrivateSubnetAlreadyExist()
 
@@ -140,31 +140,63 @@ class IpamSyncController(object):
             ib_network = self.ib_cxt.ibom.create_network_from_template(
                 self.ib_cxt.mapping.network_view, cidr, network_template,
                 ea_network)
+            self.ib_cxt.reserve_service_members(ib_network)
+            self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
+            LOG.info("ib network created from template %s: %s",
+                     network_template, ib_network)
             return ib_network
 
         # network creation starts
-        dhcp_members = []
-        nameservers = []
+        self.ib_cxt.reserve_service_members()
 
         relay_trel_ip = None
-        if self.grid_config.dhcp_relay_management_network:
-            mgmt_ip = dbi.get_management_ip(session, network_id)
-            if mgmt_ip:
-                relay_trel_ip = mgmt_ip.ip_address
-
         ib_network = self.ib_cxt.ibom.create_network(
             self.ib_cxt.mapping.network_view,
             cidr,
-            nameservers,
-            dhcp_members,
-            gateway_ip,
+            self.ib_cxt.mapping.ib_nameservers,
+            self.ib_cxt.mapping.ib_dhcp_members,
+            gateway_ip_str,
             relay_trel_ip,
             ea_network)
+        LOG.info("ib network has been created: %s", ib_network)
 
-        for member in dhcp_members:
-            self.ib_cxt.ibom.restart_all_services(member)
+        for member in self.ib_cxt.mapping.dhcp_members:
+            ib_member = ib_objects.Member(self.ib_cxt.connector,
+                                          host_name=member.member_name)
+            self.ib_cxt.ibom.restart_all_services(ib_member)
 
         return ib_network
+
+    def _rollback_subnet(self, ib_network_view, ib_network):
+        session = self.ib_cxt.context.session
+        subnet = self.ib_cxt.subnet
+        network_view = self.ib_cxt.mapping.network_view
+
+        # deleting network view will delete ib networks under it.
+        if ib_network_view:
+            ib_network_view.delete()
+        else:
+            # remove ib network; deleting network deletes its child objects
+            # like ip ranges
+            if ib_network:
+                self.ib_cxt.ibom.delete_network(network_view,
+                                                subnet.get('cidr'))
+        # remove network view association
+        dbi.remove_network_views(session,
+                                 [self.ib_cxt.mapping.network_view_id])
+
+        # remove assigned services
+        for member in self.ib_cxt.mapping.dhcp_members:
+            dbi.remove_service_member(session,
+                                      self.ib_cxt.mapping.network_view_id,
+                                      member.member_id,
+                                      const.SERVICE_TYPE_DHCP)
+
+        for member in self.ib_cxt.mapping.dns_members:
+            dbi.remove_service_member(session,
+                                      self.ib_cxt.mapping.network_view_id,
+                                      member.member_id,
+                                      const.SERVICE_TYPE_DNS)
 
     def _create_ib_ip_range(self):
         subnet = self.ib_cxt.subnet
@@ -186,13 +218,15 @@ class IpamSyncController(object):
             start_ip = netaddr.IPAddress(pool.first, ip_version).format()
             end_ip = netaddr.IPAddress(pool.last, ip_version).format()
 
-            self.ib_cxt.ibom.create_ip_range(
+            ib_ip_range = self.ib_cxt.ibom.create_ip_range(
                 self.ib_cxt.mapping.network_view,
                 start_ip,
                 end_ip,
                 cidr,
                 disable,
                 ea_range)
+            LOG.info("ip range has been created: %s",
+                     ib_ip_range)
 
     def update_subnet_allocation_pools(self):
         cidr = self.ib_cxt.subnet.get('cidr')
@@ -295,8 +329,8 @@ class IpamSyncController(object):
             ip_address,
             ea_ip_address)
         if allocated_ip:
-            LOG.debug('IP address allocated on Infoblox NIOS: %s',
-                      allocated_ip)
+            LOG.info('IP address allocated on Infoblox NIOS: %s',
+                     allocated_ip)
 
         return allocated_ip
 
@@ -304,6 +338,7 @@ class IpamSyncController(object):
                               port_id=None, port_tenant_id=None,
                               device_id=None, device_owner=None):
         hostname = uuidutils.generate_uuid()
+
         ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
                                           port_tenant_id,
                                           self.ib_cxt.network,
@@ -334,16 +369,16 @@ class IpamSyncController(object):
                 if allocated_ip:
                     break
             except exc.InfobloxCannotAllocateIp:
-                    LOG.debug("Failed to allocate IP from range (%s-%s)." %
-                              (first_ip, last_ip))
-                    continue
+                LOG.info("Failed to allocate IP from range (%s-%s)." %
+                         (first_ip, last_ip))
+                continue
 
         if allocated_ip:
-            LOG.debug('IP address allocated on Infoblox NIOS: %s',
-                      allocated_ip)
+            LOG.info('IP address allocated on Infoblox NIOS: %s',
+                     allocated_ip)
         else:
-            LOG.debug("All IPs from subnet %(subnet_id)s allocated",
-                      {'subnet_id': subnet_id})
+            LOG.info("All IPs from subnet %(subnet_id)s allocated",
+                     {'subnet_id': subnet_id})
             raise ipam_exc.IpAddressGenerationFailure(subnet_id=subnet_id)
 
         return allocated_ip
@@ -446,5 +481,6 @@ class IpamAsyncController(object):
                                               port['id'],
                                               port['device_id'],
                                               port['device_owner'])
-            self.ib_cxt.ibom.update_fixed_address_eas(network_view, ip_address,
+            self.ib_cxt.ibom.update_fixed_address_eas(network_view,
+                                                      ip_address,
                                                       ea_ip_address)

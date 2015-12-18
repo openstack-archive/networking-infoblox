@@ -140,19 +140,19 @@ def upgrade():
 
     op.create_table(
         'infoblox_service_members',
+        sa.Column('network_view_id', sa.String(length=36), nullable=False),
         sa.Column('member_id', sa.String(length=48), nullable=False),
         sa.Column('service', sa.String(length=12), nullable=False),
-        sa.Column('network_id', sa.String(length=36), nullable=False),
+        sa.ForeignKeyConstraint(['network_view_id'],
+                                ['infoblox_network_views.id'],
+                                ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['member_id'],
                                 ['infoblox_grid_members.member_id'],
                                 ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['network_id'],
-                                ['networks.id'],
-                                ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('member_id', 'service', 'network_id'),
-        sa.Index(
-            'ix_infoblox_service_members_network_id',
-            'network_id')
+        sa.PrimaryKeyConstraint('network_view_id', 'member_id', 'service'),
+        sa.UniqueConstraint(
+            'member_id', 'service',
+            name='uniq_infoblox_service_members_member_id_service')
     )
 
     op.create_table(
