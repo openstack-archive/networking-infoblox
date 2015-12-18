@@ -100,9 +100,13 @@ class GridManager(object):
             'password': grid_conf.admin_password,
             'wapi_version': grid_conf.wapi_version,
             'ssl_verify': grid_conf.ssl_verify,
+            'log_api_calls_as_info': True,
             'http_request_timeout': grid_conf.http_request_timeout,
             'http_pool_connections': grid_conf.http_pool_connections,
             'http_pool_maxsize': grid_conf.http_pool_maxsize}
+        # Silent ssl warnings, if certificate verification is not enabled
+        if not gm_connection_opts['ssl_verify']:
+            gm_connection_opts['silent_ssl_warnings'] = True
         grid_conf.gm_connector = connector.Connector(gm_connection_opts)
         return grid_conf
 
