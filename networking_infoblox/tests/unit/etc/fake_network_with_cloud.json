@@ -39,7 +39,30 @@
             }
         ],
         "network": "10.10.2.0/24",
-        "network_view": "default"
+        "network_view": "default",
+        "options": [
+            {
+                "name": "dhcp-lease-time",
+                "num": 51,
+                "use_option": false,
+                "value": "43200",
+                "vendor_class": "DHCP"
+            },
+            {
+                "name": "domain-name-servers",
+                "num": 6,
+                "use_option": true,
+                "value": "192.168.1.10,192.168.1.13",
+                "vendor_class": "DHCP"
+            },
+            {
+                "name": "routers",
+                "num": 3,
+                "use_option": true,
+                "value": "10.10.2.1,10.10.10.1",
+                "vendor_class": "DHCP"
+            }
+        ]
     },
     {
         "_ref": "network/ZG5zLm5ldHdvcmskMTAuMTAuMy4wLzI0LzA:10.10.3.0/24/default",

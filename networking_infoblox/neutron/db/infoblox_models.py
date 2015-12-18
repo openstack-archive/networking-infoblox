@@ -179,26 +179,27 @@ class InfobloxServiceMember(model_base.BASEV2):
 
     __tablename__ = 'infoblox_service_members'
 
+    network_view_id = sa.Column(sa.String(36),
+                                sa.ForeignKey('infoblox_network_views.id',
+                                              ondelete="CASCADE"),
+                                nullable=False,
+                                primary_key=True)
     member_id = sa.Column(sa.String(32),
                           sa.ForeignKey('infoblox_grid_members.member_id',
                                         ondelete="CASCADE"),
                           nullable=False,
                           primary_key=True)
     service = sa.Column(sa.String(12), nullable=False, primary_key=True)
-    network_id = sa.Column(sa.String(36),
-                           sa.ForeignKey('networks.id',
-                                         ondelete="CASCADE"),
-                           nullable=False,
-                           primary_key=True)
     __table_args__ = (
-        sa.Index('ix_infoblox_service_members_network_id',
-                 'network_id'),
+        sa.UniqueConstraint(
+            'member_id', 'service',
+            name='uniq_infoblox_service_members_member_id_service'),
         model_base.BASEV2.__table_args__
     )
 
     def __repr__(self):
-        return ("member_id: %s, service: %s, network_id: %s" %
-                (self.member_id, self.service, self.network_id))
+        return ("network_view_id: %s, member_id: %s, service: %s" %
+                (self.network_view_id, self.member_id, self.service))
 
 
 class InfobloxManagementNetwork(model_base.BASEV2):

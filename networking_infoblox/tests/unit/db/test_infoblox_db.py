@@ -515,7 +515,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         self.assertEqual(ip_version, mgmt_ip.ip_version)
         self.assertEqual(fixed_ip_ref, mgmt_ip.ip_address_ref)
 
-        infoblox_db.delete_management_ip(self.ctx.session, network.id)
+        infoblox_db.remove_management_ip(self.ctx.session, network.id)
         mgmt_ip = infoblox_db.get_management_ip(self.ctx.session, network.id)
         self.assertIsNone(mgmt_ip)
 
@@ -544,7 +544,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         last_sync_time = infoblox_db.get_last_sync_time(self.ctx.session)
         self.assertEqual(current_time, last_sync_time)
 
-    def test_authority_member_reservation_for_ipam(self):
+    def test_get_next_authority_member_for_ipam(self):
         # prepare grid
         self._create_default_grid()
 
@@ -601,3 +601,252 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         # expect m6 since m6 owns the least number of network views
         expected = 'm6'
         self.assertEqual(expected, authority_member.member_id)
+
+    def test_get_next_authority_member_for_dhcp_with_no_cpm(self):
+        # prepare grid
+        self._create_default_grid()
+
+        # prepare grid members
+        member_list = [{'member_id': 'm1',
+                        'member_name': 'm1.com',
+                        'member_ip': '10.10.1.1',
+                        'member_ipv6': None,
+                        'member_type': 'GM',
+                        'member_status': 'ON'}]
+        self._create_members(member_list, self.grid_id)
+
+        # prepare network views
+        netview_dict = {'default': 'm1'}
+        self._create_network_views(netview_dict)
+
+        # test for network view owning member (authority member)
+        # the authority member must has the least number of network views
+        authority_member = infoblox_db.get_next_authority_member_for_dhcp(
+            self.ctx.session, self.grid_id)
+        self.assertIsNone(authority_member)
+
+    def test_get_next_authority_member_for_dhcp_with_one_cpm(self):
+        # prepare grid
+        self._create_default_grid()
+
+        # prepare grid members
+        member_list = [{'member_id': 'm1',
+                        'member_name': 'm1.com',
+                        'member_ip': '10.10.1.1',
+                        'member_ipv6': None,
+                        'member_type': 'GM',
+                        'member_status': 'ON'},
+                       {'member_id': 'm2',
+                        'member_name': 'm2.com',
+                        'member_ip': '10.10.1.2',
+                        'member_ipv6': 'fd44:acb:5df6:1083::22',
+                        'member_type': 'CPM',
+                        'member_status': 'ON'}]
+        self._create_members(member_list, self.grid_id)
+
+        # prepare network views
+        netview_dict = {'default': 'm1'}
+        self._create_network_views(netview_dict)
+
+        # test for network view owning member (authority member)
+        # the authority member must has the least number of network views
+        authority_member = infoblox_db.get_next_authority_member_for_dhcp(
+            self.ctx.session, self.grid_id)
+        expected_member_id = member_list[1]['member_id']
+        self.assertEqual(expected_member_id, authority_member.member_id)
+
+    def test_get_next_authority_member_for_dhcp_with_two_cpms(self):
+        # prepare grid
+        self._create_default_grid()
+
+        # prepare grid members
+        member_list = [{'member_id': 'm1',
+                        'member_name': 'm1.com',
+                        'member_ip': '10.10.1.1',
+                        'member_ipv6': None,
+                        'member_type': 'GM',
+                        'member_status': 'ON'},
+                       {'member_id': 'm2',
+                        'member_name': 'm2.com',
+                        'member_ip': '10.10.1.2',
+                        'member_ipv6': 'fd44:acb:5df6:1083::22',
+                        'member_type': 'CPM',
+                        'member_status': 'ON'},
+                       {'member_id': 'm3',
+                        'member_name': 'm3.com',
+                        'member_ip': '10.10.1.3',
+                        'member_ipv6': None,
+                        'member_type': 'CPM',
+                        'member_status': 'ON'}]
+        self._create_members(member_list, self.grid_id)
+
+        # prepare network views
+        netview_dict = {'default': 'm1'}
+        self._create_network_views(netview_dict)
+
+        # test for network view owning member (authority member)
+        # the authority member must has the least number of network views
+        authority_member = infoblox_db.get_next_authority_member_for_dhcp(
+            self.ctx.session, self.grid_id)
+        expected_member_ids = [m['member_id'] for m in member_list
+                               if m['member_id'] == authority_member.member_id]
+        self.assertEqual(expected_member_ids[0], authority_member.member_id)
+
+    def test_get_next_dhcp_member(self):
+        # prepare grid
+        self._create_default_grid()
+
+        # prepare grid members
+        member_list = [{'member_id': 'm1',
+                        'member_name': 'm1.com',
+                        'member_ip': '10.10.1.1',
+                        'member_ipv6': None,
+                        'member_type': const.MEMBER_TYPE_GRID_MASTER,
+                        'member_status': 'ON'},
+                       {'member_id': 'm2',
+                        'member_name': 'm2.com',
+                        'member_ip': '10.10.1.2',
+                        'member_ipv6': 'fd44:acb:5df6:1083::22',
+                        'member_type': const.MEMBER_TYPE_CP_MEMBER,
+                        'member_status': 'ON'},
+                       {'member_id': 'm3',
+                        'member_name': 'm3.com',
+                        'member_ip': '10.10.1.3',
+                        'member_ipv6': None,
+                        'member_type': const.MEMBER_TYPE_CP_MEMBER,
+                        'member_status': 'ON'},
+                       {'member_id': 'm4',
+                        'member_name': 'm4.com',
+                        'member_ip': '10.10.1.4',
+                        'member_ipv6': None,
+                        'member_type': const.MEMBER_TYPE_REGULAR_MEMBER,
+                        'member_status': 'ON'}]
+        self._create_members(member_list, self.grid_id)
+
+        db_members = infoblox_db.get_members(self.ctx.session,
+                                             grid_id=self.grid_id)
+        gm_member = utils.find_one_in_list('member_type', 'GM', db_members)
+        m2_member = utils.find_one_in_list('member_id', 'm2', db_members)
+        m3_member = utils.find_one_in_list('member_id', 'm3', db_members)
+        m4_member = utils.find_one_in_list('member_id', 'm4', db_members)
+
+        # create network views
+        netview_dict = {'default': gm_member.member_id,
+                        'testview': m2_member.member_id}
+        self._create_network_views(netview_dict)
+
+        db_network_views = infoblox_db.get_network_views(self.ctx.session)
+        netview_default = utils.find_one_in_list('network_view',
+                                                 'default',
+                                                 db_network_views)
+        netview_testview = utils.find_one_in_list('network_view',
+                                                  'testview',
+                                                  db_network_views)
+
+        # add mapping members
+        # - m1 (gm) is the authority member for 'default' view
+        # - m2 is the authority member for 'testview' view as CPM
+        infoblox_db.add_mapping_member(self.ctx.session,
+                                       netview_default.id,
+                                       gm_member.member_id,
+                                       const.MAPPING_RELATION_GM_OWNED)
+        infoblox_db.add_mapping_member(self.ctx.session,
+                                       netview_testview.id,
+                                       m2_member.member_id,
+                                       const.MAPPING_RELATION_DELEGATED)
+
+        # add service members
+        # - m4 is a member that serves DHCP/DNS for a network under
+        #   the non-delegated view, 'default'
+        # - m2 is the delegated member to the network view, 'testview'
+        infoblox_db.add_service_member(self.ctx.session,
+                                       netview_default.id,
+                                       m4_member.member_id,
+                                       const.SERVICE_TYPE_DHCP)
+        infoblox_db.add_service_member(self.ctx.session,
+                                       netview_default.id,
+                                       m4_member.member_id,
+                                       const.SERVICE_TYPE_DNS)
+        infoblox_db.add_service_member(self.ctx.session,
+                                       netview_default.id,
+                                       m2_member.member_id,
+                                       const.SERVICE_TYPE_DHCP)
+        infoblox_db.add_service_member(self.ctx.session,
+                                       netview_default.id,
+                                       m2_member.member_id,
+                                       const.SERVICE_TYPE_DNS)
+
+        dhcp_member = infoblox_db.get_next_dhcp_member(self.ctx.session,
+                                                       self.grid_id)
+
+        # only available dhcp member should be 'm3'
+        self.assertEqual(m3_member.member_id, dhcp_member.member_id)
+
+    def test_service_member(self):
+        # prepare grid
+        self._create_default_grid()
+
+        # prepare grid members
+        member_list = [{'member_id': 'm1',
+                        'member_name': 'm1.com',
+                        'member_ip': '10.10.1.1',
+                        'member_ipv6': None,
+                        'member_type': const.MEMBER_TYPE_GRID_MASTER,
+                        'member_status': 'ON'},
+                       {'member_id': 'm2',
+                        'member_name': 'm2.com',
+                        'member_ip': '10.10.1.2',
+                        'member_ipv6': 'fd44:acb:5df6:1083::22',
+                        'member_type': const.MEMBER_TYPE_CP_MEMBER,
+                        'member_status': 'ON'}]
+        self._create_members(member_list, self.grid_id)
+
+        db_members = infoblox_db.get_members(self.ctx.session,
+                                             grid_id=self.grid_id)
+        gm_member = utils.find_one_in_list('member_type', 'GM', db_members)
+        m2_member = utils.find_one_in_list('member_id', 'm2', db_members)
+
+        # create network views
+        netview_dict = {'default': gm_member.member_id}
+        self._create_network_views(netview_dict)
+
+        db_network_views = infoblox_db.get_network_views(self.ctx.session)
+        netview_default = utils.find_one_in_list('network_view',
+                                                 'default',
+                                                 db_network_views)
+
+        # test addition
+        infoblox_db.add_service_member(self.ctx.session,
+                                       netview_default.id,
+                                       gm_member.member_id,
+                                       const.SERVICE_TYPE_DHCP)
+
+        infoblox_db.add_service_member(self.ctx.session,
+                                       netview_default.id,
+                                       m2_member.member_id,
+                                       const.SERVICE_TYPE_DHCP)
+
+        db_service_members = infoblox_db.get_service_members(
+            self.ctx.session, netview_default.id)
+        gm_dhcp_member = utils.find_one_in_list('member_id',
+                                                gm_member.member_id,
+                                                db_service_members)
+        self.assertIsNotNone(gm_dhcp_member)
+        m2_dhcp_member = utils.find_one_in_list('member_id',
+                                                m2_member.member_id,
+                                                db_service_members)
+        self.assertIsNotNone(m2_dhcp_member)
+
+        # test removal
+        infoblox_db.remove_service_member(self.ctx.session, netview_default.id)
+        db_service_members = infoblox_db.get_service_members(
+            self.ctx.session, netview_default.id)
+        gm_dhcp_member = utils.find_one_in_list('member_id',
+                                                gm_member.member_id,
+                                                db_service_members)
+        self.assertIsNone(gm_dhcp_member)
+
+        m2m_dhcp_member = utils.find_one_in_list('member_id',
+                                                 m2_member.member_id,
+                                                 db_service_members)
+        self.assertIsNone(m2m_dhcp_member)

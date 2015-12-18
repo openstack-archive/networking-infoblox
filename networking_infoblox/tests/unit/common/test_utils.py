@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
 import netaddr
 import six
 
@@ -20,6 +21,8 @@ from oslo_serialization import jsonutils
 
 from neutron import context
 from neutron.tests.unit import testlib_api
+
+from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import utils
@@ -559,3 +562,144 @@ class TestUtils(testlib_api.SqlTestCase):
                          utils.get_ipv4_network_prefix('11.11.1.1/25', 'sub1'))
         self.assertEqual('11-11-1-1-29',
                          utils.get_ipv4_network_prefix('11.11.1.1/29', None))
+
+    def test_get_dhcp_member_ips_from_network_json(self):
+        network_json = {
+            "members": [
+                {
+                    "_struct": "dhcpmember",
+                    "ipv4addr": "192.168.1.10",
+                    "ipv6addr": None,
+                    "name": "nios-7.2.0-member3.com"
+                }
+            ]
+        }
+        member_ips = utils.get_dhcp_member_ips(network_json)
+        self.assertEqual("192.168.1.10", member_ips[0])
+
+    def test_get_dhcp_member_ips_from_ib_network(self):
+        connector = mock.Mock()
+        test_ib_network = ib_objects.NetworkV4(connector,
+                                               network_view='test-view',
+                                               cidr='12.12.1.0/24')
+        test_ib_network.members = [
+            ib_objects.AnyMember(_struct='dhcpmember',
+                                 name='nios-7.2.0-member3.com',
+                                 ipv4addr='192.168.1.10')]
+        # test_gateway_ip = '12.12.1.1'
+        # test_ib_network.options = [
+        #     ib_objects.DhcpOption(name='routers',
+        #                           value=test_gateway_ip)]
+        member_ips = utils.get_dhcp_member_ips(test_ib_network)
+        self.assertEqual("192.168.1.10", member_ips[0])
+
+    def test_get_dns_member_ips_from_network_json(self):
+        network_json = {
+            "options": [
+                {
+                    "name": "domain-name-servers",
+                    "num": 6,
+                    "use_option": True,
+                    "value": "192.168.1.10,192.168.1.13",
+                    "vendor_class": "DHCP"
+                }
+            ]
+        }
+        member_ips = utils.get_dns_member_ips(network_json)
+        self.assertEqual("192.168.1.10", member_ips[0])
+        self.assertEqual("192.168.1.13", member_ips[1])
+
+    def test_get_dns_member_ips_from_ib_network(self):
+        connector = mock.Mock()
+        test_ib_network = ib_objects.NetworkV4(connector,
+                                               network_view='test-view',
+                                               cidr='12.12.1.0/24')
+        test_ib_network.options = [
+            ib_objects.DhcpOption(name='domain-name-servers',
+                                  value='192.168.1.10,192.168.1.13')]
+        member_ips = utils.get_dns_member_ips(test_ib_network)
+        self.assertEqual("192.168.1.10", member_ips[0])
+        self.assertEqual("192.168.1.13", member_ips[1])
+
+    def test_get_router_ips_from_network_json(self):
+        network_json = {
+            "options": [
+                {
+                    "name": "routers",
+                    "num": 3,
+                    "use_option": True,
+                    "value": "192.168.1.1,192.168.1.2",
+                    "vendor_class": "DHCP"
+                }
+            ]
+        }
+        member_ips = utils.get_router_ips(network_json)
+        self.assertEqual("192.168.1.1", member_ips[0])
+        self.assertEqual("192.168.1.2", member_ips[1])
+
+    def test_get_router_ips_from_ib_network(self):
+        connector = mock.Mock()
+        test_ib_network = ib_objects.NetworkV4(connector,
+                                               network_view='test-view',
+                                               cidr='12.12.1.0/24')
+        test_ib_network.options = [
+            ib_objects.DhcpOption(name='routers',
+                                  value='192.168.1.1,192.168.1.2')]
+        member_ips = utils.get_router_ips(test_ib_network)
+        self.assertEqual("192.168.1.1", member_ips[0])
+        self.assertEqual("192.168.1.2", member_ips[1])
+
+    def test_find_member_by_ip_from_list(self):
+        self.assertRaises(ValueError,
+                          utils.find_member_by_ip_from_list, None, None)
+        self.assertRaises(ValueError,
+                          utils.find_member_by_ip_from_list, None, [])
+        self.assertRaises(netaddr.core.AddrFormatError,
+                          utils.find_member_by_ip_from_list, '1.0.1.555', [])
+        self.assertEqual(None,
+                         utils.find_member_by_ip_from_list('11.1.1.1', []))
+
+        search_list = [{'member_ip': '11.1.1.1', 'member_ipv6': '2001::1'},
+                       {'member_ip': '11.1.1.2', 'member_ipv6': None}]
+
+        search_ip = '11.1.1.2'
+        actual = utils.find_member_by_ip_from_list(search_ip, search_list)
+        self.assertEqual(search_ip, actual['member_ip'])
+
+        search_ip = '2001::1'
+        actual = utils.find_member_by_ip_from_list(search_ip, search_list)
+        self.assertEqual(search_ip, actual['member_ipv6'])
+
+    def test_get_nameservers(self):
+        self.assertRaises(ValueError, utils.get_nameservers, None, None, None)
+        self.assertRaises(ValueError, utils.get_nameservers, [], None, None)
+        self.assertRaises(ValueError, utils.get_nameservers, [], [], 5)
+        self.assertRaises(ValueError, utils.get_nameservers, [], [], 6)
+
+        user_nameservers = []
+        test_dhcp_member_1 = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'REGULAR',
+             'member_ip': '11.11.1.12', 'member_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON'})
+        test_dhcp_member_2 = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'CPM',
+             'member_ip': '11.11.1.13', 'member_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON'})
+        dns_members = [test_dhcp_member_1, test_dhcp_member_2]
+        ip_version = 4
+
+        nameservers = utils.get_nameservers(user_nameservers, dns_members,
+                                            ip_version)
+
+        expected = [m.member_ip for m in dns_members]
+        self.assertEqual(expected, nameservers)
+
+        user_nameservers = ['11.11.1.11', '11.11.1.12']
+        nameservers = utils.get_nameservers(user_nameservers, dns_members,
+                                            ip_version)
+
+        # user name server needs to come after ib dns memebers
+        self.assertEqual(['11.11.1.12', '11.11.1.13', '11.11.1.11'],
+                         nameservers)
