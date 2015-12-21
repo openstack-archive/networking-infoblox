@@ -23,20 +23,20 @@ class InfobloxNeutronException(exceptions.NeutronException):
         super(InfobloxNeutronException, self).__init__(**kwargs)
 
 
-class InfobloxInvalidCloudDataCenter(exceptions.NeutronException):
+class InfobloxInvalidCloudDataCenter(InfobloxNeutronException):
     message = _("Invalid cloud data center: '%(data_center_id)s'")
 
 
-class InfobloxCannotFindMember(exceptions.NeutronException):
+class InfobloxCannotFindMember(InfobloxNeutronException):
     message = _("Cannot find the member: '%(member)s'")
 
 
-class InfobloxCannotReserveAuthorityMember(exceptions.NeutronException):
+class InfobloxCannotReserveAuthorityMember(InfobloxNeutronException):
     message = _("Cannot reserve the authority member for network view: "
                 "%(network_view)s")
 
 
-class InfobloxNetworkViewMappingNotFound(exceptions.NeutronException):
+class InfobloxNetworkViewMappingNotFound(InfobloxNeutronException):
     message = _("Cannot find a network view mapped for subnet %(subnet_id)s")
 
 
@@ -49,9 +49,9 @@ class InfobloxPrivateSubnetAlreadyExist(exceptions.Conflict):
     message = _("Network with the same CIDR already exists on NIOS.")
 
 
-class InfobloxCannotAllocateIp(exceptions.NeutronException):
+class InfobloxCannotAllocateIp(InfobloxNeutronException):
     message = _("Cannot allocate IP %(ip_data)s")
 
 
-class InfobloxCannotFindFixedIp(exceptions.NeutronException):
+class InfobloxCannotFindFixedIp(InfobloxNeutronException):
     message = _("Cannot find the fixed IP %(ip)s")
