@@ -389,7 +389,8 @@ class InfobloxContext(object):
         return netview_name
 
     def _get_dns_view(self):
-        if self.grid_config.dns_view == const.DEFAULT_DNS_VIEW:
+        if (self.grid_config.dns_view == const.DEFAULT_DNS_VIEW and
+                self.mapping.network_view != const.DEFAULT_NETWORK_VIEW):
             return '.'.join(
                 [self.grid_config.dns_view, self.mapping.network_view])
         return self.grid_config.dns_view
