@@ -24,6 +24,7 @@ from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import ipam
+from networking_infoblox.neutron.common import keystone_manager
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
@@ -105,7 +106,14 @@ class IpamEventHandler(object):
         self._resync()
 
     def create_network_sync(self, payload):
-        """Notifies that new networks have been created."""
+        """Notifies that new networks have been created.
+
+        Tries to get tenant name to tenant id mapping from context info.
+        If tenant id of context is different from network context,
+        then check if id to name mapping is already known.
+        If id to name mapping still unknown run API call to keystone to
+        get all known tenants and store this mapping.
+        """
         if 'networks' in payload:
             networks = payload.get('networks')
         else:
@@ -114,6 +122,49 @@ class IpamEventHandler(object):
         for network in networks:
             if self.traceable:
                 LOG.info("created network: %s", network)
+
+        LOG.warn("Network Payload: %s", payload)
+        LOG.warn("Context: %s", self.ctxt)
+
+        context_tenant_id = self.ctxt['tenant_id']
+        context_tenant_name = self.ctxt['tenant_name']
+        db_tenant = dbi.get_tenant(self.context.session, context_tenant_id)
+        if db_tenant is None:
+            dbi.add_tenant(self.context.session,
+                           context_tenant_id,
+                           context_tenant_name)
+        elif db_tenant.name != context_tenant_name:
+            db_tenant.name = context_tenant_name
+
+        # If there are no auth_token all later checks are useless
+        if not self.ctxt.get('auth_token'):
+            return
+
+        # Get unique tenants ids and check if there are unknown one
+        tenant_ids = {net['tenant_id']: True for net in networks}
+        if context_tenant_id in tenant_ids:
+            tenant_ids[context_tenant_id] = False
+        unknown_ids = self._get_unknown_ids_from_dict(tenant_ids)
+        LOG.warn("Unknown: %s", unknown_ids)
+        # There are some unknown ids, check if there are mapping in database
+        if unknown_ids:
+            db_tenants = dbi.get_tenants(self.context.session,
+                                         tenant_ids=unknown_ids)
+            for tenant in db_tenants:
+                tenant_ids[tenant.id] = False
+            # If there are still unknown tenants in request try last resort
+            # make an api call to keystone with auth_token
+            if self._get_unknown_ids_from_dict(tenant_ids):
+                tenants = keystone_manager.get_all_tenants(self.ctxt)
+                for tenant in tenants:
+                    LOG.warn("Tenant: %s", tenant)
+                    dbi.add_tenant(self.context.session,
+                                   tenant.id,
+                                   tenant.name)
+
+    def _get_unknown_ids_from_dict(self, tenant_ids):
+        return [id for id, unknown in tenant_ids.items()
+                if unknown is True]
 
     def update_network_sync(self, payload):
         """Notifies that the network property has been updated."""

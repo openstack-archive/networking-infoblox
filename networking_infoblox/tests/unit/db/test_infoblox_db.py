@@ -37,6 +37,25 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         self.grid_connection = "{}"
         self.grid_status = "ON"
 
+    def _create_tenants(self, tenants):
+        for id, name in tenants.items():
+            infoblox_db.add_tenant(self.ctx.session, id, name)
+
+    def test_add_and_get_tenant(self):
+        tenants = {'tenant-id': 'tenant-name'}
+        self._create_tenants(tenants)
+        tenant = infoblox_db.get_tenant(self.ctx.session, 'tenant-id')
+        self.assertEqual('tenant-name', tenant.name)
+
+    def test_get_tenants(self):
+        tenants = {'tenant-one': 'tenant-name-1',
+                   'tenant-two': 'tenant-name-2',
+                   'tenant-three': 'tenant-name-3'}
+        self._create_tenants(tenants)
+        tenants = infoblox_db.get_tenants(self.ctx.session,
+                                          ['tenant-one', 'tenant-three'])
+        self.assertEqual(2, len(tenants))
+
     def _create_default_grid(self):
         infoblox_db.add_grid(self.ctx.session, self.grid_id, self.grid_name,
                              self.grid_connection, self.grid_status)

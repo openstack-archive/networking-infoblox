@@ -639,3 +639,23 @@ def is_last_subnet_in_address_scope(session, subnet_id):
          filter(address_scope_db.id == models_v2.SubnetPool.address_scope_id).
          filter(models_v2.Subnet.id != subnet_id))
     return q.count() == 0
+
+
+def add_tenant(session, tenant_id, tenant_name):
+    tenant = ib_models.InfobloxTenant(
+        id=tenant_id,
+        name=tenant_name)
+    session.add(tenant)
+    return tenant
+
+
+def get_tenant(session, tenant_id):
+    q = session.query(ib_models.InfobloxTenant)
+    return q.filter_by(id=tenant_id).first()
+
+
+def get_tenants(session, tenant_ids=None):
+    q = session.query(ib_models.InfobloxTenant)
+    if tenant_ids:
+        q = q.filter(ib_models.InfobloxTenant.id.in_(tenant_ids))
+    return q.all()
