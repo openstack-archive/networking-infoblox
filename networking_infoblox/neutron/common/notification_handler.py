@@ -24,6 +24,7 @@ from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import ipam
+from networking_infoblox.neutron.common import keystone_manager
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
@@ -114,6 +115,12 @@ class IpamEventHandler(object):
         for network in networks:
             if self.traceable:
                 LOG.info("created network: %s", network)
+
+        keystone_manager.update_tenant_mapping(self.context,
+                                               networks,
+                                               self.ctxt['tenant_id'],
+                                               self.ctxt['tenant_name'],
+                                               self.ctxt['auth_token'])
 
     def update_network_sync(self, payload):
         """Notifies that the network property has been updated."""

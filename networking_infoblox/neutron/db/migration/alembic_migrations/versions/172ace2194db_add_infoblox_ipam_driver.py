@@ -166,3 +166,10 @@ def upgrade():
                                 ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('network_id', 'ip_address')
     )
+
+    op.create_table(
+        'infoblox_tenant',
+        sa.Column('tenant_id', sa.String(64),
+                  nullable=False, primary_key=True),
+        sa.Column('tenant_name', sa.String(64), nullable=False),
+    )

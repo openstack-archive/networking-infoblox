@@ -254,3 +254,13 @@ class InfobloxOperation(model_base.BASEV2, models_v2.HasId):
 
     def __repr__(self):
         return "op_type: %s, op_value: %s" % (self.op_type, self.op_value)
+
+
+class InfobloxTenant(model_base.BASEV2):
+    """Tenant id to tenant name mapping."""
+    __tablename__ = 'infoblox_tenant'
+
+    tenant_id = sa.Column(sa.String(64),
+                          nullable=False,
+                          primary_key=True)
+    tenant_name = sa.Column(sa.String(64), nullable=False)

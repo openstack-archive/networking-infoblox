@@ -94,3 +94,37 @@ class TestIpamEventHandler(base.TestCase):
             mock.ANY,
             mock.ANY,
             True)
+
+    def _prepare_context(self):
+        message_context = {'project_name': u'admin',
+                           'user_id': u'9510723b6555473cb735ce6640e680cb',
+                           'show_deleted': False,
+                           'roles': [u'admin'],
+                           'tenant_name': u'admin',
+                           'auth_token': u'dd7257d2e02f41c2908ffdc197af9061',
+                           'tenant_id': u'bf0806763e32436bbdb8fd9b6ebfac93',
+                           'tenant': u'bf0806763e32436bbdb8fd9b6ebfac93',
+                           'user_name': u'admin'}
+        self.ipam_handler.ctxt = message_context
+
+    def test_create_network_sync_same_tenant(self):
+        payload = {
+            'network': {'status': 'ACTIVE',
+                        'subnets': [],
+                        'name': 'network_name',
+                        'tenant_id': 'bf0806763e32436bbdb8fd9b6ebfac93'}}
+        self._prepare_context()
+        self.ipam_handler.create_network_sync(payload)
+
+    @mock.patch('networking_infoblox.neutron.db.infoblox_db.get_tenants')
+    def test_create_network_sync_tenant_mismatch(self, get_mock):
+        db_tenant = mock.Mock()
+        db_tenant.id = '25ba7c0a7b1e4266b48a7731b2502e05'
+        get_mock.return_value = [mock.Mock()]
+        payload = {
+            'network': {'status': 'ACTIVE',
+                        'subnets': [],
+                        'name': 'network_name',
+                        'tenant_id': db_tenant.id}}
+        self._prepare_context()
+        self.ipam_handler.create_network_sync(payload)
