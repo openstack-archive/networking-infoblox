@@ -177,6 +177,6 @@ class FixedAddressIPAllocator(IPAllocator):
     def deallocate_ip(self, network_view, dns_view_name, ip):
         delete_cfg = self.opts['dns_record_removable_types']
         if delete_cfg:
-            self.manager.delete_all_associated_objects(network_view, ip,
-                                                       delete_cfg)
+            self.manager.unbind_name_from_record_a(dns_view_name, ip,
+                                                   None, delete_cfg)
         self.manager.delete_fixed_address(network_view, ip)
