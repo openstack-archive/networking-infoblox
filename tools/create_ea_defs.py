@@ -68,10 +68,11 @@ else:
     member = objects.Member.search(conn, ipv6_address=host_ip)
 
 ea_exist = False
-for ea, val in const.GRID_CONFIG_DEFAULTS.items():
-    if ea in member.extattrs:
-        ea_exist = True
-        break
+if member.extattrs:
+    for ea, val in const.GRID_CONFIG_DEFAULTS.items():
+        if member.extattrs.get(ea) is not None:
+            ea_exist = True
+            break
 
 if not ea_exist:
     update_ea = {}
