@@ -74,3 +74,7 @@ class InfobloxCannotAllocateIp(exceptions.NeutronException):
 
 class InfobloxCannotFindFixedIp(exceptions.NeutronException):
     message = _("Cannot find the fixed IP %(ip)s")
+
+
+class InfobloxWAPIClientException(exceptions.NeutronException):
+    message = _("InfobloxWAPIClientException '%(msg)s'")
