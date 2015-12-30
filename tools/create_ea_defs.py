@@ -67,11 +67,16 @@ if ib_utils.determine_ip_version(host_ip) == 4:
 else:
     member = objects.Member.search(conn, ipv6_address=host_ip)
 
+if member is None:
+    LOG.error("Cannot retrieve member information at host_ip='%s'" % host_ip)
+    exit(1)
+
 ea_exist = False
-for ea, val in const.GRID_CONFIG_DEFAULTS.items():
-    if ea in member.extattrs:
-        ea_exist = True
-        break
+if member.extattrs:
+    for ea, val in const.GRID_CONFIG_DEFAULTS.items():
+        if member.extattrs.get(ea) is not None:
+            ea_exist = True
+            break
 
 if not ea_exist:
     update_ea = {}
