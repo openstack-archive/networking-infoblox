@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import functools
 import netaddr
 
 from oslo_log import log as logging
@@ -39,12 +40,23 @@ from networking_infoblox.neutron.db import infoblox_db as dbi
 LOG = logging.getLogger(__name__)
 
 
+def catch_ib_client_exception(f):
+    @functools.wraps(f)
+    def func(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except ib_exc.InfobloxException as e:
+            raise exc.InfobloxClientException(msg=e.msg)
+    return func
+
+
 class InfobloxPool(subnet_alloc.SubnetAllocator):
     """Infoblox Pool.
 
     InfobloxPool is responsible for subnet management in Infoblox backend.
     """
 
+    @catch_ib_client_exception
     def __init__(self, subnetpool, context):
         super(InfobloxPool, self).__init__(subnetpool, context)
         self._plugin = manager.NeutronManager.get_plugin()
@@ -52,6 +64,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         self._grid_manager.get_config()
         self._grid_config = self._grid_manager.grid_config
 
+    @catch_ib_client_exception
     def get_subnet(self, subnet_id):
         """Retrieve an IPAM subnet.
 
@@ -90,6 +103,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
     def _fetch_subnet(self, subnet_id):
         return self._plugin.get_subnet(self._context, subnet_id)
 
+    @catch_ib_client_exception
     def allocate_subnet(self, subnet_request):
         """Create an IPAM subnet from the subnet request which contains cidr.
 
@@ -171,6 +185,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
                                "to server the current subnet.")
         return ib_network
 
+    @catch_ib_client_exception
     def update_subnet(self, subnet_request):
         """Update IPAM Subnet.
 
@@ -210,6 +225,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
                     old_subnet_name != new_subnet_name)
         return False
 
+    @catch_ib_client_exception
     def remove_subnet(self, subnet_id):
         """Remove IPAM Subnet.
 
@@ -294,6 +310,7 @@ class InfobloxSubnet(driver.Subnet):
             raise ValueError("Subnet details should be passed as "
                              "SpecificSubnetRequest")
 
+    @catch_ib_client_exception
     def allocate(self, address_request):
         """Allocate an IP address based on the request passed in.
 
@@ -333,6 +350,7 @@ class InfobloxSubnet(driver.Subnet):
                                       address_request.device_owner)
         return allocated_ip
 
+    @catch_ib_client_exception
     def deallocate(self, address):
         """Deallocate previously allocated address.
 
