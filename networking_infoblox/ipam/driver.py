@@ -193,20 +193,26 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         Infoblox backend.
         """
         neutron_subnet = self._build_subnet_from_request(subnet_request)
+        ib_network = self._get_ib_network(neutron_subnet['id'],
+                                          neutron_subnet['ip_version'])
+        if not ib_network:
+            raise exc.InfobloxCannotFindSubnet(subnet_id=neutron_subnet['id'],
+                                               cidr=neutron_subnet['cidr'])
+
         ib_context = context.InfobloxContext(
             self._context,
             self._context.user_id,
             None,
             neutron_subnet,
             self._grid_config,
-            plugin=self._plugin)
+            plugin=self._plugin,
+            ib_network=ib_network)
 
         ipam_controller = ipam.IpamSyncController(ib_context)
         dns_controller = dns.DnsController(ib_context)
 
         ipam_controller.update_subnet_allocation_pools()
 
-        ib_network = ipam_controller.get_subnet()
         if self._is_new_zone_required(neutron_subnet, ib_network):
             # subnet name is used in the domain suffix pattern and the name
             # has been changed; we need to create new zones.
@@ -242,7 +248,8 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
             None,
             neutron_subnet,
             self._grid_config,
-            plugin=self._plugin)
+            plugin=self._plugin,
+            ib_network=ib_network)
 
         ipam_controller = ipam.IpamSyncController(ib_context)
         dns_controller = dns.DnsController(ib_context)
@@ -250,30 +257,36 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         ipam_controller.delete_subnet()
         dns_controller.delete_dns_zones()
 
-    def _get_ib_network(self, subnet_id):
+    def _get_ib_network(self, subnet_id, ip_version=None):
         db_netviews = dbi.get_network_view_by_mapping(
             self._context.session,
             grid_id=self._grid_config.grid_id,
             subnet_id=subnet_id)
         if not db_netviews:
-            raise exc.InfobloxNetworkViewMappingNotFound(subnet_id=subnet_id)
+            return None
 
         network_view = db_netviews[0].network_view
         ea = ib_objects.EA({'Subnet ID': subnet_id})
 
-        # TODO(pbondar): Consider replacing ineffective search
-        # by EA in network view with using some caching mechanism
-        # to store subnet_id -> nios_ref or subnet_id -> cidr
-        ib_network = ib_objects.NetworkV4.search(
-            self._grid_config.gm_connector,
-            network_view=network_view,
-            search_extattrs=ea)
-        # Search IPv6 Network if no IPv4 network exist
-        if not ib_network:
-            ib_network = ib_objects.NetworkV6.search(
-                self._grid_config.gm_connector,
-                network_view=network_view,
-                search_extattrs=ea)
+        # TODO(hhwang): this should be replaced to use get_network_by_subnet_id
+        # api when the following issue is resolved:
+        # https://github.com/infobloxopen/infoblox-client/issues/58
+        if ip_version == 4 or ip_version is None:
+            try:
+                ib_network = ib_objects.NetworkV4.search(
+                    self._grid_config.gm_connector,
+                    network_view=network_view,
+                    search_extattrs=ea)
+            except ib_exc.InfobloxSearchError:
+                ib_network = None
+        if ip_version == 6 or ib_network is None:
+            try:
+                ib_network = ib_objects.NetworkV6.search(
+                    self._grid_config.gm_connector,
+                    network_view=network_view,
+                    search_extattrs=ea)
+            except ib_exc.InfobloxSearchError:
+                ib_network = None
         return ib_network
 
     def _build_subnet_from_ib_network(self, ib_network):
@@ -283,6 +296,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         subnet['network_id'] = ib_network.extattrs.get(const.EA_NETWORK_ID)
         subnet['tenant_id'] = ib_network.extattrs.get(const.EA_TENANT_ID)
         subnet['cidr'] = ib_network.network
+        subnet['ip_version'] = ib_network._ip_version
         return subnet
 
     def get_subnet_request_factory(self):

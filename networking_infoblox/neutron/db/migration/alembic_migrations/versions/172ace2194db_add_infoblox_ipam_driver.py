@@ -168,7 +168,7 @@ def upgrade():
     )
 
     op.create_table(
-        'infoblox_tenant',
+        'infoblox_tenants',
         sa.Column('tenant_id', sa.String(64),
                   nullable=False, primary_key=True),
         sa.Column('tenant_name', sa.String(64), nullable=False),

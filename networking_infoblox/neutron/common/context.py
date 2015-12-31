@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from collections import Counter
 from oslo_log import log as logging
 
 from neutron.i18n import _LI
@@ -37,12 +38,13 @@ class InfobloxContext(object):
 
     def __init__(self, neutron_context, user_id, network, subnet, grid_config,
                  plugin=None, grid_members=None, network_views=None,
-                 mapping_conditions=None):
+                 mapping_conditions=None, ib_network=None):
         self.context = neutron_context
         self.user_id = user_id
         self.plugin = plugin if plugin else manager.NeutronManager.get_plugin()
         self.network = network if network else {}
         self.subnet = subnet if subnet else {}
+        self.ib_network = ib_network
 
         self.grid_config = grid_config
         self.connector = None
@@ -68,10 +70,6 @@ class InfobloxContext(object):
         self._discovered_mapping_conditions = mapping_conditions
 
         self._update()
-
-        self.tenant_id = (self.network.get('tenant_id') or
-                          self.subnet.get('tenant_id') or
-                          self.context.tenant_id)
 
     @property
     def discovered_grid_members(self):
@@ -131,8 +129,9 @@ class InfobloxContext(object):
             raise exc.InfobloxCannotReserveAuthorityMember(
                 network_view=network_view)
 
-        # create network view mapping and update mapping properties
-        db_network_view = dbi.add_network_view(session, network_view,
+        # create network view mapping and update mapping
+        db_network_view = dbi.add_network_view(session,
+                                               network_view,
                                                self.grid_id,
                                                authority_member.member_id,
                                                False)
@@ -412,6 +411,11 @@ class InfobloxContext(object):
                 self.subnet['network_id'] = network_id
             self.network = self.plugin.get_network(self.context, network_id)
 
+        self.tenant_id = (self.network.get('tenant_id') or
+                          self.subnet.get('tenant_id') or
+                          self.context.tenant_id)
+        self.tenant_name = self._get_tenant_name()
+
         if self.network:
             if self.subnet:
                 self._find_mapping()
@@ -484,10 +488,15 @@ class InfobloxContext(object):
             opts['silent_ssl_warnings'] = True
         return connector.Connector(opts)
 
-    @staticmethod
-    def _get_tenant_name(tenant_id):
-        # TODO(hhwang): We need to store tenant names and retrieve here.
-        return 'test-tenant-name'
+    def _get_tenant_name(self):
+        if self.context.tenant_name:
+            return self.context.tenant_name
+
+        session = self.context.session
+        db_tenant = dbi.get_tenant(session, self.tenant_id)
+        if db_tenant:
+            return db_tenant.tenant_name
+        return None
 
     def _get_address_scope(self, subnetpool_id):
         session = self.context.session
@@ -523,6 +532,7 @@ class InfobloxContext(object):
                 netview_row.authority_member_id)
             self.mapping.shared = netview_row.shared
             self.mapping.dns_view = self._get_dns_view()
+            self._update_service_member_mapping()
             LOG.info(_LI("Network view %(netview)s mapping found for "
                          "network %(network)s and subnet %(subnet)s"),
                      dict(netview=netview_row.network_view, network=network_id,
@@ -534,7 +544,7 @@ class InfobloxContext(object):
         matching_netviews = []
 
         # find mapping matches on common cases
-        mapping_filters = self._get_scalar_mapping_filters(mapping_attrs)
+        mapping_filters = self._get_mapping_filters(mapping_attrs)
         for mf in mapping_filters:
             if mf.values()[0] is None:
                 continue
@@ -542,22 +552,12 @@ class InfobloxContext(object):
                 mf, self.discovered_mapping_conditions)
             if matches:
                 netview_ids = [m.network_view_id for m in matches]
-                matching_netviews.append(set(netview_ids))
-
-        # find matches for tenant cidrs
-        mapping_filters = self._get_tenant_cidr_mapping_filters()
-        for mf in mapping_filters:
-            matches = utils.find_in_list_by_condition(
-                mf, self.discovered_mapping_conditions)
-            if matches:
-                netview_ids = [m.network_view_id for m in matches]
-                matching_netviews.append(set(netview_ids))
+                matching_netviews += netview_ids
 
         # find network view id and name pair
         if matching_netviews:
-            matching_netview_ids = list(set.intersection(*matching_netviews))
-            # if multiple netview ids return, pick the first one
-            netview_id = matching_netview_ids[0]
+            # get most matched network view id
+            netview_id = Counter(matching_netviews).most_common(1)[0][0]
             netview_row = utils.find_one_in_list('id', netview_id,
                                                  self.discovered_network_views)
             netview_name = netview_row.network_view
@@ -593,8 +593,6 @@ class InfobloxContext(object):
 
     def _get_mapping_attributes(self):
         subnetpool_id = self.subnet.get('subnetpool_id')
-        tenant_id = self.network.get('tenant_id')
-        tenant_name = self._get_tenant_name(tenant_id)
         address_scope_id, address_scope_name = self._get_address_scope(
             subnetpool_id)
         return {'subnet_id': self.subnet.get('id'),
@@ -603,13 +601,13 @@ class InfobloxContext(object):
                 'subnetpool_id': self.subnet.get('subnetpool_id'),
                 'network_id': self.network.get('id'),
                 'network_name': self.network.get('name'),
-                'tenant_id': tenant_id,
-                'tenant_name': tenant_name,
+                'tenant_id': self.tenant_id,
+                'tenant_name': self.tenant_name,
                 'address_scope_id': address_scope_id,
                 'address_scope_name': address_scope_name}
 
     @staticmethod
-    def _get_scalar_mapping_filters(attrs):
+    def _get_mapping_filters(attrs):
         mappings = {
             'address_scope_name': const.EA_MAPPING_ADDRESS_SCOPE_NAME,
             'address_scope_id': const.EA_MAPPING_ADDRESS_SCOPE_ID,
@@ -622,18 +620,6 @@ class InfobloxContext(object):
         return [{const.MAPPING_CONDITION_KEY_NAME: mappings[field],
                  const.MAPPING_CONDITION_VALUE_NAME: attrs[field]}
                 for field in mappings]
-
-    def _get_tenant_cidr_mapping_filters(self):
-        session = self.context.session
-        tenant_id = self.network.get('tenant_id')
-
-        db_tenant_subnets = dbi.get_subnets_by_tenant_id(session, tenant_id)
-        tenant_subent_cidrs = utils.get_values_from_records('cidr',
-                                                            db_tenant_subnets)
-        return [
-            {const.MAPPING_CONDITION_KEY_NAME: const.EA_MAPPING_TENANT_CIDR,
-             const.MAPPING_CONDITION_VALUE_NAME: cidr}
-            for cidr in tenant_subent_cidrs]
 
     def _get_network_view_by_scope(self, netview_scope, neutron_objs):
         netview_name = 'default'
@@ -677,3 +663,26 @@ class InfobloxContext(object):
             return '.'.join(
                 [self.grid_config.dns_view, self.mapping.network_view])
         return self.grid_config.dns_view
+
+    def _update_service_member_mapping(self):
+        if not self.ib_network:
+            return
+
+        # dhcp members
+        dhcp_members = self._get_dhcp_members(self.ib_network)
+        ib_dhcp_members = []
+        for m in dhcp_members:
+            ib_dhcp_members.append(ib_objects.AnyMember(_struct='dhcpmember',
+                                                        name=m.member_name))
+
+        # dns members
+        dns_members = self._get_dns_members(self.ib_network)
+        nameservers = utils.get_nameservers(
+            self.subnet.get('dns_nameservers', []),
+            dns_members,
+            self.subnet.get('ip_version'))
+
+        self.mapping.dhcp_members = dhcp_members
+        self.mapping.dns_members = dns_members
+        self.mapping.ib_dhcp_members = ib_dhcp_members
+        self.mapping.ib_nameservers = nameservers

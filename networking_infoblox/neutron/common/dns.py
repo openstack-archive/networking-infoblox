@@ -92,34 +92,44 @@ class DnsController(object):
                     ib_zone_cidr.delete()
 
     def delete_dns_zones(self, dns_zone=None):
+        session = self.ib_cxt.context.session
         dns_view = self.ib_cxt.mapping.dns_view
         cidr = self.ib_cxt.subnet['cidr']
         dns_zone = dns_zone if dns_zone else self.dns_zone
 
-        # delete forward zone
-        if self._is_zone_removable():
-            self.ib_cxt.ibom.delete_dns_zone(dns_view, dns_zone)
-
-        # delete reverse zone
-        self.ib_cxt.ibom.delete_dns_zone(dns_view, cidr)
-
-    def _is_zone_removable(self):
-        session = self.ib_cxt.context.session
-        pattern = self.grid_config.default_domain_name_pattern
+        # TODO(hhwang): remove this check if the following issue is resolved.
+        # https://github.com/infobloxopen/infoblox-client/issues/57
+        db_network_views = dbi.get_network_views(
+            session,
+            network_view_id=self.ib_cxt.mapping.network_view_id)
+        if not db_network_views:
+            LOG.info("Network view has been removed so dns zone is already"
+                     "removed.")
+            return
 
         is_netview_shared = self.ib_cxt.mapping.shared
         is_network_external = self.ib_cxt.network['router:external']
         is_network_shared = self.ib_cxt.network['shared']
-        subnet_id = self.ib_cxt.subnet['id']
-        network_id = self.ib_cxt.subnet['network_id']
-        tenant_id = self.ib_cxt.subnet['tenant_id']
 
         zone_removable = ((is_netview_shared is False and
                            is_network_external is False and
                            is_network_shared is False) or
                           self.grid_config.admin_network_deletion)
-        if zone_removable is False:
-            return False
+        if zone_removable:
+            # delete forward zone
+            if self._is_forward_zone_removable():
+                self.ib_cxt.ibom.delete_dns_zone(dns_view, dns_zone)
+
+            # delete reverse zone
+            self.ib_cxt.ibom.delete_dns_zone(dns_view, cidr)
+
+    def _is_forward_zone_removable(self):
+        session = self.ib_cxt.context.session
+        pattern = self.grid_config.default_domain_name_pattern
+
+        subnet_id = self.ib_cxt.subnet['id']
+        network_id = self.ib_cxt.subnet['network_id']
+        tenant_id = self.ib_cxt.subnet['tenant_id']
 
         # check all dynamic patterns from bottom to top hierarchy
         subnet_used = '{subnet_name}' in pattern or '{subnet_id}' in pattern

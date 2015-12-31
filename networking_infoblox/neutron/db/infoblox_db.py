@@ -266,18 +266,6 @@ def associate_network_view(session, network_view_id, network_id, subnet_id):
             subnet_id=subnet_id)
         session.add(network_view_mapping)
 
-    # check if network level mapping exists; network level mapping is needed
-    # when the network is deleted after all subnets are deleted
-    q = session.query(ib_models.InfobloxNetworkViewMapping)
-    network_view_mapping = q.filter_by(network_id=network_id,
-                                       subnet_id=const.NONE_ID).first()
-    if not network_view_mapping:
-        network_view_mapping = ib_models.InfobloxNetworkViewMapping(
-            network_view_id=network_view_id,
-            network_id=network_id,
-            subnet_id=const.NONE_ID)
-        session.add(network_view_mapping)
-
 
 def dissociate_network_view(session, network_id, subnet_id):
     with session.begin(subtransactions=True):
@@ -518,6 +506,17 @@ def remove_service_member(session, network_view_id, member_id=None,
         q.delete(synchronize_session=False)
 
 
+def remove_service_members(session, network_view_id, member_ids):
+    with session.begin(subtransactions=True):
+        q = session.query(ib_models.InfobloxServiceMember)
+        q = q.filter(ib_models.InfobloxServiceMember.network_view_id ==
+                     network_view_id)
+        if member_ids and isinstance(member_ids, list):
+            q = q.filter(ib_models.InfobloxServiceMember.member_id.in_(
+                         member_ids))
+        q.delete(synchronize_session=False)
+
+
 # Management Network
 def get_management_ip(session, network_id):
     q = session.query(ib_models.InfobloxManagementNetwork)
@@ -602,7 +601,7 @@ def get_address_scope_by_subnetpool_id(session, subnetpool_id):
                filter(models_v2.SubnetPool.id == subnetpool_id))
     q = (session.query(address_scope_db.AddressScope).
          filter(address_scope_db.AddressScope.id.in_(sub_qry)))
-    return q.all()
+    return q.first()
 
 
 def is_last_subnet(session, subnet_id):

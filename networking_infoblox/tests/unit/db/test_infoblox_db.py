@@ -22,7 +22,6 @@ from neutron.db import models_v2
 from neutron.tests.unit import testlib_api
 
 from networking_infoblox.neutron.common import constants as const
-from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db
 
@@ -342,11 +341,6 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         self.assertEqual(network_id, db_network_view_mappings[0].network_id)
         self.assertEqual(subnet_id, db_network_view_mappings[0].subnet_id)
 
-        # test network view search by mapping
-        self.assertRaises(exc.MultipleNetworkViewMappingFound,
-                          infoblox_db.get_network_view_by_mapping,
-                          self.ctx.session, network_view_id=network_view_id)
-
         db_network_views = infoblox_db.get_network_view_by_mapping(
             self.ctx.session,
             network_id=network_id,
@@ -395,7 +389,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                                           neutron_object_name,
                                           neutron_object_value)
 
-        neutron_object_name = const.EA_MAPPING_TENANT_CIDR
+        neutron_object_name = const.EA_MAPPING_SUBNET_CIDR
         neutron_object_values = ["12.12.1.0/24", "13.13.1.0/24"]
         for value in neutron_object_values:
             expected_rows.append(netview_id + ':' + neutron_object_name +

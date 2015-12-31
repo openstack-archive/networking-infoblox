@@ -64,6 +64,10 @@ class InfobloxCannotCreateSubnet(exceptions.NeutronException):
     message = _("Cannot create a subnet because %(reason)s")
 
 
+class InfobloxCannotFindSubnet(exceptions.NeutronException):
+    message = _("Cannot find the subnet %(subnet_id)s for %(cidr)s from NIOS")
+
+
 class InfobloxPrivateSubnetAlreadyExist(exceptions.Conflict):
     message = _("Network with the same CIDR already exists on NIOS.")
 
@@ -77,4 +81,4 @@ class InfobloxCannotFindFixedIp(exceptions.NeutronException):
 
 
 class InfobloxClientException(exceptions.NeutronException):
-    message = _("InfobloxWAPIClientException '%(msg)s'")
+    message = _("InfobloxClientException '%(msg)s'")
