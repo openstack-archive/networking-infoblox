@@ -24,12 +24,6 @@
             "owned_by_adaptor": false
         },
         "extattrs": {
-             "Tenant CIDR Mapping": {
-                "value": [
-                    "11.11.1.0/24",
-                    "11.11.2.0/24"
-                ]
-            },
             "Tenant ID Mapping": {
                 "value": [
                     "90fbad5a098a4b7cb98826128d5b40b3",

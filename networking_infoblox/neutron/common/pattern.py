@@ -69,7 +69,8 @@ class PatternBuilder(object):
         pattern_dict = {
             'network_id': subnet['network_id'],
             'network_name': network_name,
-            'tenant_id': subnet['tenant_id'],
+            'tenant_id': self.ib_cxt.tenant_id,
+            'tenant_name': self.ib_cxt.tenant_name,
             'subnet_name': subnet_name,
             'subnet_id': subnet['id']
         }

@@ -66,6 +66,7 @@ class GridManager(object):
             self.mapping.sync()
             self.last_sync_time = datetime.utcnow().replace(microsecond=0)
             dbi.record_last_sync_time(session, self.last_sync_time)
+            LOG.info("Infoblox grid has been synced up.")
 
     def get_config(self):
         """Gets grid configuration.

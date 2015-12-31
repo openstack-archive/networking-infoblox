@@ -55,7 +55,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.grid_id = self.grid_mgr.grid_config.grid_id
         self.grid_config = self.grid_mgr.grid_config
 
-    def test_get_network_view_default_mapping_single(self):
+    def test_network_view_mapping_conditions_with_single_scope(self):
         user_id = 'test user'
         tenant_id = 'test-tenant'
 
@@ -108,10 +108,9 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertEqual(expected_member_name,
                          ib_cxt.mapping.authority_member.member_name)
 
-    def test_get_network_view_default_mapping_tenant(self):
+    def test_network_view_mapping_conditions_with_tenant_scope(self):
         user_id = 'test user'
         tenant_id = 'test-tenant-id'
-        tenant_name = 'test-tenant-name'
 
         # prepare network
         network_name = 'Test Network'
@@ -140,18 +139,14 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         ib_cxt.connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
-        ib_cxt._get_tenant_name = mock.Mock()
 
         # validate the mapping network view
-        expected_netview = utils.generate_network_view_name(tenant_id,
-                                                            tenant_name)
+        expected_netview = utils.generate_network_view_name(tenant_id)
         self.assertIsNone(ib_cxt.mapping.network_view_id)
-        self.assertEqual(expected_netview,
-                         ib_cxt.mapping.network_view)
-        self.assertEqual(None,
-                         ib_cxt.mapping.authority_member)
+        self.assertEqual(expected_netview, ib_cxt.mapping.network_view)
+        self.assertEqual(None, ib_cxt.mapping.authority_member)
 
-    def test_get_network_view_mapping_tenant_id_condition(self):
+    def test_network_view_mapping_conditions_with_tenant_id_condition(self):
         user_id = 'test user'
         tenant_id = '80afaaba012acb9c12888128d5123a09'
 
@@ -206,7 +201,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertEqual(expected_member_id,
                          ib_cxt.mapping.authority_member.member_id)
 
-    def test_get_network_view_mapping_tenant_cidr(self):
+    def test_network_view_mapping_conditions_with_subnet_cidr_condition(self):
         user_id = 'test user'
         tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
 
@@ -214,74 +209,9 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         network_name = 'Test Network'
         network = self.plugin_stub.create_network(tenant_id, network_name)
 
-        # prepare subnet with cidr tat is not used in mapping conditions
+        # prepare subnet with cidr used in mapping conditions
         subnet_name = 'Test Subnet'
-        subnet_cidr = '11.11.2.0/24'
-        subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
-                                                network['id'], subnet_cidr)
-
-        # make sure that subnet cidr is used in mapping condition for tenant
-        # cidr; for tenant cidr, any subnet under tenant should contain
-        # this cidr
-        db_conditions = dbi.get_mapping_conditions(
-            self.ctx.session,
-            grid_id=self.grid_id,
-            neutron_object_value=subnet_cidr)
-        self.assertEqual(1, len(db_conditions))
-
-        # test mapping where both tenant id and tenant cidr match
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
-        ib_cxt.connector = mock.Mock()
-        ib_cxt.ibom = mock.Mock()
-        ib_cxt.ip_allocator = mock.Mock()
-
-        # validate the mapping network view
-        matching_cond_1 = dbi.get_mapping_conditions(
-            self.ctx.session,
-            grid_id=self.grid_id,
-            neutron_object_name='Tenant ID Mapping',
-            neutron_object_value=tenant_id)
-        matching_netviews_1 = utils.get_values_from_records('network_view_id',
-                                                            matching_cond_1)
-        matching_cond_2 = dbi.get_mapping_conditions(
-            self.ctx.session,
-            grid_id=self.grid_id,
-            neutron_object_name='Tenant CIDR Mapping',
-            neutron_object_value=subnet_cidr)
-        matching_netviews_2 = utils.get_values_from_records('network_view_id',
-                                                            matching_cond_2)
-        matching_netviews = list(set.intersection(set(matching_netviews_1),
-                                                  set(matching_netviews_2)))
-
-        expected_netview_id = matching_netviews[0]
-        netview_row = utils.find_one_in_list('id', expected_netview_id,
-                                             ib_cxt.discovered_network_views)
-        expected_netview = netview_row.network_view
-
-        db_mapping_members = dbi.get_mapping_members(self.ctx.session,
-                                                     expected_netview_id,
-                                                     grid_id=self.grid_id)
-        expected_member_id = db_mapping_members[0].member_id
-
-        self.assertEqual(expected_netview_id,
-                         ib_cxt.mapping.network_view_id)
-        self.assertEqual(expected_netview,
-                         ib_cxt.mapping.network_view)
-        self.assertEqual(expected_member_id,
-                         ib_cxt.mapping.authority_member.member_id)
-
-    def test_get_network_view_mapping_already_exists(self):
-        user_id = 'test user'
-        tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
-
-        # prepare network
-        network_name = 'Test Network'
-        network = self.plugin_stub.create_network(tenant_id, network_name)
-
-        # prepare subnet with cidr tat is not used in mapping conditions
-        subnet_name = 'Test Subnet'
-        subnet_cidr = '11.11.2.0/24'
+        subnet_cidr = '12.12.2.0/24'
         subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
                                                 network['id'], subnet_cidr)
 
@@ -360,7 +290,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         network_name = 'Test Network'
         network = self.plugin_stub.create_network(tenant_id, network_name)
 
-        # prepare subnet with cidr tat is not used in mapping conditions
+        # prepare subnet
         subnet_name = 'Test Subnet'
         subnet_cidr = '11.11.2.0/24'
         subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
@@ -398,7 +328,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         network_name = 'Test Network'
         network = self.plugin_stub.create_network(tenant_id, network_name)
 
-        # prepare subnet with cidr tat is not used in mapping conditions
+        # prepare subnet
         subnet_name = 'Test Subnet'
         subnet_cidr = '11.11.2.0/24'
         subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
@@ -432,7 +362,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         network_name = 'Test Network'
         network = self.plugin_stub.create_network(tenant_id, network_name)
 
-        # prepare subnet with cidr tat is not used in mapping conditions
+        # prepare subnet
         subnet_name = 'Test Subnet'
         subnet_cidr = '11.11.1.0/24'
         subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
@@ -470,7 +400,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         network_name = 'Test Network'
         network = self.plugin_stub.create_network(tenant_id, network_name)
 
-        # prepare subnet with cidr tat is not used in mapping conditions
+        # prepare subnet
         subnet_name = 'Test Subnet'
         subnet_cidr = '11.11.1.0/24'
         subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
@@ -515,7 +445,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         network_name = 'Test Network'
         network = self.plugin_stub.create_network(tenant_id, network_name)
 
-        # prepare subnet with cidr tat is not used in mapping conditions
+        # prepare subnet
         subnet_name = 'Test Subnet'
         subnet_cidr = '11.11.1.0/24'
         subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
@@ -562,7 +492,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         network_name = 'Test Network'
         network = self.plugin_stub.create_network(tenant_id, network_name)
 
-        # prepare subnet with cidr tat is not used in mapping conditions
+        # prepare subnet
         subnet_name = 'Test Subnet'
         subnet_cidr = '11.11.1.0/24'
         subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
@@ -611,7 +541,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         network_name = 'Test Network'
         network = self.plugin_stub.create_network(tenant_id, network_name)
 
-        # prepare subnet with cidr tat is not used in mapping conditions
+        # prepare subnet
         subnet_name = 'Test Subnet'
         subnet_cidr = '11.11.1.0/24'
         subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
@@ -646,7 +576,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         network_name = 'Test Network'
         network = self.plugin_stub.create_network(tenant_id, network_name)
 
-        # prepare subnet with cidr tat is not used in mapping conditions
+        # prepare subnet
         subnet_name = 'Test Subnet'
         subnet_cidr = '11.11.1.0/24'
         subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,

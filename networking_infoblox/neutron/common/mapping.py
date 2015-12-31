@@ -35,7 +35,6 @@ class GridMappingManager(object):
                                     const.EA_MAPPING_NETWORK_ID,
                                     const.EA_MAPPING_TENANT_NAME,
                                     const.EA_MAPPING_TENANT_ID,
-                                    const.EA_MAPPING_TENANT_CIDR,
                                     const.EA_MAPPING_ADDRESS_SCOPE_NAME,
                                     const.EA_MAPPING_ADDRESS_SCOPE_ID]
 

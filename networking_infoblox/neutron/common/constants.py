@@ -70,7 +70,6 @@ EA_MAPPING_ADDRESS_SCOPE_ID = 'Address Scope ID Mapping'
 EA_MAPPING_ADDRESS_SCOPE_NAME = 'Address Scope Name Mapping'
 EA_MAPPING_TENANT_ID = 'Tenant ID Mapping'
 EA_MAPPING_TENANT_NAME = 'Tenant Name Mapping'
-EA_MAPPING_TENANT_CIDR = 'Tenant CIDR Mapping'
 EA_MAPPING_NETWORK_ID = 'Network ID Mapping'
 EA_MAPPING_NETWORK_NAME = 'Network Name Mapping'
 EA_MAPPING_SUBNET_ID = 'Subnet ID Mapping'
@@ -336,11 +335,6 @@ REQUIRED_EA_DEFS = [
      'comment': 'Mapping'},
 
     {'name': EA_MAPPING_TENANT_NAME,
-     'type': 'STRING', 'flags': 'CGV',
-     'allowed_object_types': ['NetworkView'],
-     'comment': 'Mapping'},
-
-    {'name': EA_MAPPING_TENANT_CIDR,
      'type': 'STRING', 'flags': 'CGV',
      'allowed_object_types': ['NetworkView'],
      'comment': 'Mapping'},

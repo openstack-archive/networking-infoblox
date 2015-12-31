@@ -56,14 +56,6 @@ class TestIpamEventHandler(base.TestCase):
             self.ipam_handler.update_network_sync(payload)
         controller_mock.assert_called_once_with()
 
-    def test_delete_network_sync(self):
-        payload = {'network_id': 'network-id'}
-        with mock.patch.object(ipam.IpamAsyncController,
-                               'delete_network_sync') as controller_mock:
-            self.ipam_handler.delete_network_sync(payload)
-            self.ipam_handler._resync.assert_called_once_with()
-        controller_mock.assert_called_once_with(payload['network_id'])
-
     def test_create_subnet_sync_should_call_resync(self):
         payload = {'subnet': {}}
         self.ipam_handler.create_subnet_sync(payload)
