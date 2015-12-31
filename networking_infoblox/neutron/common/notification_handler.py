@@ -17,6 +17,7 @@ import netaddr
 from oslo_log import log as logging
 import oslo_messaging
 from oslo_utils import encodeutils
+from sqlalchemy import exc as sql_exc
 
 from neutron import manager
 
@@ -41,7 +42,7 @@ class IpamEventHandler(object):
         self.plugin = plugin if plugin else manager.NeutronManager.get_plugin()
         self.grid_mgr = (grid_manager if grid_manager else
                          grid.GridManager(self.context))
-        self.grid_mgr.sync()
+        self.grid_mgr.sync(True)
 
         self.grid_config = self.grid_mgr.grid_config
         self.grid_id = self.grid_config.grid_id
@@ -70,6 +71,9 @@ class IpamEventHandler(object):
             if handler:
                 handler(payload)
             return oslo_messaging.NotificationResult.HANDLED
+        except sql_exc.OperationalError as e:
+            LOG.warn("Operational Error occurred")
+            LOG.error(encodeutils.exception_to_unicode(e))
         except Exception as e:
             LOG.error(encodeutils.exception_to_unicode(e))
 
@@ -142,18 +146,6 @@ class IpamEventHandler(object):
         if self.traceable:
             LOG.info("deleted network: %s", network_id)
 
-        # At this point, NIOS subnets that belong to the networks
-        # should have been removed; check if still exists and remove them
-        # if necessary.
-        ib_context = context.InfobloxContext(self.context, self.user_id,
-                                             None, None, self.grid_config,
-                                             self.plugin,
-                                             self._cached_grid_members,
-                                             self._cached_network_views,
-                                             self._cached_mapping_conditions)
-        ipam_controller = ipam.IpamAsyncController(ib_context)
-        ipam_controller.delete_network_sync(network_id)
-
         self._resync()
 
     def create_subnet_sync(self, payload):
@@ -182,9 +174,6 @@ class IpamEventHandler(object):
 
         if self.traceable:
             LOG.info("deleted subnet: %s", subnet_id)
-
-        # At this point, NIOS subnets should have been removed.
-        # Check if still exists and remove them if necessary.
 
         self._resync(True)
 
@@ -260,7 +249,10 @@ class IpamEventHandler(object):
         network = self.plugin.get_network(self.context, network_id)
         ib_context = context.InfobloxContext(self.context, self.user_id,
                                              network, subnet, self.grid_config,
-                                             self.plugin)
+                                             self.plugin,
+                                             self._cached_grid_members,
+                                             self._cached_network_views,
+                                             self._cached_mapping_conditions)
         dns_controller = dns.DnsController(ib_context)
 
         if associated_port_id:
@@ -326,9 +318,13 @@ class IpamEventHandler(object):
             LOG.warn("No subnet was found for mac: %s, ip: %s",
                      macs, ip_addresses)
             return
-        ib_context = context.InfobloxContext(
-            self.context, self.user_id, None,
-            subnet, self.grid_config, self.plugin)
+
+        ib_context = context.InfobloxContext(self.context, self.user_id,
+                                             None, subnet, self.grid_config,
+                                             self.plugin,
+                                             self._cached_grid_members,
+                                             self._cached_network_views,
+                                             self._cached_mapping_conditions)
 
         dns_controller = dns.DnsController(ib_context)
         dns_controller.bind_names(ip_addresses[0],

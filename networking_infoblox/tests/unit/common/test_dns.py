@@ -92,6 +92,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                 extattrs=mock.ANY)
         ]
 
+    @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     def test_delete_dns_zones_for_shared_network_view(self):
         self.ib_cxt.mapping.shared = True
         self.ib_cxt.network['router:external'] = False
@@ -106,6 +107,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                 self.ib_cxt.subnet['cidr'])
         ]
 
+    @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     def test_delete_dns_zones_for_external_network(self):
         self.ib_cxt.mapping.shared = False
         self.ib_cxt.network['router:external'] = True
@@ -120,6 +122,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                 self.ib_cxt.subnet['cidr'])
         ]
 
+    @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     @mock.patch.object(dbi, 'is_last_subnet_in_private_networks', mock.Mock())
     def test_delete_dns_zones_for_shared_network(self):
         self.ib_cxt.mapping.shared = False
@@ -136,6 +139,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ]
         assert not dbi.is_last_subnet_in_private_networks.called
 
+    @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     @mock.patch.object(dbi, 'is_last_subnet_in_private_networks', mock.Mock())
     def test_delete_dns_zones_for_shared_network_with_admin_network_deletable(
             self):
@@ -156,6 +160,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ]
         assert dbi.is_last_subnet_in_private_networks.called
 
+    @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     @mock.patch.object(dbi, 'is_last_subnet_in_private_networks', mock.Mock())
     def test_delete_dns_zones_for_private_network_with_static_zone(self):
         self.ib_cxt.mapping.shared = False
@@ -175,6 +180,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ]
         assert dbi.is_last_subnet_in_private_networks.called
 
+    @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     @mock.patch.object(dbi, 'is_last_subnet_in_private_networks', mock.Mock())
     def test_delete_dns_zones_for_private_network_with_subnet_pattern(self):
         self.ib_cxt.grid_config.default_domain_name_pattern = (
@@ -196,6 +202,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ]
         assert not dbi.is_last_subnet_in_private_networks.called
 
+    @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     @mock.patch.object(dbi, 'is_last_subnet_in_network', mock.Mock())
     def test_delete_dns_zones_for_private_network_with_network_pattern(self):
         self.ib_cxt.grid_config.default_domain_name_pattern = (
@@ -217,6 +224,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ]
         assert dbi.is_last_subnet_in_network.called
 
+    @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     @mock.patch.object(dbi, 'is_last_subnet_in_tenant', mock.Mock())
     def test_delete_dns_zones_for_private_network_with_tenant_pattern(self):
         self.ib_cxt.grid_config.default_domain_name_pattern = (
@@ -238,6 +246,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ]
         assert dbi.is_last_subnet_in_tenant.called
 
+    @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     @mock.patch.object(dbi, 'is_last_subnet_in_address_scope', mock.Mock())
     def test_delete_dns_zones_for_private_network_with_address_scope_pattern(
             self):

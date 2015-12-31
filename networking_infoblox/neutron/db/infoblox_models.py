@@ -258,7 +258,7 @@ class InfobloxOperation(model_base.BASEV2, models_v2.HasId):
 
 class InfobloxTenant(model_base.BASEV2):
     """Tenant id to tenant name mapping."""
-    __tablename__ = 'infoblox_tenant'
+    __tablename__ = 'infoblox_tenants'
 
     tenant_id = sa.Column(sa.String(64),
                           nullable=False,

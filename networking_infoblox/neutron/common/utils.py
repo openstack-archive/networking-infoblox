@@ -584,3 +584,11 @@ def get_nameservers(user_nameservers, ib_dns_members, ip_version):
                                else m.member_ip for m in ib_dns_members] if n]
     nameservers += [n for n in user_nameservers if n not in nameservers]
     return nameservers
+
+
+def get_mapping_relation(member_type):
+    if member_type == const.MEMBER_TYPE_CP_MEMBER:
+        return const.MAPPING_RELATION_DELEGATED
+    if member_type == const.MEMBER_TYPE_GRID_MASTER:
+        return const.MAPPING_RELATION_GM_OWNED
+    return None

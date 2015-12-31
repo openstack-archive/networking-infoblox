@@ -120,6 +120,7 @@ class TestDriver(base.TestCase, testlib_api.SqlTestCase):
         driver = self._mock_driver(requested_pools=pools)
         driver._grid_config.default_domain_name_pattern = (
             '{subnet_id}.cloud.global.com')
+        driver._get_ib_network = mock.Mock(return_value=mock.Mock())
         subnet_factory = driver.get_subnet_request_factory()
         subnet_request = subnet_factory.get_request(self.ctx,
                                                     driver._fetch_subnet(),
@@ -142,6 +143,7 @@ class TestDriver(base.TestCase, testlib_api.SqlTestCase):
         subnet_factory = driver.get_subnet_request_factory()
         driver._grid_config.default_domain_name_pattern = (
             '{subnet_name}.cloud.global.com')
+        driver._get_ib_network = mock.Mock(return_value=mock.Mock())
         test_subnet = driver._fetch_subnet()
         test_subnet['name'] = 'subnet-name-new'
         subnet_request = subnet_factory.get_request(self.ctx,

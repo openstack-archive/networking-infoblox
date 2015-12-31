@@ -83,8 +83,8 @@ class IpamSyncController(object):
             if not network_view_exists:
                 ib_network_view = self._create_ib_network_view()
 
-            ib_network = self._create_ib_network()
-            if ib_network:
+            ib_network, is_new = self._create_ib_network()
+            if ib_network and is_new:
                 self._create_ib_ip_range()
 
             # associate the network view to neutron
@@ -127,12 +127,12 @@ class IpamSyncController(object):
                                                network_view=network_view,
                                                cidr=cidr)
         if ib_network:
-            if is_shared or is_external:
+            if is_shared or is_external or self.ib_cxt.mapping.shared:
                 self.ib_cxt.reserve_service_members(ib_network)
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
                 LOG.info("ib network already exists so updated options: %s",
                          ib_network)
-                return ib_network
+                return ib_network, False
             raise exc.InfobloxPrivateSubnetAlreadyExist()
 
         # network creation using template
@@ -140,11 +140,12 @@ class IpamSyncController(object):
             ib_network = self.ib_cxt.ibom.create_network_from_template(
                 self.ib_cxt.mapping.network_view, cidr, network_template,
                 ea_network)
+            self._register_mapping_member()
             self.ib_cxt.reserve_service_members(ib_network)
             self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
             LOG.info("ib network created from template %s: %s",
                      network_template, ib_network)
-            return ib_network
+            return ib_network, True
 
         # network creation starts
         self.ib_cxt.reserve_service_members()
@@ -158,19 +159,45 @@ class IpamSyncController(object):
             gateway_ip_str,
             relay_trel_ip,
             ea_network)
+        self._register_mapping_member()
         LOG.info("ib network has been created: %s", ib_network)
 
-        for member in self.ib_cxt.mapping.dhcp_members:
+        self._restart_services()
+        return ib_network, True
+
+    def _get_service_members(self, field='member_id'):
+        dhcp_members = [m.get(field) for m in self.ib_cxt.mapping.dhcp_members]
+        dns_members = [m.get(field) for m in self.ib_cxt.mapping.dns_members]
+        service_member_set = set(dhcp_members + dns_members)
+        return list(service_member_set)
+
+    def _restart_services(self):
+        member_names = self._get_service_members('member_name')
+        for member_name in member_names:
             ib_member = ib_objects.Member(self.ib_cxt.connector,
-                                          host_name=member.member_name)
+                                          host_name=member_name)
             self.ib_cxt.ibom.restart_all_services(ib_member)
 
-        return ib_network
+    def _register_mapping_member(self):
+        session = self.ib_cxt.context.session
+        mapping_relation = utils.get_mapping_relation(
+            self.ib_cxt.mapping.authority_member.member_type)
+        mapping_members = dbi.get_mapping_members(
+            session,
+            self.ib_cxt.mapping.network_view_id,
+            self.ib_cxt.mapping.authority_member.member_id,
+            self.grid_id,
+            mapping_relation)
+        if not mapping_members:
+            dbi.add_mapping_member(
+                session,
+                self.ib_cxt.mapping.network_view_id,
+                self.ib_cxt.mapping.authority_member.member_id,
+                mapping_relation)
 
     def _rollback_subnet(self, ib_network_view, ib_network):
         session = self.ib_cxt.context.session
         subnet = self.ib_cxt.subnet
-        network_view = self.ib_cxt.mapping.network_view
 
         # deleting network view will delete ib networks under it.
         if ib_network_view:
@@ -179,8 +206,9 @@ class IpamSyncController(object):
             # remove ib network; deleting network deletes its child objects
             # like ip ranges
             if ib_network:
-                self.ib_cxt.ibom.delete_network(network_view,
-                                                subnet.get('cidr'))
+                self.ib_cxt.ibom.delete_network(
+                    self.ib_cxt.mapping.network_view, subnet.get('cidr'))
+
         # remove network view association
         dbi.remove_network_views(session,
                                  [self.ib_cxt.mapping.network_view_id])
@@ -290,9 +318,18 @@ class IpamSyncController(object):
         return added_list, removed_list
 
     def delete_subnet(self):
+        """Frees up resources taken by the subnet and removes the subnet.
+
+        Resources to be released are
+        - DHCP/DNS members are freed if not shared by other subnet(s).
+        - Network view mapping is removed.
+        - Authority member is not freed up for GM but taken care by the agent
+          since it is hard to determine at the subnet scope.
+        """
         session = self.ib_cxt.context.session
         subnet = self.ib_cxt.subnet
         network = self.ib_cxt.network
+        network_view = self.ib_cxt.mapping.network_view
 
         network_id = network.get('id')
         is_shared = network.get('shared')
@@ -300,12 +337,112 @@ class IpamSyncController(object):
         subnet_id = subnet.get('id')
         cidr = subnet.get('cidr')
 
-        subnet_deletable = ((is_shared is False and is_external is False) or
+        ib_networks = ib_objects.Network.search_all(self.ib_cxt.connector,
+                                                    network_view=network_view)
+        is_last_subnet_in_netview = len(ib_networks) == 1
+
+        subnet_deletable = ((is_shared is False and
+                             is_external is False and
+                             self.ib_cxt.mapping.shared is False) or
                             self.grid_config.admin_network_deletion)
         if subnet_deletable:
-            self.ib_cxt.ibom.delete_network(self.ib_cxt.mapping.network_view,
-                                            cidr)
+            self._release_service_members(is_last_subnet_in_netview)
+
+            # delete ib network
+            self.ib_cxt.ibom.delete_network(network_view, cidr)
             dbi.dissociate_network_view(session, network_id, subnet_id)
+
+            # if no more network exists, remove network view
+            if is_last_subnet_in_netview:
+                self._remove_network_view()
+
+            self._restart_services()
+
+    def _release_service_members(self, is_last_subnet_in_netview):
+        """Frees up service members
+
+        For CPM, only one subnet should remain in a given network view
+        scope since other subnet(s) could use the same dhcp/dns member.
+
+        For GM, dhcp/dns could be GM itself or another member. it is hard
+        to determine whether the same member is used in multiple subnets or
+        not since we store service members per network view level only.
+        for dhcp/dns members, we can release them when only one subnet remains.
+        """
+        if self.grid_config.dhcp_support is False:
+            return
+
+        session = self.ib_cxt.context.session
+
+        if (self.ib_cxt.mapping.authority_member.member_type ==
+                const.MEMBER_TYPE_CP_MEMBER):
+            if self._is_member_releasable():
+                # release service members
+                service_member_ids = self._get_service_members('member_id')
+                if service_member_ids:
+                    dbi.remove_service_members(
+                        session,
+                        self.ib_cxt.mapping.network_view_id,
+                        service_member_ids)
+        else:
+            # to release dhcp/dns members, only one subnet should remain in the
+            # current network view.
+            if is_last_subnet_in_netview:
+                dhcp_member_ids = [m.member_id
+                                   for m in self.ib_cxt.mapping.dhcp_members]
+                for member_id in dhcp_member_ids:
+                    dbi.remove_service_member(
+                        session,
+                        self.ib_cxt.mapping.network_view_id,
+                        member_id,
+                        const.SERVICE_TYPE_DHCP)
+
+                dns_member_ids = [m.member_id
+                                  for m in self.ib_cxt.mapping.dns_members]
+                for member_id in dns_member_ids:
+                    dbi.remove_service_member(
+                        session,
+                        self.ib_cxt.mapping.network_view_id,
+                        member_id,
+                        const.SERVICE_TYPE_DNS)
+
+    def _is_member_releasable(self):
+        """Determine if service members can be released."""
+        session = self.ib_cxt.context.session
+
+        subnet_id = self.ib_cxt.subnet.get('id')
+        network_id = self.ib_cxt.subnet.get('network_id')
+        tenant_id = self.ib_cxt.subnet.get('tenant_id')
+
+        netview_scope = self.ib_cxt.grid_config.default_network_view_scope
+
+        if netview_scope == const.NETWORK_VIEW_SCOPE_ADDRESS_SCOPE:
+            return dbi.is_last_subnet_in_address_scope(session, subnet_id)
+        if netview_scope == const.NETWORK_VIEW_SCOPE_TENANT:
+            return dbi.is_last_subnet_in_tenant(session, subnet_id, tenant_id)
+        if netview_scope == const.NETWORK_VIEW_SCOPE_NETWORK:
+            return dbi.is_last_subnet_in_network(session, subnet_id,
+                                                 network_id)
+        if netview_scope == const.NETWORK_VIEW_SCOPE_SUBNET:
+            return True
+        return dbi.is_last_subnet(session, subnet_id)
+
+    def _remove_network_view(self):
+        session = self.ib_cxt.context.session
+        network_view = self.ib_cxt.mapping.network_view
+
+        # remove ib network view
+        self.ib_cxt.ibom.delete_network_view(network_view)
+
+        # release authority member
+        dbi.remove_mapping_member(
+            session,
+            self.ib_cxt.mapping.network_view,
+            self.ib_cxt.mapping.authority_member.member_id)
+
+        # remove network view
+        dbi.remove_network_views(session,
+                                 [self.ib_cxt.mapping.network_view_id])
 
     def allocate_specific_ip(self, ip_address, mac, port_id=None,
                              port_tenant_id=None, device_id=None,
@@ -425,32 +562,6 @@ class IpamAsyncController(object):
                                                     network,
                                                     subnet)
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
-
-    def delete_network_sync(self, network_id):
-        """Deletes infoblox entities that are associated with neutron network.
-
-        db_base_plugin_v2 delete_network calls delete_subnet per subnet under
-        the network so subnet deletion is not concerned here.
-        """
-        session = self.ib_cxt.context.session
-
-        # delete the associated network view if not shared
-        netview_mappings = dbi.get_network_view_mappings(
-            session,
-            grid_id=self.grid_id,
-            network_id=network_id,
-            subnet_id=const.NONE_ID)
-        if netview_mappings:
-            netview_row = utils.find_one_in_list(
-                'id', netview_mappings[0].network_view_id,
-                self.ib_cxt.discovered_network_views)
-            if (not netview_row.shared and not self.ib_cxt.ibom.has_networks(
-                    netview_row.network_view)):
-                    self.ib_cxt.ibom.delete_network_view(
-                        netview_row.network_view)
-
-        # dissociate network view on network level
-        dbi.dissociate_network_view(session, network_id, const.NONE_ID)
 
     def update_port_sync(self, port):
         if not port or not port.get('fixed_ips'):
