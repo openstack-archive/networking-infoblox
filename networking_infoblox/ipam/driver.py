@@ -15,6 +15,7 @@
 
 import functools
 import netaddr
+import sys
 
 from oslo_log import log as logging
 
@@ -46,7 +47,8 @@ def catch_ib_client_exception(f):
         try:
             return f(*args, **kwargs)
         except ib_exc.InfobloxException as e:
-            raise exc.InfobloxClientException(msg=e.msg)
+            raise exc.InfobloxClientException(msg=e.msg),\
+                None, sys.exc_info()[2]
     return func
 
 
