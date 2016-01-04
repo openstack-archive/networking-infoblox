@@ -47,7 +47,7 @@ def get_all_tenants(auth_token):
         keystone = get_keystone_client(auth_token)
         return keystone.tenants.list()
     except Exception as e:
-        LOG.warn("Could not get tenants due to error: %s", e)
+        LOG.warning("Could not get tenants due to error: %s", e)
     return []
 
 

@@ -116,8 +116,8 @@ class NotificationService(service.Service):
             self.use_call = False
         except AttributeError:
             # This means the server does not support report_state
-            LOG.warn(_LW("The agent does not support state report."
-                         " State report for this agent will be disabled."))
+            LOG.warning(_LW("The agent does not support state report. "
+                            "State report for this agent will be disabled."))
             self.report_thread.stop()
             return
         except Exception:
