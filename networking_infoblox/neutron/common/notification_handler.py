@@ -72,7 +72,7 @@ class IpamEventHandler(object):
                 handler(payload)
             return oslo_messaging.NotificationResult.HANDLED
         except sql_exc.OperationalError as e:
-            LOG.warn("Operational Error occurred")
+            LOG.warning("Operational Error occurred")
             LOG.error(encodeutils.exception_to_unicode(e))
         except Exception as e:
             LOG.error(encodeutils.exception_to_unicode(e))
@@ -315,8 +315,8 @@ class IpamEventHandler(object):
                       if ip['ip_address'] in ip_addresses]
         subnet = self.plugin.get_subnet(self.context, subnet_ids[0])
         if not subnet:
-            LOG.warn("No subnet was found for mac: %s, ip: %s",
-                     macs, ip_addresses)
+            LOG.warning("No subnet was found for mac: %s, ip: %s",
+                        macs, ip_addresses)
             return
 
         ib_context = context.InfobloxContext(self.context, self.user_id,
