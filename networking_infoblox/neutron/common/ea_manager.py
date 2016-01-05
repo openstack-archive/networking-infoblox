@@ -23,7 +23,7 @@ from neutron.extensions import providernet
 from networking_infoblox.neutron.common import constants as const
 
 
-def get_ea_for_network_view(tenant_id):
+def get_ea_for_network_view(tenant_id, tenant_name):
     """Generates EAs for Network View.
 
     :param tenant_id: tenant_id
@@ -34,11 +34,12 @@ def get_ea_for_network_view(tenant_id):
     # since shared or external networks may be created in it
     attributes = {const.EA_CMP_TYPE: const.CLOUD_PLATFORM_NAME,
                   const.EA_TENANT_ID: tenant_id or 'None',
+                  const.EA_TENANT_NAME: tenant_name,
                   const.EA_CLOUD_API_OWNED: 'False'}
     return ib_objects.EA(attributes)
 
 
-def get_ea_for_network(user_id, tenant_id, network, subnet):
+def get_ea_for_network(user_id, tenant_id, tenant_name, network, subnet):
     """Generates EAs for Network.
 
     :param user_id: user_id
@@ -63,14 +64,16 @@ def get_ea_for_network(user_id, tenant_id, network, subnet):
                   const.EA_SEGMENTATION_ID: segmentation_id,
                   const.EA_PHYSICAL_NETWORK_NAME: physical_network}
 
-    common_ea = get_common_ea(network, user_id, tenant_id, for_network=True)
+    common_ea = get_common_ea(network, user_id, tenant_id,
+                              tenant_name, for_network=True)
     attributes.update(common_ea)
 
     return ib_objects.EA(attributes)
 
 
-def get_ea_for_range(user_id, tenant_id, network):
-    return ib_objects.EA(get_common_ea(network, user_id, tenant_id))
+def get_ea_for_range(user_id, tenant_id, tenant_name, network):
+    return ib_objects.EA(get_common_ea(network, user_id, tenant_id,
+                                       tenant_name))
 
 
 def get_dict_for_ip(port_id, device_owner, device_id,
@@ -83,14 +86,14 @@ def get_dict_for_ip(port_id, device_owner, device_id,
             const.EA_VM_NAME: instance_name}
 
 
-def get_default_ea_for_ip(user_id, tenant_id):
-    common_ea = get_common_ea(None, user_id, tenant_id)
+def get_default_ea_for_ip(user_id, tenant_id, tenant_name):
+    common_ea = get_common_ea(None, user_id, tenant_id, tenant_name)
     ip_dict = get_dict_for_ip(None, None, None, None, const.IP_TYPE_FIXED)
     common_ea.update(ip_dict)
     return ib_objects.EA(common_ea)
 
 
-def get_ea_for_ip(user_id, tenant_id, network, port_id, device_id,
+def get_ea_for_ip(user_id, tenant_id, tenant_name, network, port_id, device_id,
                   device_owner, is_floating_ip=False, instance_name=None):
     instance_id = None
     ip_type = const.IP_TYPE_FIXED
@@ -99,18 +102,19 @@ def get_ea_for_ip(user_id, tenant_id, network, port_id, device_id,
     if device_owner == const.NEUTRON_DEVICE_OWNER_COMPUTE:
         instance_id = device_id
 
-    common_ea = get_common_ea(network, user_id, tenant_id)
+    common_ea = get_common_ea(network, user_id, tenant_id, tenant_name)
     ip_dict = get_dict_for_ip(port_id, device_owner, device_id,
                               instance_id, ip_type, instance_name)
     common_ea.update(ip_dict)
     return ib_objects.EA(common_ea)
 
 
-def get_ea_for_zone(user_id, tenant_id, network=None):
-    return ib_objects.EA(get_common_ea(network, user_id, tenant_id))
+def get_ea_for_zone(user_id, tenant_id, tenant_name, network=None):
+    return ib_objects.EA(get_common_ea(network, user_id, tenant_id,
+                                       tenant_name))
 
 
-def get_common_ea(network, user_id, tenant_id, for_network=False):
+def get_common_ea(network, user_id, tenant_id, tenant_name, for_network=False):
     if network:
         is_external = network.get(external_net.EXTERNAL, False)
         is_shared = network.get(attributes.SHARED)
@@ -121,6 +125,7 @@ def get_common_ea(network, user_id, tenant_id, for_network=False):
     is_cloud_owned = not (is_external or is_shared)
     ea_dict = {const.EA_CMP_TYPE: const.CLOUD_PLATFORM_NAME,
                const.EA_TENANT_ID: tenant_id or 'None',
+               const.EA_TENANT_NAME: tenant_name,
                const.EA_ACCOUNT: user_id,
                const.EA_CLOUD_API_OWNED: str(is_cloud_owned)}
     if for_network:

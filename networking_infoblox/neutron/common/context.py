@@ -27,6 +27,7 @@ from infoblox_client import objects as ib_objects
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import ip_allocator
+from networking_infoblox.neutron.common import keystone_manager as km
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
@@ -91,6 +92,31 @@ class InfobloxContext(object):
             self._discovered_mapping_conditions = dbi.get_mapping_conditions(
                 self.context.session, grid_id=self.grid_id)
         return self._discovered_mapping_conditions
+
+    def get_tenant_name(self, tenant_id=None):
+        """Returns tenant name from context or db.
+
+        If tenant id stored in context matches requested one,
+        then return tenant name from context.
+        If incoming tenant_id is different from context one then query db.
+        """
+        tenant_id_in_query = tenant_id or self.tenant_id
+        if tenant_id_in_query:
+            if self.context.tenant_name and (
+                    self.context.tenant_id == tenant_id_in_query):
+                return self.context.tenant_name
+
+            tenant = dbi.get_tenant(self.context.session, tenant_id_in_query)
+            if tenant:
+                return tenant.tenant_name
+
+        # Try resync with keystone if still no tenant name is found
+        if km.sync_tenants_from_keystone(self.context,
+                                         self.context.auth_token):
+            tenant = dbi.get_tenant(self.context.session, tenant_id_in_query)
+            if tenant:
+                return tenant.tenant_name
+        return None
 
     def reserve_authority_member(self):
         """Reserves the next available authority member.
@@ -414,7 +440,7 @@ class InfobloxContext(object):
         self.tenant_id = (self.network.get('tenant_id') or
                           self.subnet.get('tenant_id') or
                           self.context.tenant_id)
-        self.tenant_name = self._get_tenant_name()
+        self.tenant_name = self.get_tenant_name()
 
         if self.network:
             if self.subnet:
@@ -487,16 +513,6 @@ class InfobloxContext(object):
         if not opts['ssl_verify']:
             opts['silent_ssl_warnings'] = True
         return connector.Connector(opts)
-
-    def _get_tenant_name(self):
-        if self.context.tenant_name:
-            return self.context.tenant_name
-
-        session = self.context.session
-        db_tenant = dbi.get_tenant(session, self.tenant_id)
-        if db_tenant:
-            return db_tenant.tenant_name
-        return None
 
     def _get_address_scope(self, subnetpool_id):
         session = self.context.session

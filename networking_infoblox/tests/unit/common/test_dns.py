@@ -49,6 +49,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                          'network_id': 'network-id',
                          'cidr': '11.11.1.0/24',
                          'ip_version': 4}
+        ib_cxt.tenant_id = ib_cxt.network['tenant_id']
         ib_cxt.mapping.dns_view = 'test-dns-view'
         ib_cxt.get_dns_members.return_value = ([mock.ANY], None)
         ib_cxt.grid_config.ns_group = None
