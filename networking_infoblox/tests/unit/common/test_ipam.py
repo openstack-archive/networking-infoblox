@@ -44,7 +44,7 @@ class IpamControllerTestHelper(object):
 
     def __init__(self):
         self.neutron_cxt = context.get_admin_context()
-        self.tenant_id = 'tenant-id'
+        self.tenant_id = self.neutron_cxt.tenant_id
         self.network = None
         self.subnet = None
         self.ib_cxt = mock.Mock()
