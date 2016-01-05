@@ -82,7 +82,8 @@ class IpamSyncController(object):
         try:
             # create a network view if it does not exist
             if not network_view_exists:
-                ib_network_view = self._create_ib_network_view()
+                ib_network_view = self._create_ib_network_view(
+                    subnet.get('tenant_id'))
 
             ib_network, is_new = self._create_ib_network()
             if ib_network and is_new:
@@ -100,8 +101,9 @@ class IpamSyncController(object):
                               "creation: %s"), ex)
                 self._rollback_subnet(ib_network_view, ib_network)
 
-    def _create_ib_network_view(self):
-        ea_network_view = eam.get_ea_for_network_view(self.ib_cxt.tenant_id)
+    def _create_ib_network_view(self, tenant_id):
+        ea_network_view = eam.get_ea_for_network_view(self.ib_cxt.context,
+                                                      tenant_id)
         ib_network_view = self.ib_cxt.ibom.create_network_view(
             self.ib_cxt.mapping.network_view, ea_network_view)
         LOG.info(_LI("Created a network view: %s"), ib_network_view)
@@ -117,8 +119,9 @@ class IpamSyncController(object):
         cidr = subnet.get('cidr')
         gateway_ip_str = str(subnet.get('gateway_ip'))
 
-        ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
-                                            self.ib_cxt.tenant_id,
+        ea_network = eam.get_ea_for_network(self.ib_cxt.context,
+                                            self.ib_cxt.user_id,
+                                            network.get('tenant_id'),
                                             network,
                                             subnet)
         network_template = self.grid_config.network_template
@@ -241,8 +244,9 @@ class IpamSyncController(object):
         self._allocate_pools(allocation_pools, cidr, ip_version)
 
     def _allocate_pools(self, pools, cidr, ip_version):
-        ea_range = eam.get_ea_for_range(self.ib_cxt.user_id,
-                                        self.ib_cxt.tenant_id,
+        ea_range = eam.get_ea_for_range(self.ib_cxt.context,
+                                        self.ib_cxt.user_id,
+                                        self.ib_cxt.network.get('tenant_id'),
                                         self.ib_cxt.network)
 
         for pool in pools:
@@ -282,7 +286,8 @@ class IpamSyncController(object):
         self._allocate_pools(added_pool, cidr, ip_version)
 
     def update_subnet_details(self, ib_network):
-        ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
+        ea_network = eam.get_ea_for_network(self.ib_cxt.context,
+                                            self.ib_cxt.user_id,
                                             self.ib_cxt.tenant_id,
                                             self.ib_cxt.network,
                                             self.ib_cxt.subnet)
@@ -462,7 +467,8 @@ class IpamSyncController(object):
                              port_tenant_id=None, device_id=None,
                              device_owner=None):
         hostname = uuidutils.generate_uuid()
-        ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
+        ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.context,
+                                          self.ib_cxt.user_id,
                                           port_tenant_id,
                                           self.ib_cxt.network,
                                           port_id,
@@ -489,8 +495,8 @@ class IpamSyncController(object):
                               port_id=None, port_tenant_id=None,
                               device_id=None, device_owner=None):
         hostname = uuidutils.generate_uuid()
-
-        ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
+        ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.context,
+                                          self.ib_cxt.user_id,
                                           port_tenant_id,
                                           self.ib_cxt.network,
                                           port_id,
@@ -571,8 +577,9 @@ class IpamAsyncController(object):
 
             if network_view:
                 ib_network = self.ib_cxt.ibom.get_network(network_view, cidr)
-                ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
-                                                    self.ib_cxt.tenant_id,
+                ea_network = eam.get_ea_for_network(self.ib_cxt.context,
+                                                    self.ib_cxt.user_id,
+                                                    network.get('tenant_id'),
                                                     network,
                                                     subnet)
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
@@ -600,7 +607,8 @@ class IpamAsyncController(object):
                 self.ib_cxt.discovered_network_views)
             network_view = netview_row.network_view
 
-            ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
+            ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.context,
+                                              self.ib_cxt.user_id,
                                               port['tenant_id'],
                                               network_view,
                                               port['id'],
