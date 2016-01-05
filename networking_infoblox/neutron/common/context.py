@@ -182,7 +182,7 @@ class InfobloxContext(object):
         nameservers = []
 
         cidr = self.subnet.get('cidr')
-        user_nameservers = self.subnet.get('dns_nameservers', [])
+        user_nameservers = self.subnet.get('dns_nameservers') or []
         ip_version = self.subnet.get('ip_version')
 
         if ib_network is None:
@@ -367,9 +367,9 @@ class InfobloxContext(object):
         for member_ip in member_ips:
             dns_member = utils.find_in_list_by_value(
                 member_ip, self.discovered_grid_members)
-            if not dns_member:
-                raise exc.InfobloxCannotFindMember(member=member_ip)
-            dns_members.append(dns_member)
+            # we do not care user specified dns servers
+            if dns_member:
+                dns_members.append(dns_member)
         return dns_members
 
     def _register_services(self):
@@ -677,8 +677,9 @@ class InfobloxContext(object):
 
         # dns members
         dns_members = self._get_dns_members(self.ib_network)
+        user_nameservers = self.subnet.get('dns_nameservers') or []
         nameservers = utils.get_nameservers(
-            self.subnet.get('dns_nameservers', []),
+            user_nameservers,
             dns_members,
             self.subnet.get('ip_version'))
 

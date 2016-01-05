@@ -123,13 +123,15 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
                 'name': subnet_request.name,
                 'network_id': subnet_request.network_id,
                 'subnetpool_id': subnet_request.subnetpool_id,
-                'enable_dhcp': subnet_request.enable_dhcp}
+                'enable_dhcp': subnet_request.enable_dhcp,
+                'dns_nameservers': subnet_request.dns_nameservers}
             subnet = super(InfobloxPool, self).allocate_subnet(subnet_request)
             subnet_request = subnet.get_details()
             subnet_request.name = orig_request['name']
             subnet_request.network_id = orig_request['network_id']
             subnet_request.subnetpool_id = orig_request['subnetpool_id']
             subnet_request.enable_dhcp = orig_request['enable_dhcp']
+            subnet_request.dns_nameservers = orig_request['dns_nameservers']
 
         # SubnetRequest must be SpecificSubnet at this point
         if not isinstance(subnet_request, ipam_req.SpecificSubnetRequest):
@@ -166,7 +168,8 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
                 'subnetpool_id': subnet_request.subnetpool_id,
                 'allocation_pools': subnet_request.allocation_pools,
                 'gateway_ip': subnet_request.gateway_ip,
-                'enable_dhcp': subnet_request.enable_dhcp}
+                'enable_dhcp': subnet_request.enable_dhcp,
+                'dns_nameservers': subnet_request.dns_nameservers}
 
     @staticmethod
     def _create_ib_network(ipam_controller):
@@ -220,7 +223,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
             # has been changed; we need to create new zones.
             dns_controller.create_dns_zones()
 
-        ipam_controller.update_subnet_eas(ib_network)
+        ipam_controller.update_subnet_details(ib_network)
 
     def _is_new_zone_required(self, subnet, ib_network):
         pattern = self._grid_config.default_domain_name_pattern

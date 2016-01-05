@@ -25,6 +25,7 @@ from neutron.i18n import _LI
 from neutron.ipam import exceptions as ipam_exc
 from neutron.ipam import utils as ipam_utils
 
+from infoblox_client import exceptions as ib_exc
 from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import constants as const
@@ -123,9 +124,12 @@ class IpamSyncController(object):
         network_template = self.grid_config.network_template
 
         # check if network already exists
-        ib_network = ib_objects.Network.search(self.ib_cxt.connector,
-                                               network_view=network_view,
-                                               cidr=cidr)
+        try:
+            ib_network = ib_objects.Network.search(self.ib_cxt.connector,
+                                                   network_view=network_view,
+                                                   cidr=cidr)
+        except ib_exc.InfobloxSearchError:
+            ib_network = None
         if ib_network:
             if is_shared or is_external or self.ib_cxt.mapping.shared:
                 self.ib_cxt.reserve_service_members(ib_network)
@@ -277,11 +281,21 @@ class IpamSyncController(object):
 
         self._allocate_pools(added_pool, cidr, ip_version)
 
-    def update_subnet_eas(self, ib_network):
+    def update_subnet_details(self, ib_network):
         ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
                                             self.ib_cxt.tenant_id,
                                             self.ib_cxt.network,
                                             self.ib_cxt.subnet)
+
+        nameservers_option_val = ','.join(self.ib_cxt.mapping.ib_nameservers)
+        opt_dns = [opt for opt in ib_network.options
+                   if opt.name == 'domain-name-servers']
+        if not opt_dns:
+            ib_network.options.append(
+                ib_objects.DhcpOption(name='domain-name-servers',
+                                      value=nameservers_option_val))
+        else:
+            opt_dns[0].value = nameservers_option_val
         self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
 
     @staticmethod

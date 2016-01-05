@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron.api.v2 import attributes
 from neutron.common import constants as n_const
 from neutron.ipam import requests
 
@@ -26,12 +27,18 @@ class InfobloxSubnetRequestFactory(requests.SubnetRequestFactory):
     def get_request(cls, context, subnet, subnetpool):
         request = super(InfobloxSubnetRequestFactory, cls).get_request(
             context, subnet, subnetpool)
-        request.name = subnet['name']
+        request.name = subnet.get('name')
         # update_subnet does not pass network_id. community code can be
         # improved to include it
         request.network_id = subnet.get('network_id')
         request.subnetpool_id = subnetpool['id'] if subnetpool else None
-        request.enable_dhcp = subnet['enable_dhcp']
+        request.enable_dhcp = subnet.get('enable_dhcp')
+        # neutron api sets optional attributes to the following
+        #     ATTR_NOT_SPECIFIED = object()
+        dns_nameservers = subnet.get('dns_nameservers')
+        if dns_nameservers is attributes.ATTR_NOT_SPECIFIED:
+            dns_nameservers = []
+        request.dns_nameservers = dns_nameservers
         return request
 
 

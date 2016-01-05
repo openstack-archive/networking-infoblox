@@ -364,10 +364,8 @@ class GridMappingManager(object):
         for member_ip in member_ips:
             dns_member = utils.find_in_list_by_value(member_ip,
                                                      self.db_members)
-            if not dns_member:
-                raise exc.InfobloxCannotFindMember(
-                    member=member_ip)
-            dns_members.append(dns_member)
+            if dns_member:
+                dns_members.append(dns_member)
         return dns_members
 
     def _update_mapping_conditions(self, discovered_netview, netview_id):
