@@ -25,11 +25,12 @@ from infoblox_client import object_manager as obj_mgr
 from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import ea_manager
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import ip_allocator
+from networking_infoblox.neutron.common import keystone_manager as k_manager
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
-
 
 LOG = logging.getLogger(__name__)
 
@@ -412,9 +413,15 @@ class InfobloxContext(object):
             self.network = self.plugin.get_network(self.context, network_id)
 
         self.tenant_id = (self.network.get('tenant_id') or
-                          self.subnet.get('tenant_id') or
-                          self.context.tenant_id)
-        self.tenant_name = self._get_tenant_name()
+                          self.subnet.get('tenant_id'))
+        self.tenant_name = ea_manager.get_tenant_name(self.context,
+                                                      self.tenant_id)
+        # Try resync with keystone if no tenant name is found in db
+        if self.tenant_name is None and self.tenant_id is not None:
+            if k_manager.sync_tenants_from_keystone(self.context,
+                                                    self.context.auth_token):
+                self.tenant_name = ea_manager.get_tenant_name(self.context,
+                                                              self.tenant_id)
 
         if self.network:
             if self.subnet:
@@ -487,16 +494,6 @@ class InfobloxContext(object):
         if not opts['ssl_verify']:
             opts['silent_ssl_warnings'] = True
         return connector.Connector(opts)
-
-    def _get_tenant_name(self):
-        if self.context.tenant_name:
-            return self.context.tenant_name
-
-        session = self.context.session
-        db_tenant = dbi.get_tenant(session, self.tenant_id)
-        if db_tenant:
-            return db_tenant.tenant_name
-        return None
 
     def _get_address_scope(self, subnetpool_id):
         session = self.context.session

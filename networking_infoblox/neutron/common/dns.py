@@ -40,7 +40,8 @@ class DnsController(object):
         self.dns_zone = self.pattern_builder.get_zone_name()
 
     def create_dns_zones(self):
-        ea_zone = eam.get_ea_for_zone(self.ib_cxt.user_id,
+        ea_zone = eam.get_ea_for_zone(self.ib_cxt.context,
+                                      self.ib_cxt.user_id,
                                       self.ib_cxt.tenant_id,
                                       self.ib_cxt.network)
         cidr = self.ib_cxt.subnet['cidr']
@@ -161,8 +162,9 @@ class DnsController(object):
         if not device_owner:
             return
 
-        tenant_id = port_tenant_id or self.ib_cxt.context.tenant_id
-        ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
+        tenant_id = port_tenant_id or self.ib_cxt.tenant_id
+        ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.context,
+                                          self.ib_cxt.user_id,
                                           tenant_id,
                                           self.ib_cxt.network,
                                           port_id,

@@ -30,6 +30,9 @@ class EaManagerTestCase(base.TestCase):
         super(EaManagerTestCase, self).setUp()
         self.user_id = mock.Mock()
         self.tenant_id = mock.Mock()
+        self.context = mock.Mock()
+        self.context.tenant_id = self.tenant_id
+        self.context.tenant_name = 'Tenant Name'
 
     def test_get_common_ea_for_network(self):
         network = {'router:external': True,
@@ -39,8 +42,10 @@ class EaManagerTestCase(base.TestCase):
                        'CMP Type': 'OpenStack',
                        'Cloud API Owned': 'False',
                        'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
                        'Account': self.user_id}
-        generated_ea = ea_manager.get_common_ea(network,
+        generated_ea = ea_manager.get_common_ea(self.context,
+                                                network,
                                                 self.user_id,
                                                 self.tenant_id,
                                                 for_network=True)
@@ -52,8 +57,10 @@ class EaManagerTestCase(base.TestCase):
         expected_ea = {'CMP Type': 'OpenStack',
                        'Cloud API Owned': 'False',
                        'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
                        'Account': self.user_id}
-        generated_ea = ea_manager.get_common_ea(network,
+        generated_ea = ea_manager.get_common_ea(self.context,
+                                                network,
                                                 self.user_id,
                                                 self.tenant_id)
         self.assertEqual(expected_ea, generated_ea)
@@ -64,8 +71,10 @@ class EaManagerTestCase(base.TestCase):
                        'CMP Type': 'OpenStack',
                        'Cloud API Owned': 'True',
                        'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
                        'Account': self.user_id}
-        generated_ea = ea_manager.get_common_ea(None,
+        generated_ea = ea_manager.get_common_ea(self.context,
+                                                None,
                                                 self.user_id,
                                                 self.tenant_id,
                                                 for_network=True)
@@ -77,7 +86,8 @@ class EaManagerTestCase(base.TestCase):
                       None,
                       {})
         for network in owned_true:
-            generated_ea = ea_manager.get_common_ea(network, None, None)
+            generated_ea = ea_manager.get_common_ea(self.context, network,
+                                                    None, None)
             self.assertEqual(str(True), generated_ea['Cloud API Owned'])
 
     def test_get_common_ea_cloud_api_owned_false(self):
@@ -88,12 +98,14 @@ class EaManagerTestCase(base.TestCase):
                        {'router:external': True,
                         'shared': True})
         for network in owned_false:
-            generated_ea = ea_manager.get_common_ea(network, None, None)
+            generated_ea = ea_manager.get_common_ea(self.context, network,
+                                                    None, None)
             self.assertEqual(str(False), generated_ea['Cloud API Owned'])
 
     def test_get_ea_for_network_view(self):
-        ea = ea_manager.get_ea_for_network_view(self.tenant_id)
+        ea = ea_manager.get_ea_for_network_view(self.context, self.tenant_id)
         self.assertEqual(self.tenant_id, ea.get('Tenant ID'))
+        self.assertEqual(self.context.tenant_name, ea.get('Tenant Name'))
         self.assertEqual(str(False), ea.get('Cloud API Owned'))
         self.assertEqual('OpenStack', ea.get('CMP Type'))
 
@@ -116,19 +128,21 @@ class EaManagerTestCase(base.TestCase):
                    'Physical Network Name': (
                        network['provider:physical_network']),
                    'Tenant ID': self.tenant_id,
+                   'Tenant Name': self.context.tenant_name,
                    'Account': self.user_id,
                    'Is External': str(True),
                    'Is Shared': str(True),
                    'Cloud API Owned': str(False)}
-        ea = ea_manager.get_ea_for_network(self.user_id, self.tenant_id,
-                                           network, subnet)
+        ea = ea_manager.get_ea_for_network(self.context, self.user_id,
+                                           self.tenant_id, network, subnet)
         for key, value in mapping.items():
             self.assertEqual(mapping[key], ea.get(key))
 
     def test_get_ea_for_range(self):
         network = {'router:external': False,
                    'shared': False}
-        ea = ea_manager.get_ea_for_range(self.user_id, self.tenant_id, network)
+        ea = ea_manager.get_ea_for_range(self.context, self.user_id,
+                                         self.tenant_id, network)
         self.assertIsInstance(ea, ib_objects.EA)
         self.assertEqual(str(True), ea.get('Cloud API Owned'))
         self.assertEqual(self.tenant_id, ea.get('Tenant ID'))
@@ -136,6 +150,7 @@ class EaManagerTestCase(base.TestCase):
 
     def test_get_default_ea_for_ip(self):
         expected_ea = {'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
                        'Account': self.user_id,
                        'Port ID': None,
                        'Port Attached Device - Device Owner': None,
@@ -143,7 +158,8 @@ class EaManagerTestCase(base.TestCase):
                        'Cloud API Owned': str(True),
                        'IP Type': 'Fixed',
                        'VM ID': None}
-        ea = ea_manager.get_default_ea_for_ip(self.user_id, self.tenant_id)
+        ea = ea_manager.get_default_ea_for_ip(self.context, self.user_id,
+                                              self.tenant_id)
         for key, value in expected_ea.items():
             self.assertEqual(value, ea.get(key))
 
@@ -154,6 +170,7 @@ class EaManagerTestCase(base.TestCase):
         device_id = mock.Mock()
         device_owner = mock.Mock()
         expected_ea = {'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
                        'Account': self.user_id,
                        'Port ID': port_id,
                        'Port Attached Device - Device Owner': device_owner,
@@ -162,7 +179,8 @@ class EaManagerTestCase(base.TestCase):
                        'IP Type': 'Fixed',
                        'VM ID': None}
 
-        ea = ea_manager.get_ea_for_ip(self.user_id, self.tenant_id, network,
+        ea = ea_manager.get_ea_for_ip(self.context, self.user_id,
+                                      self.tenant_id, network,
                                       port_id, device_id, device_owner)
         for key, value in expected_ea.items():
             self.assertEqual(value, ea.get(key))
@@ -174,6 +192,7 @@ class EaManagerTestCase(base.TestCase):
         device_id = mock.Mock()
         device_owner = n_const.DEVICE_OWNER_ROUTER_GW
         expected_ea = {'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
                        'Account': self.user_id,
                        'Port ID': port_id,
                        'Port Attached Device - Device Owner': device_owner,
@@ -182,7 +201,8 @@ class EaManagerTestCase(base.TestCase):
                        'IP Type': 'Fixed',
                        'VM ID': None}
 
-        ea = ea_manager.get_ea_for_ip(self.user_id, self.tenant_id, network,
+        ea = ea_manager.get_ea_for_ip(self.context, self.user_id,
+                                      self.tenant_id, network,
                                       port_id, device_id, device_owner)
         for key, value in expected_ea.items():
             self.assertEqual(value, ea.get(key))
@@ -194,6 +214,7 @@ class EaManagerTestCase(base.TestCase):
         device_id = mock.Mock()
         device_owner = n_const.DEVICE_OWNER_FLOATINGIP
         expected_ea = {'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
                        'Account': self.user_id,
                        'Port ID': port_id,
                        'Port Attached Device - Device Owner': device_owner,
@@ -202,9 +223,9 @@ class EaManagerTestCase(base.TestCase):
                        'IP Type': 'Floating',
                        'VM ID': None}
 
-        ea = ea_manager.get_ea_for_ip(self.user_id, self.tenant_id,
-                                      network, port_id, device_id,
-                                      device_owner)
+        ea = ea_manager.get_ea_for_ip(self.context, self.user_id,
+                                      self.tenant_id, network, port_id,
+                                      device_id, device_owner)
         for key, value in expected_ea.items():
             self.assertEqual(value, ea.get(key))
 
@@ -216,6 +237,7 @@ class EaManagerTestCase(base.TestCase):
         device_owner = const.NEUTRON_DEVICE_OWNER_COMPUTE
         is_floating_ip = True
         expected_ea = {'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
                        'Account': self.user_id,
                        'Port ID': port_id,
                        'Port Attached Device - Device Owner': device_owner,
@@ -224,7 +246,8 @@ class EaManagerTestCase(base.TestCase):
                        'IP Type': 'Floating',
                        'VM ID': device_id}
 
-        ea = ea_manager.get_ea_for_ip(self.user_id, self.tenant_id,
+        ea = ea_manager.get_ea_for_ip(self.context, self.user_id,
+                                      self.tenant_id,
                                       network, port_id, device_id,
                                       device_owner, is_floating_ip)
         for key, value in expected_ea.items():
@@ -237,6 +260,7 @@ class EaManagerTestCase(base.TestCase):
         device_id = mock.Mock()
         device_owner = n_const.DEVICE_OWNER_FLOATINGIP
         expected_ea = {'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
                        'Account': self.user_id,
                        'Port ID': port_id,
                        'Port Attached Device - Device Owner': device_owner,
@@ -245,7 +269,8 @@ class EaManagerTestCase(base.TestCase):
                        'IP Type': 'Floating',
                        'VM ID': None}
 
-        ea = ea_manager.get_ea_for_ip(self.user_id, self.tenant_id,
+        ea = ea_manager.get_ea_for_ip(self.context, self.user_id,
+                                      self.tenant_id,
                                       network, port_id, device_id,
                                       device_owner)
         for key, value in expected_ea.items():
@@ -255,8 +280,10 @@ class EaManagerTestCase(base.TestCase):
         network = {'router:external': False,
                    'shared': False}
         expected_ea = {'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
                        'Account': self.user_id,
                        'Cloud API Owned': str(True)}
-        ea = ea_manager.get_ea_for_zone(self.user_id, self.tenant_id, network)
+        ea = ea_manager.get_ea_for_zone(self.context, self.user_id,
+                                        self.tenant_id, network)
         for key, value in expected_ea.items():
             self.assertEqual(value, ea.get(key))
