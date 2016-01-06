@@ -55,6 +55,20 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                                           ['tenant-one', 'tenant-three'])
         self.assertEqual(2, len(tenants))
 
+    def test_add_or_update_tenant(self):
+        tenants = {'tenant-id1': 'tenant-name1'}
+        self._create_tenants(tenants)
+        new_tenant_name = 'tenant-name-updated'
+        infoblox_db.add_or_update_tenant(self.ctx.session,
+                                         'tenant-id1', new_tenant_name)
+        tenant = infoblox_db.get_tenant(self.ctx.session, 'tenant-id1')
+        self.assertEqual(new_tenant_name, tenant.tenant_name)
+
+        infoblox_db.add_or_update_tenant(self.ctx.session,
+                                         'tenant-id2', 'tenant-name2')
+        tenant = infoblox_db.get_tenant(self.ctx.session, 'tenant-id2')
+        self.assertEqual('tenant-name2', tenant.tenant_name)
+
     def _create_default_grid(self):
         infoblox_db.add_grid(self.ctx.session, self.grid_id, self.grid_name,
                              self.grid_connection, self.grid_status)

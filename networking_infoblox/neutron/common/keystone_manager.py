@@ -47,7 +47,7 @@ def get_all_tenants(auth_token):
         keystone = get_keystone_client(auth_token)
         return keystone.tenants.list()
     except Exception as e:
-        LOG.warn("Could not get tenants due to error: %s", e)
+        LOG.warning("Could not get tenants due to error: %s", e)
     return []
 
 
@@ -62,13 +62,7 @@ def update_tenant_mapping(context, networks, tenant_id,
     get all known tenants and store this mapping.
     """
 
-    db_tenant = dbi.get_tenant(context.session, tenant_id)
-    if db_tenant is None:
-        dbi.add_tenant(context.session,
-                       tenant_id,
-                       tenant_name)
-    elif db_tenant.tenant_name != tenant_name:
-        db_tenant.tenant_name = tenant_name
+    dbi.add_or_update_tenant(context.session, tenant_id, tenant_name)
 
     # If there are no auth_token all later checks are useless
     if not auth_token:
@@ -85,18 +79,26 @@ def update_tenant_mapping(context, networks, tenant_id,
         db_tenants = dbi.get_tenants(context.session,
                                      tenant_ids=unknown_ids)
         for tenant in db_tenants:
-            tenant_ids[tenant.id] = False
+            tenant_ids[tenant.tenant_id] = False
         # If there are still unknown tenants in request try last resort
         # make an api call to keystone with auth_token
         if _get_unknown_ids_from_dict(tenant_ids):
-            tenants = get_all_tenants(auth_token)
-            for tenant in tenants:
-                LOG.info("Tenants obtained from keystone: %s", tenant)
-                dbi.add_tenant(context.session,
-                               tenant.id,
-                               tenant.name)
+            sync_tenants_from_keystone(context, auth_token)
 
 
 def _get_unknown_ids_from_dict(tenant_ids):
     return [id for id, unknown in tenant_ids.items()
             if unknown is True]
+
+
+def sync_tenants_from_keystone(context, auth_token):
+    if not auth_token:
+        return
+
+    tenants = get_all_tenants(auth_token)
+    for tenant in tenants:
+        LOG.info("Tenants obtained from keystone: %s", tenant)
+        # tenants from keystone have 'id' and 'name' comparing to
+        # db cache where 'tenant_id' and 'tenant_name' are used
+        dbi.add_or_update_tenant(context.session, tenant.id, tenant.name)
+    return len(tenants)

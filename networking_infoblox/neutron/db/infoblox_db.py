@@ -648,6 +648,14 @@ def add_tenant(session, tenant_id, tenant_name):
     return tenant
 
 
+def add_or_update_tenant(session, tenant_id, tenant_name):
+    db_tenant = get_tenant(session, tenant_id)
+    if db_tenant is None:
+        add_tenant(session, tenant_id, tenant_name)
+    elif db_tenant.tenant_name != tenant_name:
+        db_tenant.tenant_name = tenant_name
+
+
 def get_tenant(session, tenant_id):
     q = session.query(ib_models.InfobloxTenant)
     return q.filter_by(tenant_id=tenant_id).first()

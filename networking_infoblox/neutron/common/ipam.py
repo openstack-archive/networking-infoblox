@@ -101,7 +101,8 @@ class IpamSyncController(object):
                 self._rollback_subnet(ib_network_view, ib_network)
 
     def _create_ib_network_view(self):
-        ea_network_view = eam.get_ea_for_network_view(self.ib_cxt.tenant_id)
+        ea_network_view = eam.get_ea_for_network_view(self.ib_cxt.tenant_id,
+                                                      self.ib_cxt.tenant_name)
         ib_network_view = self.ib_cxt.ibom.create_network_view(
             self.ib_cxt.mapping.network_view, ea_network_view)
         LOG.info(_LI("Created a network view: %s"), ib_network_view)
@@ -119,6 +120,7 @@ class IpamSyncController(object):
 
         ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
                                             self.ib_cxt.tenant_id,
+                                            self.ib_cxt.tenant_name,
                                             network,
                                             subnet)
         network_template = self.grid_config.network_template
@@ -243,6 +245,7 @@ class IpamSyncController(object):
     def _allocate_pools(self, pools, cidr, ip_version):
         ea_range = eam.get_ea_for_range(self.ib_cxt.user_id,
                                         self.ib_cxt.tenant_id,
+                                        self.ib_cxt.tenant_name,
                                         self.ib_cxt.network)
 
         for pool in pools:
@@ -284,6 +287,7 @@ class IpamSyncController(object):
     def update_subnet_details(self, ib_network):
         ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
                                             self.ib_cxt.tenant_id,
+                                            self.ib_cxt.tenant_name,
                                             self.ib_cxt.network,
                                             self.ib_cxt.subnet)
 
@@ -462,8 +466,11 @@ class IpamSyncController(object):
                              port_tenant_id=None, device_id=None,
                              device_owner=None):
         hostname = uuidutils.generate_uuid()
+
+        port_tenant_name = self.ib_cxt.get_tenant_name(port_tenant_id)
         ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
                                           port_tenant_id,
+                                          port_tenant_name,
                                           self.ib_cxt.network,
                                           port_id,
                                           device_id,
@@ -490,8 +497,10 @@ class IpamSyncController(object):
                               device_id=None, device_owner=None):
         hostname = uuidutils.generate_uuid()
 
+        port_tenant_name = self.ib_cxt.get_tenant_name(port_tenant_id)
         ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
                                           port_tenant_id,
+                                          port_tenant_name,
                                           self.ib_cxt.network,
                                           port_id,
                                           device_id,
@@ -573,6 +582,7 @@ class IpamAsyncController(object):
                 ib_network = self.ib_cxt.ibom.get_network(network_view, cidr)
                 ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
                                                     self.ib_cxt.tenant_id,
+                                                    self.ib_cxt.tenant_name,
                                                     network,
                                                     subnet)
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
@@ -600,8 +610,10 @@ class IpamAsyncController(object):
                 self.ib_cxt.discovered_network_views)
             network_view = netview_row.network_view
 
+            port_tenant_name = self.ib_cxt.get_tenant_name(port['tenant_id'])
             ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
                                               port['tenant_id'],
+                                              port_tenant_name,
                                               network_view,
                                               port['id'],
                                               port['device_id'],
