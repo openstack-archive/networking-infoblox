@@ -30,7 +30,7 @@ from infoblox_client import objects as ib_objects
 
 from networking_infoblox.ipam import requests
 from networking_infoblox.neutron.common import constants as const
-from networking_infoblox.neutron.common import context
+from networking_infoblox.neutron.common import context as ib_context
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import grid
@@ -77,7 +77,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         neutron_subnet = self._fetch_subnet(subnet_id)
         subnet_request = self._build_request_from_subnet(neutron_subnet)
 
-        ib_context = context.InfobloxContext(
+        ib_cxt = ib_context.InfobloxContext(
             self._context,
             self._context.user_id,
             None,
@@ -85,13 +85,14 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
             self._grid_config,
             plugin=self._plugin)
 
-        ipam_controller = ipam.IpamSyncController(ib_context)
+        ipam_controller = ipam.IpamSyncController(ib_cxt)
         ib_network = ipam_controller.get_subnet()
         if ib_network:
             return InfobloxSubnet(subnet_request, neutron_subnet, ib_network,
-                                  ib_context)
+                                  ib_cxt)
 
-    def _build_request_from_subnet(self, neutron_subnet):
+    @staticmethod
+    def _build_request_from_subnet(neutron_subnet):
         alloc_pools = None
         if neutron_subnet.get('allocation_pools'):
             alloc_pools = [netaddr.IPRange(pool['start'], pool['end'])
@@ -140,7 +141,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
                 subnet_type=type(subnet_request))
 
         neutron_subnet = self._build_subnet_from_request(subnet_request)
-        ib_context = context.InfobloxContext(
+        ib_cxt = ib_context.InfobloxContext(
             self._context,
             self._context.user_id,
             None,
@@ -148,8 +149,8 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
             self._grid_config,
             plugin=self._plugin)
 
-        ipam_controller = ipam.IpamSyncController(ib_context)
-        dns_controller = dns.DnsController(ib_context)
+        ipam_controller = ipam.IpamSyncController(ib_cxt)
+        dns_controller = dns.DnsController(ib_cxt)
 
         ib_network = self._create_ib_network(ipam_controller)
         if ib_network:
@@ -157,9 +158,10 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
             LOG.info("Created DNS zones.")
 
         return InfobloxSubnet(subnet_request, neutron_subnet, ib_network,
-                              ib_context)
+                              ib_cxt)
 
-    def _build_subnet_from_request(self, subnet_request):
+    @staticmethod
+    def _build_subnet_from_request(subnet_request):
         return {'id': subnet_request.subnet_id,
                 'name': subnet_request.name,
                 'tenant_id': subnet_request.tenant_id,
@@ -174,6 +176,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
 
     @staticmethod
     def _create_ib_network(ipam_controller):
+        ib_network = None
         retry = 1
         while True:
             try:
@@ -205,7 +208,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
             raise exc.InfobloxCannotFindSubnet(subnet_id=neutron_subnet['id'],
                                                cidr=neutron_subnet['cidr'])
 
-        ib_context = context.InfobloxContext(
+        ib_cxt = ib_context.InfobloxContext(
             self._context,
             self._context.user_id,
             None,
@@ -214,8 +217,8 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
             plugin=self._plugin,
             ib_network=ib_network)
 
-        ipam_controller = ipam.IpamSyncController(ib_context)
-        dns_controller = dns.DnsController(ib_context)
+        ipam_controller = ipam.IpamSyncController(ib_cxt)
+        dns_controller = dns.DnsController(ib_cxt)
 
         ipam_controller.update_subnet_allocation_pools()
 
@@ -248,7 +251,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
             return
 
         neutron_subnet = self._build_subnet_from_ib_network(ib_network)
-        ib_context = context.InfobloxContext(
+        ib_cxt = ib_context.InfobloxContext(
             self._context,
             self._context.user_id,
             None,
@@ -257,8 +260,8 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
             plugin=self._plugin,
             ib_network=ib_network)
 
-        ipam_controller = ipam.IpamSyncController(ib_context)
-        dns_controller = dns.DnsController(ib_context)
+        ipam_controller = ipam.IpamSyncController(ib_cxt)
+        dns_controller = dns.DnsController(ib_cxt)
 
         ipam_controller.delete_subnet()
         dns_controller.delete_dns_zones()
@@ -273,36 +276,31 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
 
         network_view = db_netviews[0].network_view
         ea = ib_objects.EA({'Subnet ID': subnet_id})
-
+        ib_network = None
         # TODO(hhwang): this should be replaced to use get_network_by_subnet_id
         # api when the following issue is resolved:
         # https://github.com/infobloxopen/infoblox-client/issues/58
         if ip_version == 4 or ip_version is None:
-            try:
-                ib_network = ib_objects.NetworkV4.search(
-                    self._grid_config.gm_connector,
-                    network_view=network_view,
-                    search_extattrs=ea)
-            except ib_exc.InfobloxSearchError:
-                ib_network = None
+            ib_network = ib_objects.NetworkV4.search(
+                self._grid_config.gm_connector,
+                network_view=network_view,
+                search_extattrs=ea)
         if ip_version == 6 or ib_network is None:
-            try:
-                ib_network = ib_objects.NetworkV6.search(
-                    self._grid_config.gm_connector,
-                    network_view=network_view,
-                    search_extattrs=ea)
-            except ib_exc.InfobloxSearchError:
-                ib_network = None
+            ib_network = ib_objects.NetworkV6.search(
+                self._grid_config.gm_connector,
+                network_view=network_view,
+                search_extattrs=ea)
         return ib_network
 
-    def _build_subnet_from_ib_network(self, ib_network):
+    @staticmethod
+    def _build_subnet_from_ib_network(ib_network):
         subnet = dict()
         subnet['id'] = ib_network.extattrs.get(const.EA_SUBNET_ID)
         subnet['name'] = ib_network.extattrs.get(const.EA_SUBNET_NAME)
         subnet['network_id'] = ib_network.extattrs.get(const.EA_NETWORK_ID)
         subnet['tenant_id'] = ib_network.extattrs.get(const.EA_TENANT_ID)
         subnet['cidr'] = ib_network.network
-        subnet['ip_version'] = ib_network._ip_version
+        subnet['ip_version'] = ib_network.ip_version
         return subnet
 
     def get_subnet_request_factory(self):
@@ -317,15 +315,15 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
 class InfobloxSubnet(driver.Subnet):
     """Infoblox IPAM subnet."""
 
-    def __init__(self, subnet_details, neutron_subnet, ib_network,
-                 ib_context):
+    def __init__(self, subnet_details, neutron_subnet, ib_network, ib_cxt):
         self._validate_subnet_data(subnet_details)
         self._subnet_details = subnet_details
         self._neutron_subnet = neutron_subnet
         self._ib_network = ib_network
-        self._ib_context = ib_context
+        self._ib_cxt = ib_cxt
 
-    def _validate_subnet_data(self, subnet_details):
+    @staticmethod
+    def _validate_subnet_data(subnet_details):
         if not isinstance(subnet_details, ipam_req.SpecificSubnetRequest):
             raise ValueError("Subnet details should be passed as "
                              "SpecificSubnetRequest")
@@ -338,8 +336,8 @@ class InfobloxSubnet(driver.Subnet):
         :type address_request: A subclass of AddressRequest
         :returns: A netaddr.IPAddress
         """
-        ipam_controller = ipam.IpamSyncController(self._ib_context)
-        dns_controller = dns.DnsController(self._ib_context)
+        ipam_controller = ipam.IpamSyncController(self._ib_cxt)
+        dns_controller = dns.DnsController(self._ib_cxt)
 
         if isinstance(address_request, ipam_req.SpecificAddressRequest):
             allocated_ip = ipam_controller.allocate_specific_ip(
@@ -381,8 +379,8 @@ class InfobloxSubnet(driver.Subnet):
         ip_addr = str(address)
         address_request = self._build_address_request_from_ib_address(ip_addr)
 
-        ipam_controller = ipam.IpamSyncController(self._ib_context)
-        dns_controller = dns.DnsController(self._ib_context)
+        ipam_controller = ipam.IpamSyncController(self._ib_cxt)
+        dns_controller = dns.DnsController(self._ib_cxt)
 
         ipam_controller.deallocate_ip(ip_addr)
         dns_controller.unbind_names(ip_addr,
@@ -393,9 +391,9 @@ class InfobloxSubnet(driver.Subnet):
                                     address_request.device_owner)
 
     def _build_address_request_from_ib_address(self, ip_address):
-        connector = self._ib_context.connector
-        netview = self._ib_context.mapping.network_view
-        dns_view = self._ib_context.mapping.dns_view
+        connector = self._ib_cxt.connector
+        netview = self._ib_cxt.mapping.network_view
+        dns_view = self._ib_cxt.mapping.dns_view
 
         ib_address = ib_objects.FixedAddress.search(connector,
                                                     network_view=netview,

@@ -25,7 +25,6 @@ from neutron.i18n import _LI
 from neutron.ipam import exceptions as ipam_exc
 from neutron.ipam import utils as ipam_utils
 
-from infoblox_client import exceptions as ib_exc
 from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import constants as const
@@ -126,12 +125,9 @@ class IpamSyncController(object):
         network_template = self.grid_config.network_template
 
         # check if network already exists
-        try:
-            ib_network = ib_objects.Network.search(self.ib_cxt.connector,
-                                                   network_view=network_view,
-                                                   cidr=cidr)
-        except ib_exc.InfobloxSearchError:
-            ib_network = None
+        ib_network = ib_objects.Network.search(self.ib_cxt.connector,
+                                               network_view=network_view,
+                                               cidr=cidr)
         if ib_network:
             if is_shared or is_external or self.ib_cxt.mapping.shared:
                 self.ib_cxt.reserve_service_members(ib_network)
