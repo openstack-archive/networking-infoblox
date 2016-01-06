@@ -278,21 +278,15 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         # api when the following issue is resolved:
         # https://github.com/infobloxopen/infoblox-client/issues/58
         if ip_version == 4 or ip_version is None:
-            try:
-                ib_network = ib_objects.NetworkV4.search(
-                    self._grid_config.gm_connector,
-                    network_view=network_view,
-                    search_extattrs=ea)
-            except ib_exc.InfobloxSearchError:
-                ib_network = None
+            ib_network = ib_objects.NetworkV4.search(
+                self._grid_config.gm_connector,
+                network_view=network_view,
+                search_extattrs=ea)
         if ip_version == 6 or ib_network is None:
-            try:
-                ib_network = ib_objects.NetworkV6.search(
-                    self._grid_config.gm_connector,
-                    network_view=network_view,
-                    search_extattrs=ea)
-            except ib_exc.InfobloxSearchError:
-                ib_network = None
+            ib_network = ib_objects.NetworkV6.search(
+                self._grid_config.gm_connector,
+                network_view=network_view,
+                search_extattrs=ea)
         return ib_network
 
     def _build_subnet_from_ib_network(self, ib_network):
@@ -302,7 +296,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         subnet['network_id'] = ib_network.extattrs.get(const.EA_NETWORK_ID)
         subnet['tenant_id'] = ib_network.extattrs.get(const.EA_TENANT_ID)
         subnet['cidr'] = ib_network.network
-        subnet['ip_version'] = ib_network._ip_version
+        subnet['ip_version'] = ib_network.ip_version
         return subnet
 
     def get_subnet_request_factory(self):

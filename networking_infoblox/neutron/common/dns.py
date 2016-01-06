@@ -98,8 +98,6 @@ class DnsController(object):
         cidr = self.ib_cxt.subnet['cidr']
         dns_zone = dns_zone if dns_zone else self.dns_zone
 
-        # TODO(hhwang): remove this check if the following issue is resolved.
-        # https://github.com/infobloxopen/infoblox-client/issues/57
         db_network_views = dbi.get_network_views(
             session,
             network_view_id=self.ib_cxt.mapping.network_view_id)
