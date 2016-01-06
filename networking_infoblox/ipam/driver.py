@@ -47,8 +47,9 @@ def catch_ib_client_exception(f):
         try:
             return f(*args, **kwargs)
         except ib_exc.InfobloxException as e:
-            raise exc.InfobloxClientException(msg=e.msg),\
-                None, sys.exc_info()[2]
+            raise exc.InfobloxClientException(msg=e), None, sys.exc_info()[2]
+        except ValueError as e:
+            raise exc.InfobloxValueError(msg=e), None, sys.exc_info()[2]
     return func
 
 

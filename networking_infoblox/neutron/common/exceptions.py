@@ -82,3 +82,8 @@ class InfobloxCannotFindFixedIp(exceptions.NeutronException):
 
 class InfobloxClientException(exceptions.NeutronException):
     message = _("InfobloxClientException '%(msg)s'")
+
+
+class InfobloxValueError(exceptions.NeutronException):
+    message = _("InfobloxValueError '%(msg)s' "
+                "Refer to neutron log for more detail")
