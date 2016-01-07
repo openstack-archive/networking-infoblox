@@ -65,6 +65,7 @@ EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK_VIEW = \
     'DHCP Relay Management Network View'
 EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK = 'DHCP Relay Management Network'
 EA_GRID_CONFIG_DHCP_SUPPORT = 'DHCP Support'
+EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE = 'Tenant Name Persistence'
 
 EA_MAPPING_ADDRESS_SCOPE_ID = 'Address Scope ID Mapping'
 EA_MAPPING_ADDRESS_SCOPE_NAME = 'Address Scope Name Mapping'
@@ -318,6 +319,13 @@ REQUIRED_EA_DEFS = [
                      {'value': 'False'}],
      'comment': 'Grid Configuration'},
 
+    {'name': EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE,
+     'type': 'ENUM', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'list_values': [{'value': 'True'},
+                     {'value': 'False'}],
+     'comment': 'Grid Configuration'},
+
     # Mapping EAs
     {'name': EA_MAPPING_ADDRESS_SCOPE_ID,
      'type': 'STRING', 'flags': 'CGV',
@@ -383,5 +391,6 @@ GRID_CONFIG_DEFAULTS = {
                                                 DNS_RECORD_TYPE_TXT],
     EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK_VIEW: None,
     EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK: None,
-    EA_GRID_CONFIG_DHCP_SUPPORT: False
+    EA_GRID_CONFIG_DHCP_SUPPORT: False,
+    EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE: False
 }

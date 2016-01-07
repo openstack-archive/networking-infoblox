@@ -106,16 +106,25 @@ class InfobloxContext(object):
                     self.context.tenant_id == tenant_id_in_query):
                 return self.context.tenant_name
 
-            tenant = dbi.get_tenant(self.context.session, tenant_id_in_query)
-            if tenant:
-                return tenant.tenant_name
+            if self.grid_config.tenant_name_persistence:
+                tenant = dbi.get_tenant(self.context.session,
+                                        tenant_id_in_query)
+                if tenant:
+                    return tenant.tenant_name
 
-        # Try resync with keystone if still no tenant name is found
-        if km.sync_tenants_from_keystone(self.context,
-                                         self.context.auth_token):
-            tenant = dbi.get_tenant(self.context.session, tenant_id_in_query)
-            if tenant:
-                return tenant.tenant_name
+        if self.grid_config.tenant_name_persistence:
+            # Try resync with keystone if still no tenant name is found
+            if km.sync_tenants_from_keystone(self.context,
+                                             self.context.auth_token):
+                tenant = dbi.get_tenant(self.context.session,
+                                        tenant_id_in_query)
+                if tenant:
+                    return tenant.tenant_name
+        else:
+            tenants = km.get_all_tenants(self.context.auth_token)
+            for tenant in tenants:
+                if tenant.id == tenant_id_in_query:
+                    return tenant.name
         return None
 
     def reserve_authority_member(self):

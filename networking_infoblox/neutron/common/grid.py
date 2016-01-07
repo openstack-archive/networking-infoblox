@@ -141,7 +141,8 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK_VIEW,
         'dhcp_relay_management_network':
             const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK,
-        'dhcp_support': const.EA_GRID_CONFIG_DHCP_SUPPORT
+        'dhcp_support': const.EA_GRID_CONFIG_DHCP_SUPPORT,
+        'tenant_name_persistence': const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE
     }
 
     def __init__(self, context):
@@ -199,7 +200,9 @@ class GridConfiguration(object):
         self.dhcp_relay_management_network = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_DHCP_RELAY_MANAGEMENT_NETWORK]
         self.dhcp_support = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DHCP_SUPPORT]
+            const.EA_GRID_CONFIG_DHCP_SUPPORT],
+        self.tenant_name_persistence = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE]
 
     @property
     def wapi_version(self):
