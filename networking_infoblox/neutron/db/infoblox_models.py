@@ -202,25 +202,6 @@ class InfobloxServiceMember(model_base.BASEV2):
                 (self.network_view_id, self.member_id, self.service))
 
 
-class InfobloxManagementNetwork(model_base.BASEV2):
-    """Management network for DHCP relay interfaces.
-
-    IP addresses are allocated for the management network for DHCP relay
-    interface.
-    """
-
-    __tablename__ = 'infoblox_management_networks'
-
-    network_id = sa.Column(sa.String(36),
-                           sa.ForeignKey("networks.id",
-                                         ondelete="CASCADE"),
-                           nullable=False,
-                           primary_key=True)
-    ip_address = sa.Column(sa.String(64), nullable=False, primary_key=True)
-    ip_version = sa.Column(sa.Integer(), default=4, nullable=False)
-    ip_address_ref = sa.Column(sa.String(255), nullable=False)
-
-
 class InfobloxObject(model_base.BASEV2):
     """Infoblox object reference ids that are created by neutron."""
 

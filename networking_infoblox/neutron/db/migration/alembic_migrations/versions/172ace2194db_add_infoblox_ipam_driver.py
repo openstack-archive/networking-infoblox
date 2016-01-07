@@ -156,18 +156,6 @@ def upgrade():
     )
 
     op.create_table(
-        'infoblox_management_networks',
-        sa.Column('network_id', sa.String(length=36), nullable=False),
-        sa.Column('ip_address', sa.String(length=64), nullable=False),
-        sa.Column('ip_version', sa.Integer(), default=4, nullable=False),
-        sa.Column('ip_address_ref', sa.String(length=255), nullable=False),
-        sa.ForeignKeyConstraint(['network_id'],
-                                ['networks.id'],
-                                ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('network_id', 'ip_address')
-    )
-
-    op.create_table(
         'infoblox_tenants',
         sa.Column('tenant_id', sa.String(64),
                   nullable=False, primary_key=True),

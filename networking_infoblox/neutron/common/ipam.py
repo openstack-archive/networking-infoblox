@@ -58,7 +58,7 @@ class IpamSyncController(object):
 
         The following NIOS objects are created.
         - network view
-        - network with management ip if dhcp relay is used
+        - network
         - ip range
         """
         session = self.ib_cxt.context.session
