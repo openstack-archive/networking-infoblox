@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 from keystoneclient.auth import token_endpoint
 from keystoneclient import session
 from keystoneclient.v2_0 import client as k_client

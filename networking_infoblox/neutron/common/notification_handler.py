@@ -120,11 +120,12 @@ class IpamEventHandler(object):
             if self.traceable:
                 LOG.info("created network: %s", network)
 
-        keystone_manager.update_tenant_mapping(self.context,
-                                               networks,
-                                               self.ctxt['tenant_id'],
-                                               self.ctxt['tenant_name'],
-                                               self.ctxt['auth_token'])
+        if self.grid_config.tenant_name_persistence:
+            keystone_manager.update_tenant_mapping(self.context,
+                                                   networks,
+                                                   self.ctxt['tenant_id'],
+                                                   self.ctxt['tenant_name'],
+                                                   self.ctxt['auth_token'])
 
     def update_network_sync(self, payload):
         """Notifies that the network property has been updated."""
