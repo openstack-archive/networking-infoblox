@@ -517,28 +517,6 @@ def remove_service_members(session, network_view_id, member_ids):
         q.delete(synchronize_session=False)
 
 
-# Management Network
-def get_management_ip(session, network_id):
-    q = session.query(ib_models.InfobloxManagementNetwork)
-    return q.filter_by(network_id=network_id).first()
-
-
-def add_management_ip(session, network_id, fixed_ip, ip_version,
-                      fixed_ip_ref):
-    mgmt_ip = ib_models.InfobloxManagementNetwork(
-        network_id=network_id,
-        ip_address=fixed_ip,
-        ip_version=ip_version,
-        ip_address_ref=fixed_ip_ref)
-    session.add(mgmt_ip)
-    return mgmt_ip
-
-
-def remove_management_ip(session, network_id):
-    q = session.query(ib_models.InfobloxManagementNetwork)
-    q.filter_by(network_id=network_id).delete(synchronize_session=False)
-
-
 # Operational Setting Management
 def add_operation_type(session, op_type, op_value):
     operation = ib_models.InfobloxOperation(

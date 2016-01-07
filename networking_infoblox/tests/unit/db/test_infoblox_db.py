@@ -521,31 +521,6 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
             self.ctx.session, member_id=member_id)
         self.assertEqual([], db_mapping_members)
 
-    def test_management_network(self):
-        # prepare data; network object is needed due to foreign key relation
-        fixed_ip = '192.168.1.1'
-        ip_version = 4
-        fixed_ip_ref = 'lMmQ3ZjkuM4Zj5Mi00Y2'
-        network = models_v2.Network(name="Test Netowrk", status="ON",
-                                    admin_state_up=True)
-        self.ctx.session.add(network)
-        self.ctx.session.flush()
-
-        mgmt_ip = infoblox_db.get_management_ip(self.ctx.session, network.id)
-        self.assertIsNone(mgmt_ip)
-
-        infoblox_db.add_management_ip(self.ctx.session, network.id, fixed_ip,
-                                      ip_version, fixed_ip_ref)
-        mgmt_ip = infoblox_db.get_management_ip(self.ctx.session, network.id)
-        self.assertEqual(network.id, mgmt_ip.network_id)
-        self.assertEqual(fixed_ip, mgmt_ip.ip_address)
-        self.assertEqual(ip_version, mgmt_ip.ip_version)
-        self.assertEqual(fixed_ip_ref, mgmt_ip.ip_address_ref)
-
-        infoblox_db.remove_management_ip(self.ctx.session, network.id)
-        mgmt_ip = infoblox_db.get_management_ip(self.ctx.session, network.id)
-        self.assertIsNone(mgmt_ip)
-
     def test_grid_operations(self):
         # 'last_sync_time' operation type does not exist so it will add it
         last_sync_time = infoblox_db.get_last_sync_time(self.ctx.session)
