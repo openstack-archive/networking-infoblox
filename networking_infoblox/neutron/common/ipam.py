@@ -279,6 +279,7 @@ class IpamSyncController(object):
             pool.delete()
 
         self._allocate_pools(added_pool, cidr, ip_version)
+        self._restart_services()
 
     def update_subnet_details(self, ib_network):
         ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
@@ -297,6 +298,7 @@ class IpamSyncController(object):
         else:
             opt_dns[0].value = nameservers_option_val
         self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
+        self._restart_services()
 
     @staticmethod
     def _get_changed_pools(ib_pools, pools_from_request, ip_version):
