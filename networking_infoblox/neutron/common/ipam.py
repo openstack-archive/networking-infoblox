@@ -16,11 +16,9 @@
 import netaddr
 
 from oslo_log import log as logging
-from oslo_utils import excutils
 from oslo_utils import uuidutils
 
 from neutron.common import constants as n_const
-from neutron.i18n import _LE
 from neutron.i18n import _LI
 from neutron.ipam import exceptions as ipam_exc
 from neutron.ipam import utils as ipam_utils
@@ -50,7 +48,7 @@ class IpamSyncController(object):
         return self.ib_cxt.ibom.get_network(self.ib_cxt.mapping.network_view,
                                             self.ib_cxt.subnet.get('cidr'))
 
-    def create_subnet(self):
+    def create_subnet(self, rollback_list):
         """Creates subnet equivalent NIOS objects.
 
         infoblox context contains subnet dictionary from ipam driver and
@@ -76,28 +74,22 @@ class IpamSyncController(object):
             # its connector and managers are loaded for the new member.
             self.ib_cxt.reserve_authority_member()
 
-        ib_network_view = None
-        ib_network = None
-        try:
-            # create a network view if it does not exist
-            if not network_view_exists:
-                ib_network_view = self._create_ib_network_view()
+        # create a network view if it does not exist
+        if not network_view_exists:
+            ib_network_view = self._create_ib_network_view()
+            rollback_list.append(ib_network_view)
 
-            ib_network = self._create_ib_network()
-            if ib_network:
-                self._create_ib_ip_range()
+        ib_network = self._create_ib_network()
+        if ib_network:
+            rollback_list.append(ib_network)
+            self._create_ib_ip_range(rollback_list)
 
-            # associate the network view to neutron
-            dbi.associate_network_view(session,
-                                       self.ib_cxt.mapping.network_view_id,
-                                       network_id,
-                                       subnet_id)
-            return ib_network
-        except Exception as ex:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("An exception occurred during subnet "
-                              "creation: %s"), ex)
-                self._rollback_subnet(ib_network_view, ib_network)
+        # associate the network view to neutron
+        dbi.associate_network_view(session,
+                                   self.ib_cxt.mapping.network_view_id,
+                                   network_id,
+                                   subnet_id)
+        return ib_network
 
     def _create_ib_network_view(self):
         ea_network_view = eam.get_ea_for_network_view(self.ib_cxt.tenant_id,
@@ -197,38 +189,7 @@ class IpamSyncController(object):
                 self.ib_cxt.mapping.authority_member.member_id,
                 mapping_relation)
 
-    def _rollback_subnet(self, ib_network_view, ib_network):
-        session = self.ib_cxt.context.session
-        subnet = self.ib_cxt.subnet
-
-        # deleting network view will delete ib networks under it.
-        if ib_network_view:
-            ib_network_view.delete()
-        else:
-            # remove ib network; deleting network deletes its child objects
-            # like ip ranges
-            if ib_network:
-                self.ib_cxt.ibom.delete_network(
-                    self.ib_cxt.mapping.network_view, subnet.get('cidr'))
-
-        # remove network view association
-        dbi.remove_network_views(session,
-                                 [self.ib_cxt.mapping.network_view_id])
-
-        # remove assigned services
-        for member in self.ib_cxt.mapping.dhcp_members:
-            dbi.remove_service_member(session,
-                                      self.ib_cxt.mapping.network_view_id,
-                                      member.member_id,
-                                      const.SERVICE_TYPE_DHCP)
-
-        for member in self.ib_cxt.mapping.dns_members:
-            dbi.remove_service_member(session,
-                                      self.ib_cxt.mapping.network_view_id,
-                                      member.member_id,
-                                      const.SERVICE_TYPE_DNS)
-
-    def _create_ib_ip_range(self):
+    def _create_ib_ip_range(self, rollback_list):
         subnet = self.ib_cxt.subnet
         cidr = subnet.get('cidr')
         ip_version = subnet.get('ip_version')
@@ -236,9 +197,11 @@ class IpamSyncController(object):
         allocation_pools = subnet.get('allocation_pools')
         if not allocation_pools:
             allocation_pools = ipam_utils.generate_pools(cidr, gateway_ip)
-        self._allocate_pools(allocation_pools, cidr, ip_version, True)
+        self._allocate_pools(rollback_list, allocation_pools, cidr,
+                             ip_version, True)
 
-    def _allocate_pools(self, pools, cidr, ip_version, check_if_exists=False):
+    def _allocate_pools(self, rollback_list, pools, cidr, ip_version,
+                        check_if_exists=False):
         ea_range = eam.get_ea_for_range(self.ib_cxt.user_id,
                                         self.ib_cxt.tenant_id,
                                         self.ib_cxt.tenant_name,
@@ -267,6 +230,7 @@ class IpamSyncController(object):
                 disable,
                 ea_range)
             LOG.info("ip range has been created: %s", ib_ip_range)
+            rollback_list.append(ib_ip_range)
 
     def update_subnet_allocation_pools(self):
         cidr = self.ib_cxt.subnet.get('cidr')
@@ -287,7 +251,10 @@ class IpamSyncController(object):
         for pool in removed_pool:
             pool.delete()
 
-        self._allocate_pools(added_pool, cidr, ip_version)
+        # Note(pbondar): no rollback actions is currently happens
+        # on update failure, so just stub for now.
+        rollback_list = []
+        self._allocate_pools(rollback_list, added_pool, cidr, ip_version)
         self._restart_services()
 
     def update_subnet_details(self, ib_network):

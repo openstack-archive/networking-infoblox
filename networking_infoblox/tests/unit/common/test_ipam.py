@@ -184,7 +184,8 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                'search',
                                return_value=None):
             ipam_controller._register_mapping_member = mock.Mock()
-            ipam_controller.create_subnet()
+            rollback_list = []
+            ipam_controller.create_subnet(rollback_list)
 
         self.validate_network_creation(self.helper.options['network_view'],
                                        self.helper.subnet)
@@ -201,7 +202,8 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                'search',
                                return_value=None):
             ipam_controller._register_mapping_member = mock.Mock()
-            ipam_controller.create_subnet()
+            rollback_list = []
+            ipam_controller.create_subnet(rollback_list)
 
         self.validate_network_creation(self.helper.options['network_view'],
                                        self.helper.subnet)
@@ -217,7 +219,8 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                'search',
                                return_value=mock.Mock()):
             self.assertRaises(exc.InfobloxPrivateSubnetAlreadyExist,
-                              ipam_controller.create_subnet)
+                              ipam_controller.create_subnet,
+                              [])
 
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     def test_create_subnet_existing_external_network(self):
@@ -233,7 +236,8 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         with mock.patch.object(ib_objects.Network,
                                'search',
                                return_value=mock.Mock()):
-            ipam_controller.create_subnet()
+            rollback_list = []
+            ipam_controller.create_subnet(rollback_list)
 
         self.ib_cxt.ibom.update_network_options.assert_called_once_with(
             mock.ANY, mock.ANY)

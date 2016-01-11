@@ -15,12 +15,13 @@
 
 import mock
 import netaddr
-from oslo_config import cfg
 
+from infoblox_client import exceptions as ib_exc
 from neutron import context
 from neutron.ipam import utils as ipam_utils
 from neutron.plugins.ml2 import config as ml2_config
 from neutron.tests.unit import testlib_api
+from oslo_config import cfg
 
 from networking_infoblox.ipam import driver as drv
 from networking_infoblox.neutron.common import grid
@@ -277,3 +278,38 @@ class TestDriver(base.TestCase, testlib_api.SqlTestCase):
             port['tenant_id'],
             port['device_id'],
             port['device_owner'])
+
+
+class FakePool(object):
+
+    def __init__(self, object_mock):
+        self.mock = object_mock
+
+    @drv.rollback_wrapper
+    def allocate_something(self, rollback_list, fail=False):
+        rollback_list.append(self.mock)
+        if fail:
+            raise ValueError
+
+
+class TestWrapper(base.TestCase):
+
+    def test_rollback_wrapper(self):
+        created_object = mock.Mock()
+        pool = FakePool(created_object)
+        pool.allocate_something()
+        self.assertEqual(False, created_object.delete.called)
+
+    def test_rollback_wrapper_on_failure(self):
+        created_object = mock.Mock()
+        pool = FakePool(created_object)
+        self.assertRaises(ValueError, pool.allocate_something, fail=True)
+        self.assertEqual(True, created_object.delete.called)
+
+    def test_rollback_wrapper_on_delete_failure(self):
+        created_object = mock.Mock()
+        created_object.delete.side_effect = ib_exc.InfobloxException(
+            'error_response')
+        pool = FakePool(created_object)
+        self.assertRaises(ValueError, pool.allocate_something, fail=True)
+        self.assertEqual(True, created_object.delete.called)

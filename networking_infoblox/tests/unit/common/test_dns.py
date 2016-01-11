@@ -57,7 +57,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         return ib_cxt
 
     def test_create_dns_zones_without_ns_group(self):
-        self.controller.create_dns_zones()
+        rollback_list = []
+        self.controller.create_dns_zones(rollback_list)
 
         assert self.ib_cxt.ibom.method_calls == [
             mock.call.create_dns_zone(
@@ -76,8 +77,9 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ]
 
     def test_create_dns_zones_with_ns_group(self):
+        rollback_list = []
         self.ib_cxt.grid_config.ns_group = 'test-ns-group'
-        self.controller.create_dns_zones()
+        self.controller.create_dns_zones(rollback_list)
 
         assert self.ib_cxt.ibom.method_calls == [
             mock.call.create_dns_zone(

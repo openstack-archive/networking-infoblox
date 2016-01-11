@@ -18,7 +18,10 @@ import netaddr
 import sys
 
 from oslo_log import log as logging
+from oslo_utils import excutils
 
+from neutron.i18n import _LE
+from neutron.i18n import _LW
 from neutron.ipam import driver
 from neutron.ipam import exceptions as ipam_exc
 from neutron.ipam import requests as ipam_req
@@ -51,6 +54,26 @@ def catch_ib_client_exception(f):
         except ValueError as e:
             raise exc.InfobloxValueError(msg=e), None, sys.exc_info()[2]
     return func
+
+
+def rollback_wrapper(f):
+    @functools.wraps(f)
+    def rollback(*args, **kwargs):
+        rollback_list = []
+        try:
+            return f(args[0], rollback_list, *args[1:], **kwargs)
+        except Exception as e:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("An exception occurred during subnet "
+                              "creation: %s."), e)
+                for ib_object in reversed(rollback_list):
+                    try:
+                        ib_object.delete()
+                    except ib_exc.InfobloxException as e:
+                        LOG.warning(_LW("Unable to delete %(obj)s due "
+                                        "to error: %(error)s."),
+                                    {'obj': ib_object, 'error': e})
+    return rollback
 
 
 class InfobloxPool(subnet_alloc.SubnetAllocator):
@@ -108,7 +131,8 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         return self._plugin.get_subnet(self._context, subnet_id)
 
     @catch_ib_client_exception
-    def allocate_subnet(self, subnet_request):
+    @rollback_wrapper
+    def allocate_subnet(self, rollback_list, subnet_request):
         """Create an IPAM subnet from the subnet request which contains cidr.
 
         Allocates a subnet to the Infoblox backend.
@@ -152,9 +176,9 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         ipam_controller = ipam.IpamSyncController(ib_cxt)
         dns_controller = dns.DnsController(ib_cxt)
 
-        ib_network = self._create_ib_network(ipam_controller)
+        ib_network = self._create_ib_network(rollback_list, ipam_controller)
         if ib_network:
-            dns_controller.create_dns_zones()
+            dns_controller.create_dns_zones(rollback_list)
             LOG.info("Created DNS zones.")
 
         return InfobloxSubnet(subnet_request, neutron_subnet, ib_network,
@@ -175,13 +199,13 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
                 'dns_nameservers': subnet_request.dns_nameservers}
 
     @staticmethod
-    def _create_ib_network(ipam_controller):
+    def _create_ib_network(rollback_list, ipam_controller):
         ib_network = None
         retry = 1
         while True:
             try:
                 LOG.info("Attempting to create ib network...")
-                ib_network = ipam_controller.create_subnet()
+                ib_network = ipam_controller.create_subnet(rollback_list)
                 LOG.info("Successfully created ib network.")
                 break
             except ib_exc.InfobloxMemberAlreadyAssigned:
