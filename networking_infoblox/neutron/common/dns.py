@@ -17,7 +17,6 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from neutron.common import constants as n_const
-from neutron.i18n import _LE
 
 from infoblox_client import exceptions as ibc_exc
 
@@ -39,7 +38,7 @@ class DnsController(object):
         self.pattern_builder = pattern.PatternBuilder(self.ib_cxt)
         self.dns_zone = self.pattern_builder.get_zone_name()
 
-    def create_dns_zones(self):
+    def create_dns_zones(self, rollback_list):
         ea_zone = eam.get_ea_for_zone(self.ib_cxt.user_id,
                                       self.ib_cxt.tenant_id,
                                       self.ib_cxt.tenant_name,
@@ -53,44 +52,36 @@ class DnsController(object):
 
         grid_primaries, grid_secondaries = self.ib_cxt.get_dns_members()
 
-        ib_zone = None
-        ib_zone_cidr = None
-
-        try:
-            if ns_group:
-                ib_zone = self.ib_cxt.ibom.create_dns_zone(
-                    dns_view,
-                    self.dns_zone,
-                    ns_group=ns_group,
-                    extattrs=ea_zone)
-                ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
-                    dns_view,
-                    cidr,
-                    prefix=prefix,
-                    zone_format=zone_format,
-                    extattrs=ea_zone)
-            else:
-                ib_zone = self.ib_cxt.ibom.create_dns_zone(
-                    dns_view,
-                    self.dns_zone,
-                    grid_primary=grid_primaries,
-                    grid_secondaries=grid_secondaries,
-                    extattrs=ea_zone)
-                ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
-                    dns_view,
-                    cidr,
-                    grid_primary=grid_primaries,
-                    prefix=prefix,
-                    zone_format=zone_format,
-                    extattrs=ea_zone)
-        except Exception as ex:
-            with excutils.save_and_reraise_exception():
-                LOG.exception(_LE("An exception occurred during dns zone "
-                                  "creation: %s"), ex)
-                if ib_zone:
-                    ib_zone.delete()
-                if ib_zone_cidr:
-                    ib_zone_cidr.delete()
+        if ns_group:
+            ib_zone = self.ib_cxt.ibom.create_dns_zone(
+                dns_view,
+                self.dns_zone,
+                ns_group=ns_group,
+                extattrs=ea_zone)
+            rollback_list.append(ib_zone)
+            ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
+                dns_view,
+                cidr,
+                prefix=prefix,
+                zone_format=zone_format,
+                extattrs=ea_zone)
+            rollback_list.append(ib_zone_cidr)
+        else:
+            ib_zone = self.ib_cxt.ibom.create_dns_zone(
+                dns_view,
+                self.dns_zone,
+                grid_primary=grid_primaries,
+                grid_secondaries=grid_secondaries,
+                extattrs=ea_zone)
+            rollback_list.append(ib_zone)
+            ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
+                dns_view,
+                cidr,
+                grid_primary=grid_primaries,
+                prefix=prefix,
+                zone_format=zone_format,
+                extattrs=ea_zone)
+            rollback_list.append(ib_zone_cidr)
 
     def delete_dns_zones(self, dns_zone=None):
         session = self.ib_cxt.context.session
