@@ -403,7 +403,7 @@ class InfobloxSubnet(driver.Subnet):
                                                       view=dns_view,
                                                       ip=ip_address)
             if not ib_address:
-                return exc.InfobloxCannotFindFixedIp(ip=ip_address)
+                raise exc.InfobloxCannotFindFixedIp(ip=ip_address)
 
         addr_req = ipam_req.AddressRequest()
         addr_req.port_id = ib_address.extattrs.get(const.EA_PORT_ID)
