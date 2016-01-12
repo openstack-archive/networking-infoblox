@@ -15,6 +15,8 @@
 
 import mock
 
+from infoblox_client import objects as ib_objects
+
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import ipam
 from networking_infoblox.neutron.common import notification_handler as handler
@@ -73,6 +75,9 @@ class TestIpamEventHandler(base.TestCase):
                                   'port_id': 'port-id',
                                   'floating_network_id': 'floating-network-id',
                                   'floating_ip_address': '8.8.8.3'}}
+        instance_name = 'test-inst'
+        self.ipam_handler._get_instance_name_from_fip = (
+            mock.Mock(return_value=instance_name))
         ib_cxt_mock.grid_config.default_domain_name_pattern = 'global.com'
         self.ipam_handler._get_mapping_neutron_subnet = mock.Mock()
         with mock.patch.object(dns.DnsController,
@@ -80,12 +85,37 @@ class TestIpamEventHandler(base.TestCase):
             self.ipam_handler.update_floatingip_sync(payload)
         bind_name_mock.assert_called_with(
             payload['floatingip']['floating_ip_address'],
-            None,
+            instance_name,
             mock.ANY,
             payload['floatingip']['tenant_id'],
             mock.ANY,
             mock.ANY,
             True)
+
+    @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
+    def test_get_instance_name_from_fip(self, ib_cxt_mock):
+        floatingip = {'id': 'floatingip-id',
+                      'tenant_id': 'tenant-id',
+                      'port_id': 'port-id',
+                      'floating_network_id': 'floating-network-id',
+                      'floating_ip_address': '8.8.8.3',
+                      'fixed_ip_address': '1.1.1.1'}
+        port = {'fixed_ips': [{'subnet_id': 'subnet-id',
+                               'ip_address': floatingip['fixed_ip_address']}]}
+        instance_name = 'test-inst'
+        extattrs = mock.Mock(extattrs={'VM Name': instance_name})
+        self.plugin.get_port = mock.Mock(return_value=port)
+        self.plugin.get_subnet = mock.Mock()
+        with mock.patch.object(ib_objects.FixedAddress,
+                               'search',
+                               return_value=extattrs):
+            self.assertEqual(
+                self.ipam_handler._get_instance_name_from_fip(floatingip),
+                instance_name)
+            self.plugin.get_port.assert_called_with(mock.ANY,
+                                                    floatingip['port_id'])
+            self.plugin.get_subnet.assert_called_with(
+                mock.ANY, port['fixed_ips'][0]['subnet_id'])
 
     def _prepare_context(self):
         message_context = {'project_name': u'admin',

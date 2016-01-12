@@ -19,8 +19,11 @@ import oslo_messaging
 from oslo_utils import encodeutils
 from sqlalchemy import exc as sql_exc
 
+from infoblox_client import objects as ib_objects
+
 from neutron import manager
 
+from networking_infoblox.neutron.common import constants
 from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import grid
@@ -223,6 +226,59 @@ class IpamEventHandler(object):
         if self.traceable:
             LOG.info("created floatingip: %s", floatingip)
 
+    def _get_instance_name_from_fip(self, floatingip):
+        """Get instance name from fip associated with an instance
+
+        Get instance name using the following info. in floatingip:
+        1. port_id - this is the port id for the instance
+        2. fixed_ip_address - this is the fixed ip for the instance
+
+        Using the above, construct InfobloxContext and query NIOS
+        for FixedAddress/HostRecord for instance. From the result,
+        extract instance name from the "VM Name" EA
+        """
+        port_id = floatingip.get('port_id')
+        fixed_ip = floatingip.get('fixed_ip_address')
+
+        port = self.plugin.get_port(self.context, port_id)
+        if not port:
+            LOG.warning("No port found for port_id: %s" % port_id)
+            return None
+
+        subnet_ids = [ip['subnet_id'] for ip in port['fixed_ips']
+                      if ip['ip_address'] == fixed_ip]
+        if not subnet_ids:
+            LOG.warning("No subnet_ids found for port: %s, fixed_ip: " %
+                        (port, fixed_ip))
+            return None
+        subnet = self.plugin.get_subnet(self.context, subnet_ids[0])
+        if not subnet:
+            LOG.warning("No subnet was found for subnet_id: %s" %
+                        subnet_ids[0])
+            return
+
+        ib_context = context.InfobloxContext(self.context, self.user_id,
+                                             None, subnet, self.grid_config,
+                                             self.plugin,
+                                             self._cached_grid_members,
+                                             self._cached_network_views,
+                                             self._cached_mapping_conditions)
+
+        connector = ib_context.connector
+        netview = ib_context.mapping.network_view
+        dns_view = ib_context.mapping.dns_view
+        ib_address = ib_objects.FixedAddress.search(connector,
+                                                    network_view=netview,
+                                                    ip=fixed_ip)
+        if not ib_address:
+            ib_address = ib_objects.HostRecord.search(connector,
+                                                      view=dns_view,
+                                                      ip=fixed_ip)
+            if not ib_address:
+                return None
+
+        return ib_address.extattrs.get(constants.EA_VM_NAME)
+
     def update_floatingip_sync(self, payload):
         """Notifies that the floating ip has been updated.
 
@@ -247,6 +303,10 @@ class IpamEventHandler(object):
         if subnet is None:
             return
 
+        instance_name = None
+        if associated_port_id:
+            instance_name = self._get_instance_name_from_fip(floatingip)
+
         network = self.plugin.get_network(self.context, network_id)
         ib_context = context.InfobloxContext(self.context, self.user_id,
                                              network, subnet, self.grid_config,
@@ -266,7 +326,7 @@ class IpamEventHandler(object):
                                          db_floatingip.floating_port_id)
 
         dns_controller.bind_names(floating_ip,
-                                  None,
+                                  instance_name,
                                   db_port.id,
                                   tenant_id,
                                   db_port.device_id,
