@@ -506,11 +506,12 @@ def get_dhcp_member_ips(ib_network):
                     if member_ip:
                         member_ips.append(member_ip)
     else:
-        for member in ib_network.members:
-            if member._struct == 'dhcpmember':
-                member_ip = member.ipv4addr or member.ipv6addr
-                if member_ip:
-                    member_ips.append(member_ip)
+        if ib_network.members:
+            for member in ib_network.members:
+                if member._struct == 'dhcpmember':
+                    member_ip = member.ipv4addr or member.ipv6addr
+                    if member_ip:
+                        member_ips.append(member_ip)
     return member_ips
 
 
