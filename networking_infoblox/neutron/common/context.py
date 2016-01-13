@@ -363,21 +363,19 @@ class InfobloxContext(object):
                 network_view=self.mapping.network_view,
                 cidr=self.subnet.get('cidr'))
 
-        primary_members = None
         secondary_members = None
 
-        if self.grid_config.dhcp_support is False:
-            member_name = self.mapping.authority_member.member_name
-            primary_members = [ib_objects.AnyMember(_struct='memberserver',
-                                                    name=member_name)]
-        else:
-            member_name = self.mapping.dns_members[0].member_name
-            primary_members = [ib_objects.AnyMember(_struct='memberserver',
-                                                    name=member_name)]
-            if len(self.mapping.dns_members) > 1:
+        # authority member needs to be the grid primary always for host record
+        member_name = self.mapping.authority_member.member_name
+        primary_members = [ib_objects.AnyMember(_struct='memberserver',
+                                                name=member_name)]
+
+        if self.grid_config.dhcp_support:
+            grid_secondaries = [m for m in self.mapping.dns_members
+                                if m.member_name != member_name]
+            if grid_secondaries:
                 secondary_members = []
-                secondary_dns_members = self.mapping.dns_members[1:]
-                for m in secondary_dns_members:
+                for m in grid_secondaries:
                     secondary_members.append(
                         ib_objects.AnyMember(_struct='memberserver',
                                              name=m.member_name))
@@ -693,8 +691,14 @@ class InfobloxContext(object):
         if not self.ib_network:
             return
 
+        if not self.grid_config.dhcp_support:
+            return
+
         # dhcp members
         dhcp_members = self._get_dhcp_members(self.ib_network)
+        if not dhcp_members:
+            return
+
         ib_dhcp_members = []
         for m in dhcp_members:
             ib_dhcp_members.append(ib_objects.AnyMember(_struct='dhcpmember',

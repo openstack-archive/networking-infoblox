@@ -591,7 +591,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'AuthorityMember',
             {'member_id': 'member-id', 'member_type': 'GM',
              'member_ip': '11.11.1.11', 'member_ipv6': None,
-             'member_status': 'ON'})
+             'member_name': 'gm', 'member_status': 'ON'})
         ib_cxt.mapping.authority_member = test_authority_member
 
         test_dhcp_member_1 = utils.json_to_obj(
@@ -611,8 +611,10 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         expected_primaries = [
             ib_objects.AnyMember(_struct='memberserver',
-                                 name=test_dhcp_member_1.member_name)]
+                                 name=test_authority_member.member_name)]
         expected_secondaries = [
+            ib_objects.AnyMember(_struct='memberserver',
+                                 name=test_dhcp_member_1.member_name),
             ib_objects.AnyMember(_struct='memberserver',
                                  name=test_dhcp_member_2.member_name)]
         self.assertEqual(expected_primaries, grid_primaries)

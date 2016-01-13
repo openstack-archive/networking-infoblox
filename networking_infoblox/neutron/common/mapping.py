@@ -129,7 +129,7 @@ class GridMappingManager(object):
 
             # update or add a network view
             if netview_name in persisted_netview_names:
-                dbi.update_network_view(session, netview_id, self._grid_id,
+                dbi.update_network_view(session, netview_name, self._grid_id,
                                         authority_member_id, is_shared)
             else:
                 new_netview = dbi.add_network_view(session, netview_name,

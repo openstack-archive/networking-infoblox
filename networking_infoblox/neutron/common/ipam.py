@@ -83,8 +83,8 @@ class IpamSyncController(object):
             if not network_view_exists:
                 ib_network_view = self._create_ib_network_view()
 
-            ib_network, is_new = self._create_ib_network()
-            if ib_network and is_new:
+            ib_network = self._create_ib_network()
+            if ib_network:
                 self._create_ib_ip_range()
 
             # associate the network view to neutron
@@ -134,7 +134,7 @@ class IpamSyncController(object):
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
                 LOG.info("ib network already exists so updated options: %s",
                          ib_network)
-                return ib_network, False
+                return ib_network
             raise exc.InfobloxPrivateSubnetAlreadyExist()
 
         # network creation using template
@@ -147,7 +147,7 @@ class IpamSyncController(object):
             self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
             LOG.info("ib network created from template %s: %s",
                      network_template, ib_network)
-            return ib_network, True
+            return ib_network
 
         # network creation starts
         self.ib_cxt.reserve_service_members()
@@ -236,9 +236,9 @@ class IpamSyncController(object):
         allocation_pools = subnet.get('allocation_pools')
         if not allocation_pools:
             allocation_pools = ipam_utils.generate_pools(cidr, gateway_ip)
-        self._allocate_pools(allocation_pools, cidr, ip_version)
+        self._allocate_pools(allocation_pools, cidr, ip_version, True)
 
-    def _allocate_pools(self, pools, cidr, ip_version):
+    def _allocate_pools(self, pools, cidr, ip_version, check_if_exists=False):
         ea_range = eam.get_ea_for_range(self.ib_cxt.user_id,
                                         self.ib_cxt.tenant_id,
                                         self.ib_cxt.tenant_name,
@@ -249,6 +249,16 @@ class IpamSyncController(object):
             start_ip = netaddr.IPAddress(pool.first, ip_version).format()
             end_ip = netaddr.IPAddress(pool.last, ip_version).format()
 
+            if check_if_exists:
+                ib_ip_range = ib_objects.IPRange.search(
+                    self.ib_cxt.connector,
+                    network_view=self.ib_cxt.mapping.network_view,
+                    start_addr=start_ip,
+                    end_addr=end_ip)
+                if ib_ip_range:
+                    LOG.info("ip range already existed: %s", ib_ip_range)
+                    continue
+
             ib_ip_range = self.ib_cxt.ibom.create_ip_range(
                 self.ib_cxt.mapping.network_view,
                 start_ip,
@@ -256,8 +266,7 @@ class IpamSyncController(object):
                 cidr,
                 disable,
                 ea_range)
-            LOG.info("ip range has been created: %s",
-                     ib_ip_range)
+            LOG.info("ip range has been created: %s", ib_ip_range)
 
     def update_subnet_allocation_pools(self):
         cidr = self.ib_cxt.subnet.get('cidr')
@@ -446,6 +455,11 @@ class IpamSyncController(object):
     def _remove_network_view(self):
         session = self.ib_cxt.context.session
         network_view = self.ib_cxt.mapping.network_view
+
+        if (self.grid_config.default_network_view_scope ==
+                const.NETWORK_VIEW_SCOPE_SINGLE and
+                network_view == self.grid_config.default_network_view):
+            return
 
         # remove ib network view
         self.ib_cxt.ibom.delete_network_view(network_view)
