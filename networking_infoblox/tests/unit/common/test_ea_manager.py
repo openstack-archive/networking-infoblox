@@ -235,7 +235,7 @@ class EaManagerTestCase(base.TestCase):
                    'shared': False}
         port_id = mock.Mock()
         device_id = mock.Mock()
-        device_owner = const.NEUTRON_DEVICE_OWNER_COMPUTE
+        device_owner = const.NEUTRON_DEVICE_OWNER_COMPUTE_NOVA
         is_floating_ip = True
         expected_ea = {'Tenant ID': self.tenant_id,
                        'Tenant Name': self.context.tenant_name,

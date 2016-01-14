@@ -99,7 +99,7 @@ def get_ea_for_ip(user_id, tenant_id, tenant_name, network, port_id, device_id,
     ip_type = const.IP_TYPE_FIXED
     if is_floating_ip or device_owner == n_const.DEVICE_OWNER_FLOATINGIP:
         ip_type = const.IP_TYPE_FLOATING
-    if device_owner == const.NEUTRON_DEVICE_OWNER_COMPUTE:
+    if device_owner in const.NEUTRON_DEVICE_OWNER_COMPUTE_LIST:
         instance_id = device_id
 
     common_ea = get_common_ea(network, user_id, tenant_id, tenant_name)
