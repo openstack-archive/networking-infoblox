@@ -78,6 +78,8 @@ class IpamEventHandler(object):
             LOG.warning("Operational Error occurred")
             LOG.error(encodeutils.exception_to_unicode(e))
         except Exception as e:
+            import sys
+            import traceback
             LOG.error(encodeutils.exception_to_unicode(e))
 
     def create_network_alert(self, payload):
@@ -394,9 +396,58 @@ class IpamEventHandler(object):
                                   ports[0]['device_id'],
                                   ports[0]['device_owner'])
 
+
     def delete_instance_sync(self, payload):
         """Notifies that an instance has been deleted."""
         instance_id = payload.get('instance_id')
+        session = self.context.session
 
         if self.traceable:
             LOG.info("deleted instance: %s", instance_id)
+
+        subnets = dbi.get_external_subnets(self.context.session)
+        for cur_subnet in subnets:
+            subnet = self.plugin.get_subnet(self.context,
+                                            cur_subnet.id)
+            network = self.plugin.get_network(self.context,
+                                          cur_subnet.network_id)
+            ib_context = context.InfobloxContext(self.context,
+                                                 self.user_id,
+                                                 network,
+                                                 subnet,
+                                                 self.grid_config,
+                                                 self.plugin,
+                                                 self._cached_grid_members,
+                                                 self._cached_network_views,
+                                                 self._cached_mapping_conditions)
+            dns_controller = dns.DnsController(ib_context)
+
+            connector = ib_context.connector
+            netview = ib_context.mapping.network_view
+            dns_view = ib_context.mapping.dns_view
+            ib_address = ib_objects.FixedAddress.search_all(connector,
+                                                            network_view=netview,
+                                                            network=subnet['cidr'])
+            if not ib_address:
+                ib_address = ib_objects.HostRecord.search(
+                    connector, view=dns_view, zone=dns_controller.dns_zone)
+            if not ib_address:
+                return
+
+            for floating_ip in ib_address:
+                vm_id = floating_ip.extattrs.get('VM ID')
+                tenant_id = floating_ip.extattrs.get('Tenant ID')
+                if vm_id and vm_id == instance_id:
+                    if hasattr(floating_ip, 'ips'):
+                        ips = [ipaddr.ip for ipaddr in floating_ip.ips]
+                    else:
+                        ips = [floating_ip.ip]
+
+                    for ip in ips:
+                        db_port = dbi.get_floatingip_port(
+                            session, ip, cur_subnet.network_id)
+
+                        if db_port:
+                            dns_controller.bind_names(
+                                ip, None, db_port.id, tenant_id,
+                                db_port.device_id, db_port.device_owner, False)
