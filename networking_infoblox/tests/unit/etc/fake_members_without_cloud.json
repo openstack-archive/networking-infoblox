@@ -91,6 +91,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQ0:nios-7.2.0-member1.com",
         "host_name": "nios-7.2.0-member1.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "node_info": [
             {
                 "service_status": [
@@ -185,6 +190,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQ1:nios-7.2.0-member2.com",
         "host_name": "nios-7.2.0-member2.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "node_info": [
             {
                 "service_status": [
@@ -279,6 +289,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQ2:nios-7.2.0-member3.com",
         "host_name": "nios-7.2.0-member3.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "node_info": [
             {
                 "service_status": [
@@ -373,6 +388,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQ3:nios-7.2.0-member4.com",
         "host_name": "nios-7.2.0-member4.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "node_info": [
             {
                 "service_status": [
@@ -467,6 +487,11 @@
     {
         "_ref": "member/c25lLnZpcnR1YWxfbm9kZSQ0:nios-7.2.0-member5.com",
         "host_name": "nios-7.2.0-member5.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "node_info": [
             {
                 "service_status": [
@@ -561,6 +586,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQ3:nios-7.2.0-member6.com",
         "host_name": "nios-7.2.0-member6.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "node_info": [
             {
                 "service_status": [

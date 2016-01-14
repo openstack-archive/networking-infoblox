@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import oslo_config.types as types
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
@@ -94,7 +95,6 @@ class GridMemberManager(object):
         discovered_member_ids = []
 
         for member in discovered_members:
-            # get member attributes
             member_name = member['host_name']
             member_ipv4 = member['vip_setting']['address']
             member_ipv6 = (member['ipv6_setting'].get('virtual_ip')
@@ -112,6 +112,13 @@ class GridMemberManager(object):
                                                 member_name,
                                                 member_ipv4,
                                                 member_ipv6)
+            if member_type != const.MEMBER_TYPE_GRID_MASTER:
+                ea_is_cloud_member = utils.get_ea_value(
+                    const.EA_IS_CLOUD_MEMBER, member)
+                is_cloud_member = (types.Boolean()(ea_is_cloud_member)
+                                   if ea_is_cloud_member else False)
+                if not is_cloud_member:
+                    continue
 
             # update the existing member or add a new member
             db_member = utils.find_one_in_list('member_name', member_name,
@@ -154,7 +161,7 @@ class GridMemberManager(object):
         session.flush()
 
     def _discover_members(self):
-        return_fields = ['node_info', 'host_name', 'vip_setting']
+        return_fields = ['node_info', 'host_name', 'vip_setting', 'extattrs']
         if utils.get_features(
                 self._grid_config.wapi_version).member_ipv6_setting:
             return_fields.append('ipv6_setting')

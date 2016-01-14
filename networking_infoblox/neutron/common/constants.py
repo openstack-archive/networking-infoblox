@@ -73,6 +73,8 @@ EA_MAPPING_NETWORK_NAME = 'Network Name Mapping'
 EA_MAPPING_SUBNET_ID = 'Subnet ID Mapping'
 EA_MAPPING_SUBNET_CIDR = 'Subnet CIDR Mapping'
 
+EA_IS_CLOUD_MEMBER = 'Is Cloud Member'
+
 EA_SUBNET_ID = 'Subnet ID'
 EA_SUBNET_NAME = 'Subnet Name'
 EA_NETWORK_ID = 'Network ID'
@@ -352,7 +354,16 @@ REQUIRED_EA_DEFS = [
     {'name': EA_MAPPING_SUBNET_CIDR,
      'type': 'STRING', 'flags': 'CGV',
      'allowed_object_types': ['NetworkView'],
-     'comment': 'Mapping'}]
+     'comment': 'Mapping'},
+
+    # Member Registration EA
+    {'name': EA_IS_CLOUD_MEMBER,
+     'type': 'ENUM', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'list_values': [{'value': 'True'},
+                     {'value': 'False'}],
+     'comment': 'Grid Membership'}
+]
 
 GRID_CONFIG_DEFAULTS = {
     EA_GRID_CONFIG_GRID_SYNC_SUPPORT: True,
