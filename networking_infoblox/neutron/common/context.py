@@ -211,54 +211,16 @@ class InfobloxContext(object):
             raise exc.InfobloxAuthorityMemberNotReserved(
                 network_view=self.mapping.network_view)
 
-        session = self.context.session
         dhcp_members = []
         dns_members = []
         nameservers = []
 
-        cidr = self.subnet.get('cidr')
         user_nameservers = self.subnet.get('dns_nameservers') or []
         ip_version = self.subnet.get('ip_version')
 
         if ib_network is None:
             # service member assignment for a new network
-            if (self.mapping.authority_member.member_type ==
-                    const.MEMBER_TYPE_CP_MEMBER):
-                # for CPM, dhcp member is always the authority member.
-                dhcp_member = self.mapping.authority_member
-            else:
-                # for GM,
-                # check if a network view is already serving dhcp.
-                #   if true, then use the same dhcp member.
-                #   if false, see if gm itself is serving dhcp for other
-                #   network view.
-                #     if true, then try to get the next available dhcp member.
-                #     if false, use gm for dhcp
-                dhcp_service_members = dbi.get_service_members(
-                    session,
-                    network_view_id=self.mapping.network_view_id,
-                    service=const.SERVICE_TYPE_DHCP)
-                if dhcp_service_members:
-                    dhcp_member = utils.find_one_in_list(
-                        'member_id',
-                        dhcp_service_members[0].member_id,
-                        self.discovered_grid_members)
-                else:
-                    dhcp_service_members = dbi.get_service_members(
-                        session,
-                        member_id=self.mapping.authority_member.member_id,
-                        service=const.SERVICE_TYPE_DHCP)
-                    if dhcp_service_members:
-                        # authority is GM, a dhcp member needs to be selected.
-                        dhcp_member = dbi.get_next_dhcp_member(session,
-                                                               self.grid_id)
-                        if not dhcp_member:
-                            raise exc.InfobloxDHCPMemberNotReserved(
-                                network_view=self.mapping.network_view,
-                                cidr=cidr)
-                    else:
-                        dhcp_member = self.mapping.authority_member
-
+            dhcp_member = self._reserve_dhcp_member()
             dhcp_members = [dhcp_member]
             dns_members = dhcp_members
             nameservers = utils.get_nameservers(user_nameservers,
@@ -269,12 +231,8 @@ class InfobloxContext(object):
             # - first set dhcp servers option
             dhcp_members = self._get_dhcp_members(ib_network)
             if not dhcp_members:
-                dhcp_member = dbi.get_next_dhcp_member(session, self.grid_id)
-                if not dhcp_member:
-                    raise exc.InfobloxDHCPMemberNotReserved(
-                        network_view=self.mapping.network_view, cidr=cidr)
+                dhcp_member = self._reserve_dhcp_member()
                 dhcp_members = [dhcp_member]
-
                 # assign dncp member
                 ib_network.members = [ib_objects.AnyMember(
                     _struct='dhcpmember',
@@ -330,6 +288,48 @@ class InfobloxContext(object):
         self.mapping.ib_nameservers = nameservers
 
         self._register_services()
+
+    def _reserve_dhcp_member(self):
+        if (self.mapping.authority_member.member_type ==
+                const.MEMBER_TYPE_CP_MEMBER):
+            return self.mapping.authority_member
+
+        # for GM,
+        # check if a network view is already serving dhcp.
+        #   if true, then use the same dhcp member.
+        #   if false, see if gm itself is serving dhcp for other
+        #   network view.
+        #     if true, then try to get the next available dhcp member.
+        #     if false, use gm for dhcp
+        session = self.context.session
+        dhcp_member = None
+
+        dhcp_service_members = dbi.get_service_members(
+            session,
+            network_view_id=self.mapping.network_view_id,
+            service=const.SERVICE_TYPE_DHCP)
+        if dhcp_service_members:
+            dhcp_member = utils.find_one_in_list(
+                'member_id',
+                dhcp_service_members[0].member_id,
+                self.discovered_grid_members)
+        else:
+            dhcp_service_members = dbi.get_service_members(
+                session,
+                member_id=self.mapping.authority_member.member_id,
+                service=const.SERVICE_TYPE_DHCP)
+            if dhcp_service_members:
+                # authority is GM, a dhcp member needs to be selected.
+                dhcp_member = dbi.get_next_dhcp_member(session,
+                                                       self.grid_id)
+                if not dhcp_member:
+                    raise exc.InfobloxDHCPMemberNotReserved(
+                        network_view=self.mapping.network_view,
+                        cidr=self.subnet.get('cidr'))
+            else:
+                dhcp_member = self.mapping.authority_member
+
+        return dhcp_member
 
     def get_dns_members(self):
         """Gets the primary and secondary DNS members that serve DNS.

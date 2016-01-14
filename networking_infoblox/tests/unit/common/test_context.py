@@ -390,11 +390,9 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertEqual(test_authority_member.member_id,
                          ib_cxt.mapping.dns_members[0].member_id)
 
-    @mock.patch.object(dbi, 'get_next_dhcp_member')
-    def test_reserve_service_members_with_ib_network_no_member_no_option(
-            self, dbi_next_dhcp_member_mock):
+    def test_reserve_service_members_with_ib_network_gm_owned(self):
         user_id = 'test user'
-        tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
+        tenant_id = 'tenant-id'
 
         # prepare network
         network_name = 'Test Network'
@@ -408,36 +406,34 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         self.grid_config.dhcp_support = True
 
-        test_dhcp_member = utils.json_to_obj(
-            'DhcpMember',
-            {'member_id': 'member-id', 'member_type': 'REGULAR',
-             'member_ip': '11.11.1.12', 'member_ipv6': None,
-             'member_name': 'm1', 'member_status': 'ON'})
-        dbi_next_dhcp_member_mock.return_value = test_dhcp_member
-
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
         ib_cxt._register_services = mock.Mock()
+        dhcp_members = dbi.get_service_members(
+            self.ctx.session,
+            network_view_id=ib_cxt.mapping.network_view_id,
+            service=const.SERVICE_TYPE_DHCP)
+        expected_dhcp_member = dhcp_members[0]
 
         # ib network with no members and options
         connector = mock.Mock()
         test_ib_network = ib_objects.NetworkV4(connector,
-                                               network_view='test-view',
+                                               network_view='default',
                                                cidr='12.12.1.0/24')
         test_ib_network.members = []
         test_ib_network.options = []
 
         ib_cxt.reserve_service_members(test_ib_network)
 
-        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dhcp_members)
-        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dns_members)
+        self.assertEqual(expected_dhcp_member.member_id,
+                         ib_cxt.mapping.dhcp_members[0].member_id)
+        self.assertEqual(expected_dhcp_member.member_id,
+                         ib_cxt.mapping.dns_members[0].member_id)
         actual_opt_router = [opt for opt in test_ib_network.options
                              if opt.name == 'routers']
         self.assertEqual(subnet['gateway_ip'], actual_opt_router[0].value)
 
-    @mock.patch.object(dbi, 'get_next_dhcp_member')
-    def test_reserve_service_members_with_ib_network_dhcp_member_no_option(
-            self, dbi_next_dhcp_member_mock):
+    def test_reserve_service_members_with_ib_network_with_dhcp_member(self):
         user_id = 'test user'
         tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
 
@@ -458,11 +454,14 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             {'member_id': 'member-id', 'member_type': 'REGULAR',
              'member_ip': '11.11.1.12', 'member_ipv6': None,
              'member_name': 'm1', 'member_status': 'ON'})
-        dbi_next_dhcp_member_mock.return_value = test_dhcp_member
 
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
         ib_cxt._register_services = mock.Mock()
+        ib_cxt._get_dhcp_members = mock.Mock()
+        ib_cxt._get_dhcp_members.return_value = [test_dhcp_member]
+        ib_cxt._get_dns_members = mock.Mock()
+        ib_cxt._get_dns_members.return_value = [test_dhcp_member]
 
         # ib network with dhcp member assigned
         connector = mock.Mock()
@@ -471,8 +470,11 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                                                cidr='12.12.1.0/24')
         test_ib_network.members = [
             ib_objects.AnyMember(_struct='dhcpmember',
-                                 name=test_dhcp_member.member_name)]
-        test_ib_network.options = []
+                                 name=test_dhcp_member.member_name,
+                                 ipv4addr=test_dhcp_member.member_ip)]
+        test_ib_network.options = [
+            ib_objects.DhcpOption(name='domain-name-servers',
+                                  value=test_dhcp_member.member_ip)]
 
         ib_cxt.reserve_service_members(test_ib_network)
 
@@ -482,9 +484,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                              if opt.name == 'routers']
         self.assertEqual(subnet['gateway_ip'], actual_opt_router[0].value)
 
-    @mock.patch.object(dbi, 'get_next_dhcp_member')
-    def test_reserve_service_members_with_ib_network_dhcp_member_option(
-            self, dbi_next_dhcp_member_mock):
+    def test_reserve_service_members_with_ib_network_without_dhcp_member(self):
         user_id = 'test user'
         tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
 
@@ -499,13 +499,6 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                                                 network['id'], subnet_cidr)
 
         self.grid_config.dhcp_support = True
-
-        test_dhcp_member = utils.json_to_obj(
-            'DhcpMember',
-            {'member_id': 'member-id', 'member_type': 'REGULAR',
-             'member_ip': '11.11.1.12', 'member_ipv6': None,
-             'member_name': 'm1', 'member_status': 'ON'})
-        dbi_next_dhcp_member_mock.return_value = test_dhcp_member
 
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
@@ -517,17 +510,21 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                                                network_view='test-view',
                                                cidr='12.12.1.0/24')
         test_ib_network.members = [
-            ib_objects.AnyMember(_struct='dhcpmember',
-                                 name=test_dhcp_member.member_name)]
+            ib_objects.AnyMember(
+                _struct='dhcpmember',
+                name=ib_cxt.mapping.authority_member.member_name)]
         test_gateway_ip = '12.12.1.1'
         test_ib_network.options = [
-            ib_objects.DhcpOption(name='routers',
-                                  value=test_gateway_ip)]
+            ib_objects.DhcpOption(name='routers', value=test_gateway_ip)]
 
         ib_cxt.reserve_service_members(test_ib_network)
 
-        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dhcp_members)
-        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dns_members)
+        # authority member is CPM, so dhcp/dns member should be the same as
+        # authority member
+        self.assertEqual([ib_cxt.mapping.authority_member],
+                         ib_cxt.mapping.dhcp_members)
+        self.assertEqual([ib_cxt.mapping.authority_member],
+                         ib_cxt.mapping.dns_members)
         actual_opt_router = [opt for opt in test_ib_network.options
                              if opt.name == 'routers']
         self.assertEqual(subnet['gateway_ip'] + ',' + test_gateway_ip,
