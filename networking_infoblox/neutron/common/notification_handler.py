@@ -397,6 +397,53 @@ class IpamEventHandler(object):
     def delete_instance_sync(self, payload):
         """Notifies that an instance has been deleted."""
         instance_id = payload.get('instance_id')
-
+        session = self.context.session
         if self.traceable:
             LOG.info("deleted instance: %s", instance_id)
+
+        vm_id_ea = ib_objects.EA({'VM ID': instance_id})
+        subnets = dbi.get_external_subnets(self.context.session)
+        for cur_subnet in subnets:
+            subnet = self.plugin.get_subnet(self.context,
+                                            cur_subnet.id)
+            network = self.plugin.get_network(self.context,
+                                              cur_subnet.network_id)
+            ib_context = context.InfobloxContext(
+                self.context, self.user_id, network, subnet,
+                self.grid_config, self.plugin, self._cached_grid_members,
+                self._cached_network_views, self._cached_mapping_conditions)
+            dns_controller = dns.DnsController(ib_context)
+
+            connector = ib_context.connector
+            netview = ib_context.mapping.network_view
+            dns_view = ib_context.mapping.dns_view
+            ib_address = ib_objects.FixedAddress.search(
+                connector, network_view=netview, network=subnet['cidr'],
+                search_extattrs=vm_id_ea)
+
+            if not ib_address:
+                ib_address = ib_objects.HostRecord.search(
+                    connector, view=dns_view, zone=dns_controller.dns_zone,
+                    search_extattrs=vm_id_ea)
+
+            if not ib_address:
+                continue
+
+            if hasattr(ib_address, 'ips'):
+                ips = [ipaddr.ip for ipaddr in ib_address.ips
+                       if netaddr.IPAddress(ipaddr.ip) in
+                       netaddr.IPNetwork(subnet['cidr'])]
+            else:
+                ips = [ib_address.ip]
+
+            tenant_id = ib_address.extattrs.get('Tenant ID')
+            db_ports = dbi.get_floatingip_ports(
+                session, ips, cur_subnet.network_id)
+            for port in db_ports:
+                port_id = port[0]
+                device_id = port[1]
+                device_owner = port[2]
+                floating_ip = port[3]
+                dns_controller.bind_names(
+                    floating_ip, None, port_id, tenant_id,
+                    device_id, device_owner, False)
