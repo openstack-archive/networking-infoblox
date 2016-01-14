@@ -644,3 +644,20 @@ def get_tenants(session, tenant_ids=None):
     if tenant_ids:
         q = q.filter(ib_models.InfobloxTenant.tenant_id.in_(tenant_ids))
     return q.all()
+
+
+def get_external_subnets(session):
+    sub_qry = session.query(external_net_db.ExternalNetwork.network_id)
+    return (session.query(models_v2.Subnet).
+            filter(models_v2.Subnet.network_id.in_(sub_qry))).all()
+
+
+def get_floatingip_port(session, floating_ip_address, floating_network_id):
+    sub_qry = (session.query(l3_db.FloatingIP.floating_port_id).
+               filter(l3_db.FloatingIP.floating_ip_address ==
+                      floating_ip_address).
+               filter(l3_db.FloatingIP.floating_network_id ==
+                      floating_network_id))
+    q = (session.query(models_v2.Port).
+         filter(models_v2.Port.id.in_(sub_qry)))
+    return q.one()
