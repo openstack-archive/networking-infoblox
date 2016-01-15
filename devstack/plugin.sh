@@ -3,6 +3,7 @@
 function install_networking_infoblox {
     cd $DIR_INFOBLOX
     sudo python setup.py install
+    sudo pip install -r requirements.txt
 }
 
 function init_networking_infoblox {
