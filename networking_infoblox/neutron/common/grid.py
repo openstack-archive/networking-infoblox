@@ -106,7 +106,7 @@ class GridManager(object):
             'http_pool_connections': grid_conf.http_pool_connections,
             'http_pool_maxsize': grid_conf.http_pool_maxsize}
         # Silent ssl warnings, if certificate verification is not enabled
-        if not gm_connection_opts['ssl_verify']:
+        if gm_connection_opts['ssl_verify'] == 'False':
             gm_connection_opts['silent_ssl_warnings'] = True
         grid_conf.gm_connector = connector.Connector(gm_connection_opts)
         return grid_conf
