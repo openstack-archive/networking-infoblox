@@ -668,35 +668,30 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual(search_ip, actual['member_ipv6'])
 
     def test_get_nameservers(self):
-        self.assertRaises(ValueError, utils.get_nameservers, None, None, None)
-        self.assertRaises(ValueError, utils.get_nameservers, [], None, None)
-        self.assertRaises(ValueError, utils.get_nameservers, [], [], 5)
-        self.assertRaises(ValueError, utils.get_nameservers, [], [], 6)
+        self.assertRaises(ValueError, utils.get_nameservers, None, None)
+        self.assertRaises(ValueError, utils.get_nameservers, [], None)
+        self.assertRaises(ValueError, utils.get_nameservers, [], 5)
 
-        user_nameservers = []
         test_dhcp_member_1 = utils.json_to_obj(
             'DhcpMember',
             {'member_id': 'member-id', 'member_type': 'REGULAR',
-             'member_ip': '11.11.1.12', 'member_ipv6': None,
+             'member_ip': '11.11.1.12', 'member_ipv6': '2001::1',
              'member_name': 'm1', 'member_status': 'ON'})
         test_dhcp_member_2 = utils.json_to_obj(
             'DhcpMember',
             {'member_id': 'member-id', 'member_type': 'CPM',
-             'member_ip': '11.11.1.13', 'member_ipv6': None,
+             'member_ip': '11.11.1.13', 'member_ipv6': '2001::2',
              'member_name': 'm1', 'member_status': 'ON'})
         dns_members = [test_dhcp_member_1, test_dhcp_member_2]
         ip_version = 4
 
-        nameservers = utils.get_nameservers(user_nameservers, dns_members,
-                                            ip_version)
+        nameservers = utils.get_nameservers(dns_members, ip_version)
 
         expected = [m.member_ip for m in dns_members]
         self.assertEqual(expected, nameservers)
 
-        user_nameservers = ['11.11.1.11', '11.11.1.12']
-        nameservers = utils.get_nameservers(user_nameservers, dns_members,
-                                            ip_version)
+        ip_version = 6
+        nameservers = utils.get_nameservers(dns_members, ip_version)
 
-        # user name server needs to come after ib dns memebers
-        self.assertEqual(['11.11.1.12', '11.11.1.13', '11.11.1.11'],
-                         nameservers)
+        expected = [m.member_ipv6 for m in dns_members]
+        self.assertEqual(expected, nameservers)
