@@ -138,6 +138,7 @@ class GridConfiguration(object):
         'dns_record_removable_types':
             const.EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES,
         'dhcp_support': const.EA_GRID_CONFIG_DHCP_SUPPORT,
+        'relay_support': const.EA_GRID_CONFIG_RELAY_SUPPORT,
         'tenant_name_persistence': const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE
     }
 
@@ -192,7 +193,9 @@ class GridConfiguration(object):
         self.dns_record_removable_types = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES]
         self.dhcp_support = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DHCP_SUPPORT],
+            const.EA_GRID_CONFIG_DHCP_SUPPORT]
+        self.relay_support = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_RELAY_SUPPORT]
         self.tenant_name_persistence = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE]
 

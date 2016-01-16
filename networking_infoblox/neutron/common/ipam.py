@@ -216,6 +216,7 @@ class IpamSyncController(object):
                 ib_ip_range = ib_objects.IPRange.search(
                     self.ib_cxt.connector,
                     network_view=self.ib_cxt.mapping.network_view,
+                    network=cidr,
                     start_addr=start_ip,
                     end_addr=end_ip)
                 if ib_ip_range:
@@ -264,17 +265,24 @@ class IpamSyncController(object):
                                             self.ib_cxt.network,
                                             self.ib_cxt.subnet)
 
-        nameservers_option_val = ','.join(self.ib_cxt.mapping.ib_nameservers)
-        opt_dns = [opt for opt in ib_network.options
-                   if opt.name == 'domain-name-servers']
-        if not opt_dns:
-            ib_network.options.append(
-                ib_objects.DhcpOption(name='domain-name-servers',
-                                      value=nameservers_option_val))
-        else:
-            opt_dns[0].value = nameservers_option_val
+        option_changed = False
+        nameservers = self.ib_cxt.mapping.ib_nameservers
+        if nameservers:
+            nameservers_option_val = ','.join(nameservers)
+            opt_dns = [opt for opt in ib_network.options
+                       if opt.name == 'domain-name-servers']
+            if not opt_dns:
+                ib_network.options.append(
+                    ib_objects.DhcpOption(name='domain-name-servers',
+                                          value=nameservers_option_val))
+            else:
+                opt_dns[0].value = nameservers_option_val
+            option_changed = True
+
         self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
-        self._restart_services()
+
+        if option_changed:
+            self._restart_services()
 
     @staticmethod
     def _get_changed_pools(ib_pools, pools_from_request, ip_version):
@@ -515,6 +523,8 @@ class IpamSyncController(object):
         if allocated_ip:
             LOG.info('IP address allocated on Infoblox NIOS: %s',
                      allocated_ip)
+            if device_owner == n_const.DEVICE_OWNER_DHCP:
+                self.ib_cxt.update_nameservers(allocated_ip)
         else:
             LOG.info("All IPs from subnet %(subnet_id)s allocated",
                      {'subnet_id': subnet_id})
