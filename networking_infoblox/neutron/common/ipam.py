@@ -216,6 +216,7 @@ class IpamSyncController(object):
                 ib_ip_range = ib_objects.IPRange.search(
                     self.ib_cxt.connector,
                     network_view=self.ib_cxt.mapping.network_view,
+                    network=cidr,
                     start_addr=start_ip,
                     end_addr=end_ip)
                 if ib_ip_range:
@@ -515,6 +516,8 @@ class IpamSyncController(object):
         if allocated_ip:
             LOG.info('IP address allocated on Infoblox NIOS: %s',
                      allocated_ip)
+            if device_owner == n_const.DEVICE_OWNER_DHCP:
+                self.ib_cxt.update_nameservers(allocated_ip)
         else:
             LOG.info("All IPs from subnet %(subnet_id)s allocated",
                      {'subnet_id': subnet_id})
