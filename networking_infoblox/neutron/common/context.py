@@ -215,17 +215,12 @@ class InfobloxContext(object):
         dns_members = []
         nameservers = []
 
-        user_nameservers = self.subnet.get('dns_nameservers') or []
-        ip_version = self.subnet.get('ip_version')
-
         if ib_network is None:
             # service member assignment for a new network
             dhcp_member = self._reserve_dhcp_member()
             dhcp_members = [dhcp_member]
             dns_members = dhcp_members
-            nameservers = utils.get_nameservers(user_nameservers,
-                                                dns_members,
-                                                ip_version)
+            nameservers = self._get_nameservers(dns_members)
         else:
             # service member assignment for the predefined network
             # - first set dhcp servers option
@@ -249,9 +244,7 @@ class InfobloxContext(object):
                 # primary and the rest will serve as the grid secondaries.
                 dns_members = dhcp_members
 
-            nameservers = utils.get_nameservers(user_nameservers,
-                                                dns_members,
-                                                ip_version)
+            nameservers = self._get_nameservers(dns_members)
             nameservers_option_val = ','.join(nameservers)
 
             opt_dns = [opt for opt in ib_network.options
@@ -330,6 +323,33 @@ class InfobloxContext(object):
                 dhcp_member = self.mapping.authority_member
 
         return dhcp_member
+
+    def update_nameservers(self, dhcp_port_ip):
+        # if user provies nameservers, no need to do anything
+        nameservers = self.subnet.get('dns_nameservers') or []
+        if nameservers:
+            return
+
+        if (self.grid_config.relay_support is False or
+                utils.is_valid_ip(dhcp_port_ip) is False):
+            return
+
+        cidr = self.subnet['cidr']
+        ib_network = self.ibom.get_network(self.mapping.network_view, cidr)
+        if not ib_network:
+            LOG.error("Infoblox network with %s does not exist.", cidr)
+            return
+
+        opt_dns = [opt for opt in ib_network.options
+                   if opt.name == 'domain-name-servers']
+        if not opt_dns:
+            ib_network.options.append(
+                ib_objects.DhcpOption(name='domain-name-servers',
+                                      value=dhcp_port_ip))
+        else:
+            opt_dns[0].value = dhcp_port_ip
+
+        ib_network.update()
 
     def get_dns_members(self):
         """Gets the primary and secondary DNS members that serve DNS.
@@ -694,6 +714,8 @@ class InfobloxContext(object):
         if not self.grid_config.dhcp_support:
             return
 
+        session = self.context.session
+
         # dhcp members
         dhcp_members = self._get_dhcp_members(self.ib_network)
         if not dhcp_members:
@@ -704,15 +726,45 @@ class InfobloxContext(object):
             ib_dhcp_members.append(ib_objects.AnyMember(_struct='dhcpmember',
                                                         name=m.member_name))
 
-        # dns members
+        # get dns members from ib network if member exists. if not, get them
+        # from service members
         dns_members = self._get_dns_members(self.ib_network)
-        user_nameservers = self.subnet.get('dns_nameservers') or []
-        nameservers = utils.get_nameservers(
-            user_nameservers,
-            dns_members,
-            self.subnet.get('ip_version'))
+        if not dns_members:
+            dns_members = []
+            dns_service_members = dbi.get_service_members(
+                session,
+                network_view_id=self.mapping.network_view_id,
+                service=const.SERVICE_TYPE_DNS)
+            for sm in dns_service_members:
+                member = utils.find_one_in_list('member_id',
+                                                sm.member_id,
+                                                self.discovered_grid_members)
+                if member:
+                    dns_members.append(member)
+
+        nameservers = self._get_nameservers(dns_members)
 
         self.mapping.dhcp_members = dhcp_members
         self.mapping.dns_members = dns_members
         self.mapping.ib_dhcp_members = ib_dhcp_members
         self.mapping.ib_nameservers = nameservers
+
+    def _get_nameservers(self, dns_members):
+        """Returns nameservers
+
+        if the user provides nameservers, just use them; otherwise,
+        use dhcp port ip if relay support is True or use dns member ips
+        if False.
+        """
+        session = self.context.session
+        nameservers = self.subnet.get('dns_nameservers') or []
+        if not nameservers:
+            if self.grid_config.relay_support:
+                dhcp_port_ip = dbi.get_subnet_dhcp_port_address(
+                    session, self.subnet['id'])
+                if dhcp_port_ip:
+                    nameservers = [dhcp_port_ip]
+            else:
+                nameservers = utils.get_nameservers(dns_members,
+                                                    self.subnet['ip_version'])
+        return nameservers
