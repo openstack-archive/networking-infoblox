@@ -331,6 +331,31 @@ class InfobloxContext(object):
 
         return dhcp_member
 
+    def update_nameservers(self, dhcp_port_ip):
+        if (self.grid_config.relay_support is False or
+                utils.is_valid_ip(dhcp_port_ip) is False):
+            return
+
+        ib_network = self.ibom.get_network(self.mapping.network_view,
+                                           self.subnet['cidr'])
+        if not ib_network:
+            return
+
+        user_nameservers = self.subnet.get('dns_nameservers') or []
+        nameservers = [dhcp_port_ip] + user_nameservers
+        nameservers_option_value = ','.join(nameservers)
+
+        opt_dns = [opt for opt in ib_network.options
+                   if opt.name == 'domain-name-servers']
+        if not opt_dns:
+            ib_network.options.append(
+                ib_objects.DhcpOption(name='domain-name-servers',
+                                      value=nameservers_option_value))
+        else:
+            opt_dns[0].value = nameservers_option_value
+
+        ib_network.update()
+
     def get_dns_members(self):
         """Gets the primary and secondary DNS members that serve DNS.
 
@@ -694,6 +719,8 @@ class InfobloxContext(object):
         if not self.grid_config.dhcp_support:
             return
 
+        session = self.context.session
+
         # dhcp members
         dhcp_members = self._get_dhcp_members(self.ib_network)
         if not dhcp_members:
@@ -704,13 +731,25 @@ class InfobloxContext(object):
             ib_dhcp_members.append(ib_objects.AnyMember(_struct='dhcpmember',
                                                         name=m.member_name))
 
-        # dns members
-        dns_members = self._get_dns_members(self.ib_network)
+        # dns members and nameservers
         user_nameservers = self.subnet.get('dns_nameservers') or []
-        nameservers = utils.get_nameservers(
-            user_nameservers,
-            dns_members,
-            self.subnet.get('ip_version'))
+        if self.grid_config.relay_support:
+            dns_members = dbi.get_service_members(
+                session,
+                network_view_id=self.mapping.network_view_id,
+                service=const.SERVICE_TYPE_DNS)
+
+            dhcp_port_ip = dbi.get_subnet_dhcp_port_address(session,
+                                                            self.subnet['id'])
+            if dhcp_port_ip:
+                nameservers = list(set(dhcp_port_ip + user_nameservers))
+            else:
+                nameservers = user_nameservers
+        else:
+            dns_members = self._get_dns_members(self.ib_network)
+            nameservers = utils.get_nameservers(user_nameservers,
+                                                dns_members,
+                                                self.subnet.get('ip_version'))
 
         self.mapping.dhcp_members = dhcp_members
         self.mapping.dns_members = dns_members

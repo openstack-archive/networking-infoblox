@@ -569,6 +569,22 @@ def get_port_by_id(session, port_id):
     return q.filter_by(id=port_id).one()
 
 
+def get_port_by_id(session, port_id):
+    q = session.query(models_v2.Port)
+    return q.filter_by(id=port_id).one()
+
+
+def get_subnet_dhcp_port_address(session, subnet_id):
+    dhcp_port = (session.query(models_v2.IPAllocation).
+                 filter_by(subnet_id=subnet_id).
+                 join(models_v2.Port).
+                 filter_by(device_owner='network:dhcp')
+                 .first())
+    if dhcp_port:
+        return dhcp_port.ip_address
+    return None
+
+
 def get_floatingip_by_id(session, floatingip_id):
     q = session.query(l3_db.FloatingIP)
     return q.filter_by(id=floatingip_id).one()
