@@ -3,6 +3,7 @@
 function install_networking_infoblox {
     cd $DIR_INFOBLOX
     sudo python setup.py install
+    sudo pip install -r requirements.txt
 }
 
 function init_networking_infoblox {
@@ -32,6 +33,9 @@ function configure_networking_infoblox {
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID http_pool_connections $NETWORKING_INFOBLOX_DC_HTTP_POOL_CONNECTIONS
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID http_pool_maxsize $NETWORKING_INFOBLOX_DC_HTTP_POOL_MAXSIZE
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID http_request_timeout $NETWORKING_INFOBLOX_DC_HTTP_REQUEST_TIMEOUT
+
+    # Run create_ea_defs.py to create EA definitions
+    (export NETWORKING_INFOBLOX_SUPERUSER_USERNAME NETWORKING_INFOBLOX_SUPERUSER_PASSWORD; cd $DIR_INFOBLOX/tools; ./create_ea_defs.py)
 }
 
 DIR_INFOBLOX=$DEST/networking-infoblox

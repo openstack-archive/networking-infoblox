@@ -15,6 +15,7 @@
 #    under the License.
 
 import getpass
+import os
 import sys
 
 from oslo_config import cfg
@@ -33,17 +34,24 @@ LOG = logging.getLogger(__name__)
 
 
 credentials = None
-print("\n\n")
-print("In order to create Extensible Attribute definitions,")
-print("superuser privilege is required.\n")
-print("If the preconfigured credentials already has superuser privilege,")
-print("just hit <ENTER> when prompted for user name.\n")
-print("Otherwise, please enter user name and password of a user that \
-has superuser privilege.\n")
-username = raw_input("Enter user name: ")
-if len(username) > 0:
-    password = getpass.getpass("Enter password: ")
+# Use environment variable if found
+username = os.environ['NETWORKING_INFOBLOX_SUPERUSER_USERNAME']
+password = os.environ['NETWORKING_INFOBLOX_SUPERUSER_PASSWORD']
+if username and password:
     credentials = {'username': username, 'password': password}
+
+if not credentials:
+    print("\n\n")
+    print("In order to create Extensible Attribute definitions,")
+    print("superuser privilege is required.\n")
+    print("If the preconfigured credentials already has superuser privilege,")
+    print("just hit <ENTER> when prompted for user name.\n")
+    print("Otherwise, please enter user name and password of a user that \
+    has superuser privilege.\n")
+    username = raw_input("Enter user name: ")
+    if len(username) > 0:
+        password = getpass.getpass("Enter password: ")
+        credentials = {'username': username, 'password': password}
 
 cfg.CONF(args=sys.argv[1:], default_config_files=['/etc/neutron/neutron.conf'])
 common_config.setup_logging()
