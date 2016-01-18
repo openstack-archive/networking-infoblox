@@ -89,6 +89,7 @@ class GridManager(object):
         grid_conf.admin_password = grid_opts['admin_password']
         grid_conf.wapi_version = grid_opts['wapi_version']
         grid_conf.ssl_verify = grid_opts['ssl_verify']
+        grid_conf.certificate_path = grid_opts['certificate_path']
         grid_conf.http_request_timeout = grid_opts['http_request_timeout']
         grid_conf.http_pool_connections = grid_opts['http_pool_connections']
         grid_conf.http_pool_maxsize = grid_opts['http_pool_maxsize']
@@ -101,6 +102,7 @@ class GridManager(object):
             'password': grid_conf.admin_password,
             'wapi_version': grid_conf.wapi_version,
             'ssl_verify': grid_conf.ssl_verify,
+            'certificate_path': grid_conf.certificate_path,
             'log_api_calls_as_info': True,
             'http_request_timeout': grid_conf.http_request_timeout,
             'http_pool_connections': grid_conf.http_pool_connections,

@@ -48,6 +48,10 @@ data_center_opts = [
                 default=False,
                 help=_("Ensure whether WAPI requests sent over HTTPS require "
                        "SSL verification.")),
+    cfg.StrOpt('certificate_path',
+               default='',
+               help=_("Path to a CA_BUNDLE file or directory "
+                      "with certificates of trusted CAs")),
     cfg.IntOpt('http_pool_connections',
                default=100,
                help=_("HTTP pool connection.")),

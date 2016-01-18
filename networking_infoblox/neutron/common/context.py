@@ -510,6 +510,7 @@ class InfobloxContext(object):
             'username': wapi_user,
             'password': wapi_pwd,
             'ssl_verify': grid_connection['ssl_verify'],
+            'certificate_path': grid_connection['certificate_path'],
             'log_api_calls_as_info': True,
             'http_pool_connections':
                 grid_connection['http_pool_connections'],
