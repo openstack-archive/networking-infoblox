@@ -30,24 +30,49 @@ from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import utils
 
+ENV_SUPERUSER_USERNAME = 'NETWORKING_INFOBLOX_SUPERUSER_USERNAME'
+ENV_SUPERUSER_PASSWORD = 'NETWORKING_INFOBLOX_SUPERUSER_PASSWORD'
+
 LOG = logging.getLogger(__name__)
 
+cli_opts = [
+    cfg.BoolOpt('script',
+                short='s',
+                default=False,
+                help='scripting mode'),
+    cfg.StrOpt('username',
+               short='u',
+               help='username of superuser'),
+    cfg.StrOpt('password',
+               short='p',
+               help='password of superuser')
+]
+cfg.CONF.register_cli_opts(cli_opts)
+cfg.CONF(args=sys.argv[1:])
 
 credentials = None
-# Use environment variable if found
-username = os.environ['NETWORKING_INFOBLOX_SUPERUSER_USERNAME']
-password = os.environ['NETWORKING_INFOBLOX_SUPERUSER_PASSWORD']
-if username and password:
-    credentials = {'username': username, 'password': password}
+# User command line arguments if specified
+if cfg.CONF.username and cfg.CONF.password:
+    credentials = {'username': cfg.CONF.username,
+                   'password': cfg.CONF.password}
 
+# Use environment variable if found
 if not credentials:
+    if (ENV_SUPERUSER_USERNAME in os.environ and
+            ENV_SUPERUSER_PASSWORD in os.environ):
+        username = os.environ[ENV_SUPERUSER_USERNAME]
+        password = os.environ[ENV_SUPERUSER_PASSWORD]
+        if username and password:
+            credentials = {'username': username, 'password': password}
+
+if not credentials and not cfg.CONF.script:
     print("\n\n")
     print("In order to create Extensible Attribute definitions,")
     print("superuser privilege is required.\n")
     print("If the preconfigured credentials already has superuser privilege,")
     print("just hit <ENTER> when prompted for user name.\n")
-    print("Otherwise, please enter user name and password of a user that \
-    has superuser privilege.\n")
+    print("Otherwise, please enter user name and password of a user that "
+          "has superuser privilege.\n")
     username = raw_input("Enter user name: ")
     if len(username) > 0:
         password = getpass.getpass("Enter password: ")
@@ -66,8 +91,9 @@ if not (utils.get_features(conn).create_ea_def):
     exit(1)
 
 mgr = object_manager.InfobloxObjectManager(conn)
-mgr.create_required_ea_definitions(const.REQUIRED_EA_DEFS)
-
+ea_defs_created = mgr.create_required_ea_definitions(const.REQUIRED_EA_DEFS)
+LOG.info("The following EA Definitions have been created: '%s'" %
+         [ea_def['name'] for ea_def in ea_defs_created])
 
 host_ip = getattr(conn, 'host')
 if ib_utils.determine_ip_version(host_ip) == 4:
@@ -79,20 +105,15 @@ if member is None:
     LOG.error("Cannot retrieve member information at host_ip='%s'" % host_ip)
     exit(1)
 
-ea_exist = False
-if member.extattrs:
-    for ea, val in const.GRID_CONFIG_DEFAULTS.items():
-        if member.extattrs.get(ea) is not None:
-            ea_exist = True
-            break
+ea_set = {}
+member_eas = member.extattrs
+for ea, val in const.GRID_CONFIG_DEFAULTS.items():
+    if (member_eas and
+            member_eas.get(ea) is None and
+            not (val is None or val == [])):
+        ea_set[ea] = val
+        member_eas.set(ea, val)
 
-if not ea_exist:
-    update_ea = {}
-    for ea, val in const.GRID_CONFIG_DEFAULTS.items():
-        if not (val is None or val == []):
-            update_ea[ea] = val
-    member.extattrs = objects.EA(update_ea)
-    LOG.info("Adding Extensible Attributes for default Grid Configuration.")
+if ea_set:
+    LOG.info("Adding the following EA values to Grid Member: '%s'" % ea_set)
     member.update()
-else:
-    LOG.info("Extensible Attributes for Grid Configuration already exists.")
