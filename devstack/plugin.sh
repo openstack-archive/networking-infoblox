@@ -35,7 +35,7 @@ function configure_networking_infoblox {
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID http_request_timeout $NETWORKING_INFOBLOX_DC_HTTP_REQUEST_TIMEOUT
 
     # Run create_ea_defs.py to create EA definitions
-    (export NETWORKING_INFOBLOX_SUPERUSER_USERNAME NETWORKING_INFOBLOX_SUPERUSER_PASSWORD; cd $DIR_INFOBLOX/tools; ./create_ea_defs.py)
+    (cd $DIR_INFOBLOX/tools; ./create_ea_defs.py -s -u $NETWORKING_INFOBLOX_SUPERUSER_USERNAME -p $NETWORKING_INFOBLOX_SUPERUSER_PASSWORD)
 }
 
 DIR_INFOBLOX=$DEST/networking-infoblox
