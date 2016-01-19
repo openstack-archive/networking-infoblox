@@ -257,18 +257,20 @@ class InfobloxContext(object):
                 opt_dns[0].value = nameservers_option_val
 
             # - lastly set routers option
-            gateway_ip_str = str(self.subnet.get('gateway_ip'))
-            opt_routers = [opt for opt in ib_network.options
-                           if opt.name == 'routers']
-            if not opt_routers:
-                ib_network.options.append(
-                    ib_objects.DhcpOption(name='routers',
-                                          value=gateway_ip_str))
-            else:
-                router_ips = opt_routers[0].value.split(',')
-                router_ips_all = [gateway_ip_str] + [ip for ip in router_ips
-                                                     if ip != gateway_ip_str]
-                opt_routers[0].value = ','.join(router_ips_all)
+            if self.subnet['ip_version'] == 4:
+                gateway_ip_str = str(self.subnet.get('gateway_ip'))
+                opt_routers = [opt for opt in ib_network.options
+                               if opt.name == 'routers']
+                if not opt_routers:
+                    ib_network.options.append(
+                        ib_objects.DhcpOption(name='routers',
+                                              value=gateway_ip_str))
+                else:
+                    router_ips = opt_routers[0].value.split(',')
+                    router_ips_all = ([gateway_ip_str] +
+                                      [ip for ip in router_ips
+                                       if ip != gateway_ip_str])
+                    opt_routers[0].value = ','.join(router_ips_all)
 
         ib_dhcp_members = []
         for m in dhcp_members:
