@@ -64,8 +64,7 @@ def rollback_wrapper(f):
             return f(args[0], rollback_list, *args[1:], **kwargs)
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("An exception occurred during subnet "
-                              "creation: %s."), e)
+                LOG.error(_LE("An exception occurred on allocation: %s."), e)
                 for ib_object in reversed(rollback_list):
                     try:
                         ib_object.delete()
@@ -353,7 +352,8 @@ class InfobloxSubnet(driver.Subnet):
                              "SpecificSubnetRequest")
 
     @catch_ib_client_exception
-    def allocate(self, address_request):
+    @rollback_wrapper
+    def allocate(self, rollback_list, address_request):
         """Allocate an IP address based on the request passed in.
 
         :param address_request: Specifies what to allocate.
@@ -380,6 +380,9 @@ class InfobloxSubnet(driver.Subnet):
                 address_request.tenant_id,
                 address_request.device_id,
                 address_request.device_owner)
+        # Only ip address has to be added to deallocate list,
+        # since bind_names handles it's failures internally
+        rollback_list.append(allocated_ip)
 
         if allocated_ip and address_request.device_owner:
             # we can deal with instance name as hostname in the ipam agent.
