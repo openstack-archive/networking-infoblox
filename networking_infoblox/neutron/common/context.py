@@ -537,7 +537,7 @@ class InfobloxContext(object):
             'http_request_timeout': grid_connection['http_request_timeout']
         }
         # Silent ssl warnings, if certificate verification is not enabled
-        if not opts['ssl_verify']:
+        if opts['ssl_verify'] == 'False':
             opts['silent_ssl_warnings'] = True
         return connector.Connector(opts)
 
