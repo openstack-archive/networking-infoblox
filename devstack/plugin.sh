@@ -22,10 +22,10 @@ function update_conf_option {
     local value=$4
     local add_mode=$5
 
-    old_val=`iniget "$file" "$section" "$option"`
+    old_val=$(iniget "$file" "$section" "$option")
 
-    echo -n "$old_val" | grep "$value" > /dev/null
-    if [ $? -ne 0 ]
+    found=$(echo -n "$old_val" | sed -n -e "/$value/,/$value/p")
+    if [ -z "$found" ]
     then
         if [ "$add_mode" -eq "1" ]
         then
@@ -68,7 +68,7 @@ function configure_networking_infoblox {
     update_conf_option $NEUTRON_CONF DEFAULT notification_topics notifications 0
 
     # Run create_ea_defs.py to create EA definitions
-    (cd $DIR_INFOBLOX/tools; ./create_ea_defs.py -s -u "$NETWORKING_INFOBLOX_SUPERUSER_USERNAME" -p "$NETWORKING_INFOBLOX_SUPERUSER_PASSWORD")
+    # (cd $DIR_INFOBLOX/tools; ./create_ea_defs.py -s -u "$NETWORKING_INFOBLOX_SUPERUSER_USERNAME" -p "$NETWORKING_INFOBLOX_SUPERUSER_PASSWORD")
 }
 
 DIR_INFOBLOX=$DEST/networking-infoblox
