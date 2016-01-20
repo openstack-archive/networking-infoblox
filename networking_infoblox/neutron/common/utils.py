@@ -573,17 +573,13 @@ def find_member_by_ip_from_list(member_ip, members):
     return member
 
 
-def get_nameservers(user_nameservers, ib_dns_members, ip_version):
-    """User nameservers must come after infoblox dns members if specified."""
-    if (not isinstance(user_nameservers, list) or
-            not ib_dns_members or
-            not isinstance(ib_dns_members, list) or
+def get_nameservers(ib_dns_members, ip_version):
+    if (not isinstance(ib_dns_members, list) or
             ip_version not in [4, 6]):
         raise ValueError("Invalid argument was passed.")
 
     nameservers = [n for n in [m.member_ipv6 if ip_version == 6
                                else m.member_ip for m in ib_dns_members] if n]
-    nameservers += [n for n in user_nameservers if n not in nameservers]
     return nameservers
 
 
