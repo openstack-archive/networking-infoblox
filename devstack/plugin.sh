@@ -15,6 +15,31 @@ function run_db_migration_for_networking_infoblox {
     $NEUTRON_BIN_DIR/neutron-db-manage --config-file $NEUTRON_CONF --config-file /$Q_PLUGIN_CONF_FILE upgrade head
 }
 
+function update_conf_option {
+    local file=$1
+    local section=$2
+    local option=$3
+    local value=$4
+    local add_mode=$5
+
+    old_val=`iniget "$file" "$section" "$option"`
+
+    echo -n "$old_val" | grep "$value" > /dev/null
+    if [ $? -ne 0 ]
+    then
+        if [ "$add_mode" -eq "1" ]
+        then
+            wc_cnt=`echo -n $old_val | wc -c`
+            if [ $wc_cnt -gt 0 ]
+            then
+                value="${value},${old_val}"
+            fi
+        fi
+        inicomment "$file" "$section" "$option"
+        iniadd "$file" "$section" "$option" "$value"
+    fi
+}
+
 function configure_networking_infoblox {
     echo_summary "Running db migration for Infoblox Networking"
 
@@ -33,6 +58,14 @@ function configure_networking_infoblox {
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID http_pool_connections $NETWORKING_INFOBLOX_DC_HTTP_POOL_CONNECTIONS
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID http_pool_maxsize $NETWORKING_INFOBLOX_DC_HTTP_POOL_MAXSIZE
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID http_request_timeout $NETWORKING_INFOBLOX_DC_HTTP_REQUEST_TIMEOUT
+
+    # Update options that are non Infoblox specific
+    NOVA_CONF=/etc/nova/nova.conf
+    update_conf_option $NOVA_CONF DEFAULT notification_driver messagingv2 1
+    update_conf_option $NOVA_CONF DEFAULT notification_topics notifications 1
+    update_conf_option $NOVA_CONF DEFAULT notify_on_state_change vm_state 1
+    update_conf_option $NEUTRON_CONF DEFAULT notification_driver messagingv2 1
+    update_conf_option $NEUTRON_CONF DEFAULT notification_topics notifications 1
 
     # Run create_ea_defs.py to create EA definitions
     (cd $DIR_INFOBLOX/tools; ./create_ea_defs.py -s -u "$NETWORKING_INFOBLOX_SUPERUSER_USERNAME" -p "$NETWORKING_INFOBLOX_SUPERUSER_PASSWORD")
