@@ -100,9 +100,8 @@ if is_service_enabled networking-infoblox; then
     fi
 
     if [[ "$1" == "unstack" ]]; then
-        # Shut down networking_infoblox services
-        # no-op
-        :
+        # uninstall networking-infoblox
+        sudo pip uninstall -q -y networking-infoblox
     fi
 
     if [[ "$1" == "clean" ]]; then
