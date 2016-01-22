@@ -22,10 +22,10 @@ function update_conf_option {
     local value=$4
     local add_mode=$5
 
-    old_val=`iniget "$file" "$section" "$option"`
+    old_val=$(iniget "$file" "$section" "$option")
 
-    echo -n "$old_val" | grep "$value" > /dev/null
-    if [ $? -ne 0 ]
+    found=$(echo -n "$old_val" | sed -n -e "/$value/,/$value/p")
+    if [ -z "$found" ]
     then
         if [ "$add_mode" -eq "1" ]
         then
