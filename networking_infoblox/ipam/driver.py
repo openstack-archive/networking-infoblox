@@ -384,12 +384,17 @@ class InfobloxSubnet(driver.Subnet):
         if allocated_ip and address_request.device_owner:
             # we can deal with instance name as hostname in the ipam agent.
             instance_name = None
-            dns_controller.bind_names(allocated_ip,
-                                      instance_name,
-                                      address_request.port_id,
-                                      address_request.tenant_id,
-                                      address_request.device_id,
-                                      address_request.device_owner)
+            try:
+                dns_controller.bind_names(allocated_ip,
+                                          instance_name,
+                                          address_request.port_id,
+                                          address_request.tenant_id,
+                                          address_request.device_id,
+                                          address_request.device_owner)
+            except Exception:
+                with excutils.save_and_reraise_exception():
+                    ipam_controller.deallocate_ip(allocated_ip)
+
         return allocated_ip
 
     @catch_ib_client_exception
