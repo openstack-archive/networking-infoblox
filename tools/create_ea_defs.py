@@ -106,13 +106,13 @@ if member is None:
     exit(1)
 
 ea_set = {}
-member_eas = member.extattrs
+if member.extattrs is None:
+    member.extattrs = objects.EA({})
 for ea, val in const.GRID_CONFIG_DEFAULTS.items():
-    if (member_eas and
-            member_eas.get(ea) is None and
+    if (member.extattrs.get(ea) is None and
             not (val is None or val == [])):
         ea_set[ea] = val
-        member_eas.set(ea, val)
+        member.extattrs.set(ea, val)
 
 if ea_set:
     LOG.info("Adding the following EA values to Grid Member: '%s'" % ea_set)
