@@ -13,8 +13,8 @@ Contents:
 
    readme
    installation
-   usage
-   contributing
+   configuration_guide
+   devstack
 
 Indices and tables
 ==================
