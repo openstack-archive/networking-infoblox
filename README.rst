@@ -12,126 +12,74 @@ Contains Neutron drivers for integration with Infoblox grids for IPAM and DNS.
 Features
 --------
 
-This release of the drivers supports:
+This release of the driver supports:
 
-* A single network view named 'default'
-* IPv4 Subnet creation and deletion
-* IPv4 address allocation and deallocation as a Fixed Address
+* IPv4 and IPv6 Subnet creation, update and deletion
+* IPv4 and IPv6 address allocation and deallocation
+* Support for fixed and floating IP addresses
+* Creation and deletion of Host, A, AAAA, and PTR records during IP allocation
+* Creation of authoritative zones
+* Support for GM and CP members and Cloud API
+* Flexible mapping of OpenStack entities to network view
+* Set EAs to populate the Cloud tab in the Infoblox UI
 
-Configuring Infoblox
---------------------
+Overview
+--------
 
-Infoblox must be set up with a network view named 'default'. This network view
-will be used for all OpenStack IPAM.
+The IPAM driver consists of two components: the ``networking_infoblox`` Python
+module, and the ``infoblox-ipam-agent``. Each of these depend upon the
+``infoblox-client`` [#]_ library.
 
-Setting up a separate user in Infoblox for use by OpenStack is recommended.
+The IPAM driver will be consulted by Neutron whenever subnet or IP allocation
+is needed. The driver will use RESTful API calls (aka, "Web-API" or "WAPI") to
+perform these operations in Infoblox. Additionally, the driver will tag each
+of these entities in Infoblox with various meta-data from OpenStack, such as
+the tenant and the corresponding OpenStack IDs for the objects. This tagging
+allows the entities to show up in the Cloud tab of the UI (which is available
+with the Cloud Network Automation license), giving full visibility into the
+OpenStack cloud from within Infoblox.
 
-A `Subnet ID` extensible attribute must be defined. It will be used to store
-the Neutron subnet ID on each network created.
+The agent serves a few functions. First, it will populate the local Neutron
+database with data about the Infoblox grid. This enables the selection
+of the member and the network view to be made when allocating subnets and IP
+addresses, without additional WAPI calls. Second, it listens for events on
+the OpenStack message bus, and makes WAPI calls related to objects that are
+not directly part of the IPAM function. 
 
-Configuring Neutron
--------------------
+Installation and Configuration
+------------------------------
 
-The grid connectivity and credentials configuration must be added to the
-``neutron.conf`` file in `infoblox` and `infoblox-dc` stanzas. The `infoblox`
-stanza contains a list of grids, and then each there is an `infoblox-dc`
-containing the appropriate configuration for each grid. Support for multiple
-grids is not yet available.
-
-.. list-table::
-   :header-rows: 1
-   :widths: 10 90
-
-   * - Option
-     - Description
-   * - cloud_data_center_id
-     - An integer ID used for the data center. This is used to form the stanza
-       name for the rest of the options.
-   * - grid_master_host
-     - The IP address of the Grid Master
-   * - admin_user_name
-     - The user name to use for the WAPI.
-   * - admin_password
-     - The password to use for the WAPI.
-   * - wapi_version
-     - The WAPI version to use. Default is 1.4.
-   * - ssl_verify
-     - Set to false if you use a self-signed SSL certificate, and true
-       otherwise. Using a self-signed certificate in a production environment
-       is not secure.
-   * - http_pool_connections, http_pool_maxsize, http_request_timeout
-     - Optional parameters to control the HTTP session pool.
-
-Additionally, the `ipam_driver` option must be set in ``neutron.conf`` to
-`infoblox`.
-
-Example configuration:
-
-.. code-block:: ini
-
-   ipam_driver = infoblox
-
-   [infoblox]
-   cloud_data_center_id = 1
-
-   [infoblox-dc:1]
-   grid_master_host = 172.23.25.175
-   admin_user_name = admin
-   admin_password = infoblox
-   wapi_version = 1.4
-
-Enabling in DevStack
---------------------
-
-To enable use of Infoblox in DevStack, add this repository as a plugin::
-
- enable_plugin networking-infoblox https://git.openstack.org/openstack/networking-infoblox.git
-
-You may set the configuration options above in your ``local.conf`` by using the
-corresponding variables:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 10 90
-
-   * - Option
-     - local.conf Variable
-   * - cloud_data_center_id
-     - NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID
-   * - grid_master_host
-     - NETWORKING_INFOBLOX_DC_GRID_MASTER_HOST
-   * - admin_user_name
-     - NETWORKING_INFOBLOX_DC_ADMIN_USER_NAME
-   * - admin_password
-     - NETWORKING_INFOBLOX_DC_ADMIN_PASSWORD
-   * - wapi_version
-     - NETWORKING_INFOBLOX_DC_WAPI_VERSION
-   * - ssl_verify
-     - NETWORKING_INFOBLOX_DC_SSL_VERIFY
-   * - http_pool_connections
-     - NETWORKING_INFOBLOX_DC_HTTP_POOL_CONNECTIONS
-   * - http_pool_maxsize
-     - NETWORKING_INFOBLOX_DC_HTTP_POOL_MAXSIZE
-   * - http_request_timeout
-     - NETWORKING_INFOBLOX_DC_HTTP_REQUEST_TIMEOUT
+See the documentation link above for details on Installation and Configuration.
 
 Limitations
 -----------
 
-* IPv6 is not supported
-* Subnet update (to change allocation pools) is not supported
-* Cloud Platform appliances (Cloud API) is not supported
-* Only a single network view 'default' may be used
-* Overlapping IP addresses is not supported even between tenants (due to the
-  network view limitation).
+When a change is made to the EAs within Infoblox that are used to control the
+IPAM driver configuration, those changes are not automatically synchronized
+to OpenStack. They will be syncrhonized during subnet or network creation or
+when the IPAM agent is restarted.
+
+Currently there is no script to migrate existing OpenStack installation
+data into Infoblox, apart from the built-in vDiscovery in Infoblox 7.2.4
+or later.
 
 Known issues
 ------------
 
-Subnet deletion when using the ML2 plugin will delete the subnet from Neutron
-but leave the subnet in Infoblox due to Neutron bug 1510653 [#]_. A patch [#]_
-for this bug is available for the master branch.
+1. Subnet deletion when using the ML2 plugin will delete the subnet from Neutron
+but leave the subnet in Infoblox due to Neutron bug 1510653 [#]_. This is fixed
+in the stable/liberty branch of Neutron.
 
+.. [#] https://pypi.python.org/pypi/infoblox-client
 .. [#] https://launchpad.net/bugs/1510653
-.. [#] https://review.openstack.org/#/c/239885/
 
+2. Once the IPAM driver create a Network View on Infoblox, the name of the Network
+   View should not be changed. Changing Network View name on Infoblox would result
+   in data synchronization issue. This will be addressed in a future release of the
+   IPAM driver.
+
+3. If the ``Default Domain Name Pattern`` includes one of the following patterns:
+   ``{tenant_name}``, ``{network_name}`` or ``{subnet_name}``, the names of
+   of the corresponding objects should not be changed in OpenStack once they are
+   created. Changing them would result in data synchronization issue. This will be
+   addressed in a future release of the IPAM driver.
