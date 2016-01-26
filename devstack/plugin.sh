@@ -46,7 +46,7 @@ function configure_networking_infoblox {
     run_db_migration_for_networking_infoblox
 
     # Main Configurations
-    iniset $NEUTRON_CONF DEFAULT ipam_driver ""
+    iniset $NEUTRON_CONF DEFAULT ipam_driver "networking_infoblox.ipam.driver.InfobloxPool"
     iniset $NEUTRON_CONF infoblox cloud_data_center_id $NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID
 
     # Cloud Data Center Configurations
@@ -69,6 +69,9 @@ function configure_networking_infoblox {
 
     # Run create_ea_defs.py to create EA definitions
     (cd $DIR_INFOBLOX/tools; ./create_ea_defs.py -s -u "$NETWORKING_INFOBLOX_SUPERUSER_USERNAME" -p "$NETWORKING_INFOBLOX_SUPERUSER_PASSWORD")
+
+    # Run infoblox_grid_sync to sync Infoblox Grid information
+    (cd $DIR_INFOBLOX/tools; ./infoblox_grid_sync.py --config-file=$NEUTRON_CONF)
 }
 
 DIR_INFOBLOX=$DEST/networking-infoblox
