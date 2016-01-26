@@ -26,6 +26,7 @@ from neutron.i18n import _LW
 
 from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import notification_handler
 
 
@@ -73,6 +74,7 @@ class NotificationService(service.Service):
     """Listener for notification service."""
 
     NOTIFICATION_TOPIC = 'notifications'
+    RESYNC_TRY_INTERVAL = 300
 
     def __init__(self, report_interval=None):
         super(NotificationService, self).__init__()
@@ -85,6 +87,7 @@ class NotificationService(service.Service):
         self.context = context.get_admin_context()
         self._init_agent_report_thread()
         self._init_notification_listener()
+        self._init_periodic_resync()
 
     def _init_notification_listener(self):
         self.transport = oslo_messaging.get_transport(config.CONF)
@@ -92,6 +95,18 @@ class NotificationService(service.Service):
             oslo_messaging.Target(topic=self.NOTIFICATION_TOPIC)
         ]
         self.event_endpoints = [NotificationEndpoint(self.context)]
+
+    def _init_periodic_resync(self):
+        self.resync_thread = loopingcall.FixedIntervalLoopingCall(
+            self._periodic_resync)
+        self.resync_thread.start(interval=self.RESYNC_TRY_INTERVAL)
+
+    def _periodic_resync(self):
+        try:
+            LOG.info(_LE("Initiating resync."))
+            grid.GridManager(self.context).sync()
+        except Exception as e:
+            LOG.exception(_LE("Resync failed due to error: %s"), e)
 
     def _init_agent_report_thread(self):
         self.state_rpc = agent_rpc.PluginReportStateAPI(topics.PLUGIN)
