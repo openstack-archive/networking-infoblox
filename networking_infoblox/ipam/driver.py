@@ -76,6 +76,14 @@ def rollback_wrapper(f):
     return rollback
 
 
+def _force_sync():
+    if _force_sync.flag:
+        _force_sync.flag = False
+        return True
+    return False
+_force_sync.flag = True
+
+
 class InfobloxPool(subnet_alloc.SubnetAllocator):
     """Infoblox Pool.
 
@@ -87,6 +95,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         super(InfobloxPool, self).__init__(subnetpool, context)
         self._plugin = manager.NeutronManager.get_plugin()
         self._grid_manager = grid.GridManager(self._context)
+        self._grid_manager.sync(force_sync=_force_sync())
         self._grid_manager.get_config()
         self._grid_config = self._grid_manager.grid_config
 
