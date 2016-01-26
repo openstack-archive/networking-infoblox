@@ -49,6 +49,7 @@ SERVICE_TYPE_DNS = 'DNS'
 
 EA_GRID_CONFIG_GRID_SYNC_SUPPORT = 'Grid Sync Support'
 EA_GRID_CONFIG_GRID_SYNC_MINIMUM_WAIT_TIME = 'Grid Sync Minimum Wait Time'
+EA_GRID_CONFIG_GRID_SYNC_MAXIMUM_WAIT_TIME = 'Grid Sync Maximum Wait Time'
 EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE = 'Default Network View Scope'
 EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW = 'Default Network View'
 EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN = 'Default Host Name Pattern'
@@ -239,6 +240,11 @@ REQUIRED_EA_DEFS = [
      'allowed_object_types': ['Member'],
      'comment': 'Grid Configuration'},
 
+    {'name': EA_GRID_CONFIG_GRID_SYNC_MAXIMUM_WAIT_TIME,
+     'type': 'INTEGER', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
     {'name': EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE,
      'type': 'ENUM', 'flags': '',
      'allowed_object_types': ['Member'],
@@ -382,6 +388,7 @@ REQUIRED_EA_DEFS = [
 GRID_CONFIG_DEFAULTS = {
     EA_GRID_CONFIG_GRID_SYNC_SUPPORT: True,
     EA_GRID_CONFIG_GRID_SYNC_MINIMUM_WAIT_TIME: 60,
+    EA_GRID_CONFIG_GRID_SYNC_MAXIMUM_WAIT_TIME: 300,
     EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE: NETWORK_VIEW_SCOPE_SINGLE,
     EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW: DEFAULT_NETWORK_VIEW,
     EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN: 'host-{ip_address}',
