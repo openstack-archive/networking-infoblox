@@ -46,7 +46,7 @@ function configure_networking_infoblox {
     run_db_migration_for_networking_infoblox
 
     # Main Configurations
-    iniset $NEUTRON_CONF DEFAULT ipam_driver ""
+    iniset $NEUTRON_CONF DEFAULT ipam_driver "networking_infoblox.ipam.driver.InfobloxPool"
     iniset $NEUTRON_CONF infoblox cloud_data_center_id $NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID
 
     # Cloud Data Center Configurations
