@@ -43,9 +43,11 @@ class IpamEventHandler(object):
     def __init__(self, neutron_context, plugin=None, grid_manager=None):
         self.context = neutron_context
         self.plugin = plugin if plugin else manager.NeutronManager.get_plugin()
-        self.grid_mgr = (grid_manager if grid_manager else
-                         grid.GridManager(self.context))
-        self.grid_mgr.sync(True)
+        if grid_manager:
+            self.grid_mgr = grid_manager
+        else:
+            self.grid_mgr = grid.GridManager(self.context)
+            self.grid_mgr.sync(True)
 
         self.grid_config = self.grid_mgr.grid_config
         self.grid_id = self.grid_config.grid_id

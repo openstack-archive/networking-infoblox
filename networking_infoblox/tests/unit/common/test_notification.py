@@ -24,6 +24,7 @@ from oslo_config import cfg
 from neutron import context
 from neutron.plugins.ml2 import config as ml2_config
 
+from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import notification
 from networking_infoblox.neutron.common import notification_handler
 from networking_infoblox.neutron.common import utils
@@ -68,7 +69,7 @@ class NotificationTestCase(base.RpcTestCase):
         payload = {}
         metadata = {}
 
-        endpoint = notification.NotificationEndpoint(self.ctx)
+        endpoint = notification.NotificationEndpoint(self.ctx, None)
         endpoint.handler = self.event_handler
 
         # go through each event type and verify that each event handler is
@@ -87,6 +88,7 @@ class NotificationTestCase(base.RpcTestCase):
             time.sleep(0.01)
 
     @mock.patch.object(notification, 'NotificationEndpoint', mock.Mock())
+    @mock.patch.object(grid, 'GridManager', mock.Mock())
     def test_notification_service(self):
         publisher_id = 'test_publisher'
         topic = 'notifications'
