@@ -439,7 +439,7 @@ def get_next_authority_member_for_dhcp(session, grid_id):
     return authority_member
 
 
-def get_next_dhcp_member(session, grid_id):
+def get_next_dhcp_member(session, grid_id, use_gm=True):
     """Get a next available dhcp member.
 
     For dhcp member, any member can be chosen but the priority is given to
@@ -458,6 +458,9 @@ def get_next_dhcp_member(session, grid_id):
                 const.MEMBER_STATUS_ON,
                 ib_models.InfobloxMappingMember.member_id.is_(None),
                 ib_models.InfobloxServiceMember.member_id.is_(None)))
+    if use_gm is False:
+        q = q.filter(ib_models.InfobloxGridMember.member_type !=
+                     const.MEMBER_TYPE_GRID_MASTER)
     q = q.order_by(ib_models.InfobloxGridMember.member_type.desc())
     row_count = int(q.count())
     q = q.offset(int(row_count * random.random()))

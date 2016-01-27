@@ -141,6 +141,7 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES,
         'dhcp_support': const.EA_GRID_CONFIG_DHCP_SUPPORT,
         'relay_support': const.EA_GRID_CONFIG_RELAY_SUPPORT,
+        'use_grid_master_for_dhcp': const.EA_GRID_CONFIG_USE_GM_FOR_DHCP,
         'tenant_name_persistence': const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE
     }
 
@@ -171,7 +172,7 @@ class GridConfiguration(object):
         self.grid_sync_minimum_wait_time = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_GRID_SYNC_MINIMUM_WAIT_TIME]
         self.grid_sync_maximum_wait_time = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_GRID_SYNC_MAXIMUM_WAIT_TIME],
+            const.EA_GRID_CONFIG_GRID_SYNC_MAXIMUM_WAIT_TIME]
         self.default_network_view_scope = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE]
         self.default_network_view = const.GRID_CONFIG_DEFAULTS[
@@ -200,6 +201,8 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_DHCP_SUPPORT]
         self.relay_support = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_RELAY_SUPPORT]
+        self.use_grid_master_for_dhcp = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_USE_GM_FOR_DHCP]
         self.tenant_name_persistence = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE]
 

@@ -64,6 +64,7 @@ EA_GRID_CONFIG_DNS_RECORD_UNBINDING_TYPES = 'DNS Record Unbinding Types'
 EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES = 'DNS Record Removable Types'
 EA_GRID_CONFIG_DHCP_SUPPORT = 'DHCP Support'
 EA_GRID_CONFIG_RELAY_SUPPORT = 'Relay Support'
+EA_GRID_CONFIG_USE_GM_FOR_DHCP = 'Use Grid Master for DHCP'
 EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE = 'Tenant Name Persistence'
 
 EA_MAPPING_ADDRESS_SCOPE_ID = 'Address Scope ID Mapping'
@@ -328,6 +329,13 @@ REQUIRED_EA_DEFS = [
                      {'value': 'False'}],
      'comment': 'Grid Configuration'},
 
+    {'name': EA_GRID_CONFIG_USE_GM_FOR_DHCP,
+     'type': 'ENUM', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'list_values': [{'value': 'True'},
+                     {'value': 'False'}],
+     'comment': 'Grid Configuration'},
+
     {'name': EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE,
      'type': 'ENUM', 'flags': '',
      'allowed_object_types': ['Member'],
@@ -410,5 +418,6 @@ GRID_CONFIG_DEFAULTS = {
                                                 DNS_RECORD_TYPE_TXT],
     EA_GRID_CONFIG_DHCP_SUPPORT: False,
     EA_GRID_CONFIG_RELAY_SUPPORT: False,
+    EA_GRID_CONFIG_USE_GM_FOR_DHCP: True,
     EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE: False
 }

@@ -381,6 +381,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
         ib_cxt.mapping.authority_member = test_authority_member
+        ib_cxt.grid_config.use_grid_master_for_dhcp = True
         ib_cxt._register_services = mock.Mock()
 
         ib_cxt.reserve_service_members()
