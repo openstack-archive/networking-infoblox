@@ -362,6 +362,10 @@ class IpamEventHandler(object):
             LOG.info("created instance: %s, host: %s",
                      instance_id, instance_name)
 
+        # if instance name is not used, no need to process further
+        if '{instance_name}' not in self.grid_config.default_host_name_pattern:
+            return
+
         ips = payload.get('fixed_ips')
         if not ips:
             return
