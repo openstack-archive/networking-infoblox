@@ -119,6 +119,8 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_GRID_SYNC_SUPPORT,
         'grid_sync_minimum_wait_time':
             const.EA_GRID_CONFIG_GRID_SYNC_MINIMUM_WAIT_TIME,
+        'grid_sync_maximum_wait_time':
+            const.EA_GRID_CONFIG_GRID_SYNC_MAXIMUM_WAIT_TIME,
         'default_network_view_scope':
             const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE,
         'default_network_view': const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW,
@@ -168,6 +170,8 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_GRID_SYNC_SUPPORT]
         self.grid_sync_minimum_wait_time = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_GRID_SYNC_MINIMUM_WAIT_TIME]
+        self.grid_sync_maximum_wait_time = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_GRID_SYNC_MAXIMUM_WAIT_TIME],
         self.default_network_view_scope = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE]
         self.default_network_view = const.GRID_CONFIG_DEFAULTS[
