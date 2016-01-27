@@ -407,6 +407,8 @@ class InfobloxSubnet(driver.Subnet):
         """
         ip_addr = str(address)
         address_request = self._build_address_request_from_ib_address(ip_addr)
+        if not address_request:
+            return
 
         ipam_controller = ipam.IpamSyncController(self._ib_cxt)
         dns_controller = dns.DnsController(self._ib_cxt)
@@ -432,7 +434,7 @@ class InfobloxSubnet(driver.Subnet):
                                                       view=dns_view,
                                                       ip=ip_address)
             if not ib_address:
-                raise exc.InfobloxCannotFindFixedIp(ip=ip_address)
+                return None
 
         addr_req = ipam_req.AddressRequest()
         addr_req.port_id = ib_address.extattrs.get(const.EA_PORT_ID)
