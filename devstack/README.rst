@@ -7,6 +7,6 @@ Enabling in Devstack
 
     > cat local.conf
     [[local|localrc]]
-    enable_service networking-infoblox https://github.com/openstack/networking-infoblox
+    enable_plugin networking-infoblox https://github.com/openstack/networking-infoblox
 
 3. run stack.sh
