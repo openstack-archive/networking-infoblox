@@ -15,6 +15,8 @@
 
 import mock
 
+from infoblox_client import objects as ib_objects
+
 from networking_infoblox.neutron.common import ip_allocator
 from networking_infoblox.tests import base
 
@@ -126,11 +128,20 @@ class HostRecordAllocatorTestCase(base.TestCase):
 
         netview = 'some-test-net-view'
         dnsview = 'some-dns-view'
-        ip = '192.168.1.2'
+        ip_1 = ['192.168.1.2', 'de:ad:be:ef:00:00']
+        ip_2 = ['192.168.1.3', 'ff:ee:be:ae:12:00']
 
         options = {'use_host_record': True}
 
         allocator = ip_allocator.IPAllocator(ib_mock, options)
-        allocator.deallocate_ip(netview, dnsview, ip)
+        host_record_mock = mock.Mock()
+        ip_obj_1 = ib_objects.IP.create(ip=ip_1[0], mac=ip_1[1])
+        ip_obj_2 = ib_objects.IP.create(ip=ip_2[0], mac=ip_2[1])
+        host_record_mock.ip = [ip_obj_1, ip_obj_2]
+        allocator.manager.get_host_record = mock.Mock()
+        allocator.manager.get_host_record.return_value = host_record_mock
 
-        ib_mock.delete_host_record.assert_called_once_with(dnsview, ip)
+        allocator.deallocate_ip(netview, dnsview, ip_1[0])
+
+        ib_mock.delete_ip_from_host_record.assert_called_once_with(
+            host_record_mock, ip_1[0])

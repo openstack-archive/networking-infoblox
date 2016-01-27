@@ -92,13 +92,17 @@ class HostRecordIPAllocator(IPAllocator):
         reserved_hostname_hr = self.manager.find_hostname(dns_view, name, ip)
         reserved_ip_hr = self.manager.get_host_record(dns_view, ip)
 
-        if reserved_hostname_hr == reserved_ip_hr:
+        if (reserved_hostname_hr and reserved_ip_hr and
+                reserved_hostname_hr.ref == reserved_ip_hr.ref):
+            reserved_hostname_hr.extattrs = extattrs
+            reserved_hostname_hr.update()
             return
 
         if reserved_hostname_hr:
             for hr_ip in reserved_ip_hr.ips:
                 if hr_ip == ip:
-                    self.manager.delete_host_record(dns_view, ip)
+                    reserved_ip_hr.delete()
+                    reserved_hostname_hr.extattrs = extattrs
                     self.manager.add_ip_to_record(
                         reserved_hostname_hr, ip, hr_ip.mac)
                     break
@@ -135,10 +139,11 @@ class HostRecordIPAllocator(IPAllocator):
 
     def deallocate_ip(self, network_view, dns_view_name, ip):
         host_record = self.manager.get_host_record(dns_view_name, ip)
-        if host_record and len(host_record.ip) > 1:
-            self.manager.delete_ip_from_host_record(host_record, ip)
-        else:
-            self.manager.delete_host_record(dns_view_name, ip)
+        if host_record:
+            if len(host_record.ip) > 1:
+                self.manager.delete_ip_from_host_record(host_record, ip)
+            else:
+                host_record.delete()
 
 
 class FixedAddressIPAllocator(IPAllocator):
