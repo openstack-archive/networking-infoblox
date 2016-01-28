@@ -97,22 +97,14 @@ class GridMappingManager(object):
         self._load_persisted_mappings()
         discovered_delegations = dict()
 
-        persisted_netview_names = utils.get_values_from_records(
-            'network_view', self.db_network_views)
-        discovered_netview_names = []
+        persisted_netview_ids = utils.get_values_from_records(
+            'id', self.db_network_views)
+        discovered_netview_ids = []
 
         for netview in discovered_netviews:
             netview_name = netview['name']
             shared_val = utils.get_ea_value(const.EA_IS_SHARED, netview)
             is_shared = types.Boolean()(shared_val) if shared_val else False
-            discovered_netview_names.append(netview_name)
-
-            # find the network view id
-            netview_id = None
-            netview_row = utils.find_one_in_list('network_view', netview_name,
-                                                 self.db_network_views)
-            if netview_row:
-                netview_id = netview_row.id
 
             # authority member is default to GM
             gm_row = utils.find_one_in_list('member_type',
@@ -128,23 +120,33 @@ class GridMappingManager(object):
                     delegated_member.member_id)
 
             # update or add a network view
-            if netview_name in persisted_netview_names:
+            netview_id = utils.get_ea_value(const.EA_NETWORK_VIEW_ID, netview)
+            if netview_id:
                 dbi.update_network_view(session, netview_name, self._grid_id,
                                         authority_member_id, is_shared)
             else:
-                new_netview = dbi.add_network_view(session, netview_name,
-                                                   self._grid_id,
-                                                   authority_member_id,
-                                                   is_shared)
-                netview_id = new_netview.id
+                netview_row = utils.find_one_in_list('network_view',
+                                                     netview_name,
+                                                     self.db_network_views)
+                if netview_row:
+                    netview_id = netview_row.id
+                else:
+                    new_netview = dbi.add_network_view(session,
+                                                       netview_name,
+                                                       self._grid_id,
+                                                       authority_member_id,
+                                                       is_shared)
+                    netview_id = new_netview.id
+
+            discovered_netview_ids.append(netview_id)
 
             # update mapping conditions for the current network view
             self._update_mapping_conditions(netview, netview_id)
 
         # we have added new network views. now let's remove persisted
         # network views not found from discovery
-        persisted_set = set(persisted_netview_names)
-        removable_set = persisted_set.difference(discovered_netview_names)
+        persisted_set = set(persisted_netview_ids)
+        removable_set = persisted_set.difference(discovered_netview_ids)
         removable_netviews = list(removable_set)
         if removable_netviews:
             dbi.remove_network_views_by_names(session, removable_netviews,

@@ -23,7 +23,7 @@ from neutron.extensions import providernet
 from networking_infoblox.neutron.common import constants as const
 
 
-def get_ea_for_network_view(tenant_id, tenant_name):
+def get_ea_for_network_view(tenant_id, tenant_name, network_view_id):
     """Generates EAs for Network View.
 
     :param tenant_id: tenant_id
@@ -35,7 +35,8 @@ def get_ea_for_network_view(tenant_id, tenant_name):
     attributes = {const.EA_CMP_TYPE: const.CLOUD_PLATFORM_NAME,
                   const.EA_TENANT_ID: tenant_id or 'None',
                   const.EA_TENANT_NAME: tenant_name,
-                  const.EA_CLOUD_API_OWNED: 'False'}
+                  const.EA_CLOUD_API_OWNED: 'False',
+                  const.EA_NETWORK_VIEW_ID: network_view_id}
     return ib_objects.EA(attributes)
 
 

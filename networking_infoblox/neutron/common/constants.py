@@ -98,6 +98,7 @@ EA_CLOUD_API_OWNED = 'Cloud API Owned'
 EA_CMP_TYPE = 'CMP Type'
 EA_IS_EXTERNAL = 'Is External'
 EA_IS_SHARED = 'Is Shared'
+EA_NETWORK_VIEW_ID = 'Network View ID'
 
 IP_TYPE_FIXED = 'Fixed'
 IP_TYPE_FLOATING = 'Floating'
@@ -188,6 +189,9 @@ REQUIRED_EA_DEFS = [
 
     {'name': EA_NETWORK_ENCAP, 'type': 'STRING', 'flags': 'C',
      'comment': 'Type of IP address'},
+
+    {'name': EA_NETWORK_VIEW_ID, 'type': 'STRING', 'flags': 'C',
+     'comment': 'Network View ID in OpenStack'},
 
     {'name': EA_NETWORK_ID, 'type': 'STRING', 'flags': 'C',
      'comment': 'Network ID in OpenStack'},
