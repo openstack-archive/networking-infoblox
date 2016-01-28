@@ -67,6 +67,8 @@ EA_GRID_CONFIG_RELAY_SUPPORT = 'Relay Support'
 EA_GRID_CONFIG_USE_GM_FOR_DHCP = 'Use Grid Master for DHCP'
 EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE = 'Tenant Name Persistence'
 
+EA_LAST_GRID_SYNC_TIME = 'Last Grid Sync Time'
+
 EA_MAPPING_ADDRESS_SCOPE_ID = 'Address Scope ID Mapping'
 EA_MAPPING_ADDRESS_SCOPE_NAME = 'Address Scope Name Mapping'
 EA_MAPPING_TENANT_ID = 'Tenant ID Mapping'
@@ -347,6 +349,12 @@ REQUIRED_EA_DEFS = [
                      {'value': 'False'}],
      'comment': 'Grid Configuration'},
 
+    # Grid Report
+    {'name': EA_LAST_GRID_SYNC_TIME,
+     'type': 'STRING', 'flags': 'CV',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Sync Report'},
+
     # Mapping EAs
     {'name': EA_MAPPING_ADDRESS_SCOPE_ID,
      'type': 'STRING', 'flags': 'CGV',
@@ -423,5 +431,6 @@ GRID_CONFIG_DEFAULTS = {
     EA_GRID_CONFIG_DHCP_SUPPORT: False,
     EA_GRID_CONFIG_RELAY_SUPPORT: False,
     EA_GRID_CONFIG_USE_GM_FOR_DHCP: True,
-    EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE: False
+    EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE: False,
+    EA_LAST_GRID_SYNC_TIME: None
 }
