@@ -16,10 +16,13 @@
 from datetime import datetime
 from datetime import timedelta
 from oslo_log import log as logging
+import six
+import socket
 
 from neutron.i18n import _LI
 
 from infoblox_client import connector
+from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import config as cfg
 from networking_infoblox.neutron.common import constants as const
@@ -44,6 +47,7 @@ class GridManager(object):
         self.grid_config = self._create_grid_configuration(context)
         self.member = grid_member.GridMemberManager(self.grid_config)
         self.mapping = grid_mapping.GridMappingManager(self.grid_config)
+        self.hostname = socket.gethostname()
 
     def is_sync_needed(self, resync_interval):
         session = self.grid_config.context.session
@@ -71,6 +75,7 @@ class GridManager(object):
             self.mapping.sync()
             self.last_sync_time = datetime.utcnow().replace(microsecond=0)
             dbi.record_last_sync_time(session, self.last_sync_time)
+            self._report_sync_time()
             LOG.info("Infoblox grid has been synced up.")
 
     def get_config(self):
@@ -115,6 +120,35 @@ class GridManager(object):
             gm_connection_opts['silent_ssl_warnings'] = True
         grid_conf.gm_connector = connector.Connector(gm_connection_opts)
         return grid_conf
+
+    def _report_sync_time(self):
+        conn = self.grid_config.gm_connector
+        host_ip = getattr(conn, 'host')
+        if utils.get_ip_version(host_ip) == 4:
+            gm = ib_objects.Member.search(conn, ipv4_address=host_ip)
+        else:
+            gm = ib_objects.Member.search(conn, ipv6_address=host_ip)
+
+        sync_info = (self.hostname + ' => ' +
+                     self.last_sync_time.strftime("%Y-%m-%d %H:%M:%S"))
+
+        sync_info_list = gm.extattrs.get(const.EA_LAST_GRID_SYNC_TIME)
+        if sync_info_list:
+            # if a single entry exits. NIOS returns as string rather than list.
+            if isinstance(sync_info_list, six.string_types):
+                sync_info_list = [sync_info_list]
+
+            found_sync_idx_lst = [idx for idx, si in enumerate(sync_info_list)
+                                  if self.hostname in si]
+            if found_sync_idx_lst:
+                sync_info_list[found_sync_idx_lst[0]] = sync_info
+            else:
+                sync_info_list.append(sync_info)
+        else:
+            sync_info_list = [sync_info]
+
+        gm.extattrs.set(const.EA_LAST_GRID_SYNC_TIME, sync_info_list)
+        gm.update()
 
 
 class GridConfiguration(object):
