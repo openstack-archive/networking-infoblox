@@ -111,6 +111,7 @@ class GridTestCase(base.TestCase, testlib_api.SqlTestCase):
         stub = grid_sync_stub.GridSyncStub(self.ctx, self.connector_fixture)
         stub.prepare_grid_manager(wapi_version='1.8')
         grid_mgr = stub.get_grid_manager()
+        grid_mgr.mapping._sync_nios_for_network_view = mock.Mock()
 
         # test for no sync
         grid_mgr.grid_config.grid_sync_support = False
