@@ -23,7 +23,7 @@ from infoblox_client import objects as ib_objects
 
 from neutron import manager
 
-from networking_infoblox.neutron.common import constants
+from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import grid
@@ -60,7 +60,8 @@ class IpamEventHandler(object):
         self.grid_mgr.sync(force_sync)
 
         self._cached_grid_members = dbi.get_members(
-            self.context.session, grid_id=self.grid_id)
+            self.context.session, grid_id=self.grid_id,
+            member_status=const.MEMBER_STATUS_ON)
         self._cached_network_views = dbi.get_network_views(
             self.context.session, grid_id=self.grid_id)
         self._cached_mapping_conditions = dbi.get_mapping_conditions(
@@ -280,7 +281,7 @@ class IpamEventHandler(object):
             if not ib_address:
                 return None
 
-        return ib_address.extattrs.get(constants.EA_VM_NAME)
+        return ib_address.extattrs.get(const.EA_VM_NAME)
 
     def update_floatingip_sync(self, payload):
         """Notifies that the floating ip has been updated.
