@@ -279,7 +279,8 @@ class GridConfiguration(object):
         session = self.context.session
         members = dbi.get_members(session,
                                   grid_id=self.grid_id,
-                                  member_type=const.MEMBER_TYPE_GRID_MASTER)
+                                  member_type=const.MEMBER_TYPE_GRID_MASTER,
+                                  member_status=const.MEMBER_STATUS_ON)
         if not members or len(members) != 1:
             raise exc.InfobloxCannotFindMember(member="GM")
         return members[0]

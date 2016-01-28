@@ -78,6 +78,8 @@ class GridSyncStub(object):
             netview_resource = resource_map.FAKE_NETWORKVIEW_WITH_CLOUD
             network_resource = resource_map.FAKE_NETWORK_WITH_CLOUD
 
+        dnsview_resource = resource_map.FAKE_DNS_VIEW
+
         # create members
         member_json = self.fixture.get_object(member_resource)
         self.grid_mgr.member._discover_members = mock.Mock()
@@ -102,3 +104,7 @@ class GridSyncStub(object):
         network_json = self.fixture.get_object(network_resource)
         self.grid_mgr.mapping._discover_networks = mock.Mock()
         self.grid_mgr.mapping._discover_networks.return_value = network_json
+
+        dnsview_json = self.fixture.get_object(dnsview_resource)
+        self.grid_mgr.mapping._discover_dns_views = mock.Mock()
+        self.grid_mgr.mapping._discover_dns_views.return_value = dnsview_json

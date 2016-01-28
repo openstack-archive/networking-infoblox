@@ -23,7 +23,7 @@ from infoblox_client import objects as ib_objects
 
 from neutron import manager
 
-from networking_infoblox.neutron.common import constants
+from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import grid
@@ -60,7 +60,8 @@ class IpamEventHandler(object):
         self.grid_mgr.sync(force_sync)
 
         self._cached_grid_members = dbi.get_members(
-            self.context.session, grid_id=self.grid_id)
+            self.context.session, grid_id=self.grid_id,
+            member_status=const.MEMBER_STATUS_ON)
         self._cached_network_views = dbi.get_network_views(
             self.context.session, grid_id=self.grid_id)
         self._cached_mapping_conditions = dbi.get_mapping_conditions(
@@ -94,7 +95,7 @@ class IpamEventHandler(object):
 
         if self.traceable:
             for network in networks:
-                LOG.info("creating network: %s", network)
+                LOG.info("Creating network: %s", network)
 
         self._resync()
 
@@ -110,7 +111,7 @@ class IpamEventHandler(object):
 
         if self.traceable:
             for subnet in subnets:
-                LOG.info("creating subnet: %s", subnet)
+                LOG.info("Creating subnet: %s", subnet)
 
         self._resync()
 
@@ -123,7 +124,7 @@ class IpamEventHandler(object):
 
         for network in networks:
             if self.traceable:
-                LOG.info("created network: %s", network)
+                LOG.info("Created network: %s", network)
 
         if self.grid_config.tenant_name_persistence:
             keystone_manager.update_tenant_mapping(self.context,
@@ -137,7 +138,7 @@ class IpamEventHandler(object):
         network = payload.get('network')
 
         if self.traceable:
-            LOG.info("updated network: %s", network)
+            LOG.info("Updated network: %s", network)
 
         ib_context = context.InfobloxContext(self.context, self.user_id,
                                              network, None, self.grid_config,
@@ -150,7 +151,7 @@ class IpamEventHandler(object):
         network_id = payload.get('network_id')
 
         if self.traceable:
-            LOG.info("deleted network: %s", network_id)
+            LOG.info("Deleted network: %s", network_id)
 
         self._resync()
 
@@ -163,7 +164,7 @@ class IpamEventHandler(object):
 
         for subnet in subnets:
             if self.traceable:
-                LOG.info("created subnet: %s", subnet)
+                LOG.info("Created subnet: %s", subnet)
 
         self._resync(True)
 
@@ -172,14 +173,14 @@ class IpamEventHandler(object):
         subnet = payload.get('subnet')
 
         if self.traceable:
-            LOG.info("updated subnet: %s", subnet)
+            LOG.info("Updated subnet: %s", subnet)
 
     def delete_subnet_sync(self, payload):
         """Notifies that the subnet has been deleted."""
         subnet_id = payload.get('subnet_id')
 
         if self.traceable:
-            LOG.info("deleted subnet: %s", subnet_id)
+            LOG.info("Deleted subnet: %s", subnet_id)
 
         self._resync(True)
 
@@ -197,21 +198,21 @@ class IpamEventHandler(object):
 
         for port in ports:
             if self.traceable:
-                LOG.info("created port: %s", port)
+                LOG.info("Created port: %s", port)
 
     def update_port_sync(self, payload):
         """Notifies that the port has been updated."""
         port = payload.get('port')
 
         if self.traceable:
-            LOG.info("updated port: %s", port)
+            LOG.info("Updated port: %s", port)
 
     def delete_port_sync(self, payload):
         """Notifies that the port has been deleted."""
         port_id = payload.get('port_id')
 
         if self.traceable:
-            LOG.info("deleted port: %s", port_id)
+            LOG.info("Deleted port: %s", port_id)
 
     def create_floatingip_sync(self, payload):
         """Notifies that a new floating ip has been created.
@@ -226,7 +227,7 @@ class IpamEventHandler(object):
         floatingip = payload.get('floatingip')
 
         if self.traceable:
-            LOG.info("created floatingip: %s", floatingip)
+            LOG.info("Created floatingip: %s", floatingip)
 
     def _get_instance_name_from_fip(self, floatingip):
         """Get instance name from fip associated with an instance
@@ -280,7 +281,7 @@ class IpamEventHandler(object):
             if not ib_address:
                 return None
 
-        return ib_address.extattrs.get(constants.EA_VM_NAME)
+        return ib_address.extattrs.get(const.EA_VM_NAME)
 
     def update_floatingip_sync(self, payload):
         """Notifies that the floating ip has been updated.
@@ -291,7 +292,7 @@ class IpamEventHandler(object):
         floatingip = payload.get('floatingip')
 
         if self.traceable:
-            LOG.info("updated floatingip: %s", floatingip)
+            LOG.info("Updated floatingip: %s", floatingip)
 
         session = self.context.session
         floating_ip_id = floatingip.get('id')
@@ -333,6 +334,11 @@ class IpamEventHandler(object):
                                   db_port.device_id,
                                   db_port.device_owner,
                                   is_floating_ip)
+        LOG.info("Floating ip update sync: floating ip = %s, "
+                 "instance name = %s, port id = %s, device id: %s, "
+                 "device owner = %s",
+                 floating_ip, instance_name, db_port.id, db_port.device_id,
+                 db_port.device_owner)
 
     def _get_mapping_neutron_subnet(self, network_id, floating_ip):
         """Search subnet by network id and floating ip.
@@ -353,7 +359,7 @@ class IpamEventHandler(object):
         floatingip_id = payload.get('floatingip_id')
 
         if self.traceable:
-            LOG.info("deleted floatingip: %s", floatingip_id)
+            LOG.info("Deleted floatingip: %s", floatingip_id)
 
     def create_instance_sync(self, payload):
         """Notifies that an instance has been created."""
@@ -361,7 +367,7 @@ class IpamEventHandler(object):
         instance_name = payload.get('hostname')
 
         if self.traceable:
-            LOG.info("created instance: %s, host: %s",
+            LOG.info("Created instance: %s, host: %s",
                      instance_id, instance_name)
 
         ips = payload.get('fixed_ips')
@@ -395,6 +401,10 @@ class IpamEventHandler(object):
                                   ports[0]['tenant_id'],
                                   ports[0]['device_id'],
                                   ports[0]['device_owner'])
+        LOG.info("Instance creation sync: ip = %s, instance name = %s, "
+                 "port id = %s, device id: %s, device owner: %s",
+                 ip_addresses[0], instance_name, ports[0]['id'],
+                 ports[0]['device_id'], ports[0]['device_owner'])
 
     def delete_instance_sync(self, payload):
         """Notifies that an instance has been deleted."""
@@ -449,3 +459,6 @@ class IpamEventHandler(object):
                 dns_controller.bind_names(
                     floating_ip, None, port_id, tenant_id,
                     device_id, device_owner, False)
+                LOG.info("Instance deletion sync: instance id = %s, "
+                         "floating ip = %s, port id = %s, device owner = %s",
+                         instance_id, floating_ip, port_id, device_owner)

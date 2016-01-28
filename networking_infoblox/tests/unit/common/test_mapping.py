@@ -223,6 +223,7 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
         self._create_members_with_cloud()
 
         mapping_mgr = mapping.GridMappingManager(self.test_grid_config)
+        mapping_mgr._sync_nios_for_network_view = mock.Mock()
 
         network_view_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_NETWORKVIEW_WITH_CLOUD)
@@ -233,6 +234,11 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
             base.FixtureResourceMap.FAKE_NETWORK_WITH_CLOUD)
         mapping_mgr._discover_networks = mock.Mock()
         mapping_mgr._discover_networks.return_value = network_json
+
+        dnsview_json = self.connector_fixture.get_object(
+            base.FixtureResourceMap.FAKE_DNS_VIEW)
+        mapping_mgr._discover_dns_views = mock.Mock()
+        mapping_mgr._discover_dns_views.return_value = dnsview_json
 
         mapping_mgr.sync()
 
@@ -245,6 +251,7 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
         self._create_members_with_cloud()
 
         mapping_mgr = mapping.GridMappingManager(self.test_grid_config)
+        mapping_mgr._sync_nios_for_network_view = mock.Mock()
 
         network_view_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_NETWORKVIEW_WITHOUT_CLOUD)
@@ -255,6 +262,11 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
             base.FixtureResourceMap.FAKE_NETWORK_WITHOUT_CLOUD)
         mapping_mgr._discover_networks = mock.Mock()
         mapping_mgr._discover_networks.return_value = network_json
+
+        dnsview_json = self.connector_fixture.get_object(
+            base.FixtureResourceMap.FAKE_DNS_VIEW)
+        mapping_mgr._discover_dns_views = mock.Mock()
+        mapping_mgr._discover_dns_views.return_value = dnsview_json
 
         mapping_mgr.sync()
 

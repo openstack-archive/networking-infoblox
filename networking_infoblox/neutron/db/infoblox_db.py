@@ -156,7 +156,9 @@ def remove_members(session, member_ids):
 
 # Network Views
 def get_network_views(session, network_view_id=None, network_view=None,
-                      grid_id=None, authority_member_id=None, shared=None):
+                      grid_id=None, authority_member_id=None, shared=None,
+                      dns_view=None, internal_network_view=None,
+                      internal_dns_view=None):
     q = session.query(ib_models.InfobloxNetworkView)
     if network_view_id:
         q = q.filter(ib_models.InfobloxNetworkView.id == network_view_id)
@@ -168,6 +170,14 @@ def get_network_views(session, network_view_id=None, network_view=None,
                      authority_member_id)
     if shared:
         q = q.filter(ib_models.InfobloxNetworkView.shared == shared)
+    if dns_view:
+        q = q.filter(ib_models.InfobloxNetworkView.dns_view == dns_view)
+    if internal_network_view:
+        q = q.filter(ib_models.InfobloxNetworkView.internal_network_view ==
+                     internal_network_view)
+    if internal_dns_view:
+        q = q.filter(ib_models.InfobloxNetworkView.internal_dns_view ==
+                     internal_dns_view)
     if grid_id:
         q = q.filter(ib_models.InfobloxNetworkView.grid_id == grid_id)
     return q.all()
@@ -195,20 +205,27 @@ def get_network_view_by_mapping(session, network_view_id=None, grid_id=None,
     return netviews
 
 
-def update_network_view(session, network_view, grid_id, authority_member_id,
-                        shared):
+def update_network_view(session, network_view_id, network_view,
+                        authority_member_id, shared, dns_view):
     (session.query(ib_models.InfobloxNetworkView).
-     filter_by(network_view=network_view, grid_id=grid_id).
-     update({'authority_member_id': authority_member_id, 'shared': shared}))
+     filter_by(id=network_view_id).
+     update({'network_view': network_view,
+             'authority_member_id': authority_member_id,
+             'shared': shared,
+             'dns_view': dns_view}))
 
 
 def add_network_view(session, network_view, grid_id, authority_member_id,
-                     shared):
+                     shared, dns_view, internal_network_view,
+                     internal_dns_view):
     network_view = ib_models.InfobloxNetworkView(
         network_view=network_view,
         grid_id=grid_id,
         authority_member_id=authority_member_id,
-        shared=shared)
+        shared=shared,
+        dns_view=dns_view,
+        internal_network_view=internal_network_view,
+        internal_dns_view=internal_dns_view)
     session.add(network_view)
     session.flush()
     return network_view
