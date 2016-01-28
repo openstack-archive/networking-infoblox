@@ -76,7 +76,8 @@ class InfobloxContext(object):
     def discovered_grid_members(self):
         if self._discovered_grid_members is None:
             self._discovered_grid_members = dbi.get_members(
-                self.context.session, grid_id=self.grid_id)
+                self.context.session, grid_id=self.grid_id,
+                member_status=const.MEMBER_STATUS_ON)
         return self._discovered_grid_members
 
     @property
@@ -165,14 +166,16 @@ class InfobloxContext(object):
                 network_view=network_view)
 
         # create network view mapping and update mapping
+        dns_view = self._get_dns_view()
         db_network_view = dbi.add_network_view(session,
                                                network_view,
                                                self.grid_id,
                                                authority_member.member_id,
-                                               False)
+                                               False,
+                                               dns_view)
         self.mapping.network_view_id = db_network_view.id
         self.mapping.authority_member = authority_member
-        self.mapping.dns_view = self._get_dns_view()
+        self.mapping.dns_view = dns_view
 
         # change connector if authority member is changed.
         if (self.connector.host not in
@@ -711,6 +714,13 @@ class InfobloxContext(object):
         | net_view_1        | default                   | default.net_view_1  |
         | net_view_2        | dns_view_2                | dns_view_2          |
         """
+        if self.mapping.network_view_id:
+            db_netview = dbi.get_network_views(
+                self.context.session,
+                network_view_id=self.mapping.network_view_id)
+            if db_netview and db_netview[0].dns_view:
+                return db_netview[0].dns_view
+
         if (self.grid_config.dns_view == const.DEFAULT_DNS_VIEW and
                 self.mapping.network_view != const.DEFAULT_NETWORK_VIEW):
             return '.'.join(

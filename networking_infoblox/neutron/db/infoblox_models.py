@@ -87,6 +87,7 @@ class InfobloxNetworkView(model_base.BASEV2, models_v2.HasId):
     grid_id = sa.Column(sa.Integer(), nullable=False)
     authority_member_id = sa.Column(sa.String(length=32), nullable=False)
     shared = sa.Column(sa.Boolean(), default=False, nullable=False)
+    dns_view = sa.Column(sa.String(length=128), nullable=True)
     __table_args__ = (
         sa.UniqueConstraint(
             'network_view', 'grid_id',
@@ -100,8 +101,9 @@ class InfobloxNetworkView(model_base.BASEV2, models_v2.HasId):
 
     def __repr__(self):
         return ("network_view: %s, grid_id: %s, authority_member_id: %s, "
-                "shared: %s" % (self.network_view, self.grid_id,
-                                self.authority_member_id, self.shared))
+                "shared: %s, dns_view: %s" %
+                (self.network_view, self.grid_id, self.authority_member_id,
+                 self.shared, self.dns_view))
 
 
 class InfobloxNetworkViewMapping(model_base.BASEV2):

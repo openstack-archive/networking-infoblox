@@ -1,0 +1,20 @@
+[
+    {
+        "_ref": "view/ZG5zLnZpZXckLl9kZWZhdWx0:default/true",
+        "is_default": true,
+        "name": "default",
+        "network_view": "default"
+    },
+    {
+        "_ref": "view/ZG5zLnZpZXckLjEzMg:default.hs-view-1/false",
+        "is_default": false,
+        "name": "default.hs-view-1",
+        "network_view": "hs-view-1"
+    },
+    {
+        "_ref": "view/ZG5zLnZpZXckLjEzMw:default.hs-view-2/false",
+        "is_default": false,
+        "name": "default.hs-view-2",
+        "network_view": "hs-view-2"
+    }
+]
