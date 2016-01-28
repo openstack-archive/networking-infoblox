@@ -18,6 +18,7 @@ import mock
 from neutron import context
 from neutron.tests.unit import testlib_api
 
+from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import member
@@ -111,6 +112,7 @@ class GridTestCase(base.TestCase, testlib_api.SqlTestCase):
         stub = grid_sync_stub.GridSyncStub(self.ctx, self.connector_fixture)
         stub.prepare_grid_manager(wapi_version='1.8')
         grid_mgr = stub.get_grid_manager()
+        grid_mgr._report_sync_time = mock.Mock()
 
         # test for no sync
         grid_mgr.grid_config.grid_sync_support = False
@@ -154,3 +156,69 @@ class GridTestCase(base.TestCase, testlib_api.SqlTestCase):
         assert grid_mgr.mapping._discover_networks.called_once
         last_sync_time = dbi.get_last_sync_time(self.ctx.session)
         self.assertEqual(last_sync_time, grid_mgr.last_sync_time)
+
+    def _mock_connector(self, get_object=None, create_object=None,
+                        delete_object=None):
+        connector = mock.Mock()
+        connector.get_object.return_value = get_object
+        connector.create_object.return_value = create_object
+        connector.delete_object.return_value = delete_object
+        return connector
+
+    def test_grid_sync_report_sync_time(self):
+        # prepare grid manager for sync
+        stub = grid_sync_stub.GridSyncStub(self.ctx, self.connector_fixture)
+        stub.prepare_grid_manager(wapi_version='1.8')
+        grid_mgr = stub.get_grid_manager()
+
+        eas = {'Some EA': {'value': 'False'},
+               'Zero EA': {'value': '0'}}
+        member_mock = {'_ref': ('member/Li5pcHY0X2FkZHJlc3MkMTky'
+                                'LjE2OC4xLjEwLzE:192.168.1.10/my_view'),
+                       'ipv4_address': '192.168.1.10',
+                       'host_name': 'gm',
+                       'extattrs': eas}
+        connector = self._mock_connector(get_object=[member_mock])
+        connector.host = '192.168.1.10'
+        grid_mgr.grid_config.gm_connector = connector
+
+        # sync
+        grid_mgr.grid_config.grid_sync_support = True
+        grid_mgr.grid_config.grid_sync_minimum_wait_time = 0
+        grid_mgr.sync()
+
+        member_ea = member_mock['extattrs'].to_dict()
+        sync_info = member_ea[const.EA_LAST_GRID_SYNC_TIME]['value']
+        assert isinstance(sync_info, list)
+        assert grid_mgr.hostname in sync_info[0]
+
+    def test_grid_sync_report_sync_time_multi_nodes(self):
+        # prepare grid manager for sync
+        stub = grid_sync_stub.GridSyncStub(self.ctx, self.connector_fixture)
+        stub.prepare_grid_manager(wapi_version='1.8')
+        grid_mgr = stub.get_grid_manager()
+
+        # create a new hostname to report another sync time
+        eas = {'Some EA': {'value': 'False'},
+               'Zero EA': {'value': '0'},
+               'Last Grid Sync Time':
+                   {'value': ['controller-1 => 2016-01-28 19:44:56']}}
+        member_mock = {'_ref': ('member/Li5pcHY0X2FkZHJlc3MkMTky'
+                                'LjE2OC4xLjEwLzE:192.168.1.10/my_view'),
+                       'ipv4_address': '192.168.1.10',
+                       'host_name': 'gm',
+                       'extattrs': eas}
+        connector = self._mock_connector(get_object=[member_mock])
+        connector.host = '192.168.1.10'
+        grid_mgr.grid_config.gm_connector = connector
+        grid_mgr.hostname = 'controller-2'
+
+        grid_mgr.grid_config.grid_sync_support = True
+        grid_mgr.grid_config.grid_sync_minimum_wait_time = 0
+
+        grid_mgr.sync()
+
+        member_ea = member_mock['extattrs'].to_dict()
+        sync_info = member_ea[const.EA_LAST_GRID_SYNC_TIME]['value']
+        assert isinstance(sync_info, list) and len(sync_info) == 2
+        assert grid_mgr.hostname in sync_info[1]

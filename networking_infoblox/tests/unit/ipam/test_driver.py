@@ -39,6 +39,7 @@ class TestDriver(base.TestCase, testlib_api.SqlTestCase):
                                                      self.connector_fixture)
         self.grid_stub.prepare_grid_manager(wapi_version='2.0')
         self.grid_mgr = self.grid_stub.get_grid_manager()
+        self.grid_mgr._report_sync_time = mock.Mock()
         self.grid_mgr.sync()
         self.grid_mgr.get_config = mock.Mock()
 

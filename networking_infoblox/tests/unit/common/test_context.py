@@ -50,6 +50,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                                                      self.connector_fixture)
         self.grid_stub.prepare_grid_manager(wapi_version='2.2')
         self.grid_mgr = self.grid_stub.get_grid_manager()
+        self.grid_mgr._report_sync_time = mock.Mock()
         self.grid_mgr.sync()
 
         self.grid_id = self.grid_mgr.grid_config.grid_id
