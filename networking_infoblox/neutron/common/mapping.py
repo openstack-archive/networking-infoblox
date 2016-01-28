@@ -16,7 +16,10 @@
 import oslo_config.types as types
 from oslo_log import log as logging
 
+from infoblox_client import objects as ib_objects
+
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import ea_manager as eam
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
@@ -62,8 +65,11 @@ class GridMappingManager(object):
         if not discovered_network_views:
             return
 
+        discovered_dns_views = self._discover_dns_views()
+        dns_views = self.get_dns_views(discovered_dns_views)
+
         discovered_delegations = self._sync_network_views(
-            discovered_network_views)
+            discovered_network_views, dns_views)
 
         discovered_networks = self._discover_networks()
         self._sync_network_mapping(discovered_networks, discovered_delegations)
@@ -79,7 +85,16 @@ class GridMappingManager(object):
         self.db_service_members = dbi.get_service_members(
             session, grid_id=self._grid_id)
 
-    def _sync_network_views(self, discovered_netviews):
+    def get_dns_views(self, discovered_dns_views):
+        dns_views = dict()
+        for dns_view in discovered_dns_views:
+            netview_name = dns_view['network_view']
+            dnsview_name = dns_view['name']
+            if netview_name not in dns_views:
+                dns_views[netview_name] = dnsview_name
+        return dns_views
+
+    def _sync_network_views(self, discovered_netviews, dns_views):
         """Discover network views and sync with db.
 
         The discovered network view json contains the following data:
@@ -97,22 +112,14 @@ class GridMappingManager(object):
         self._load_persisted_mappings()
         discovered_delegations = dict()
 
-        persisted_netview_names = utils.get_values_from_records(
-            'network_view', self.db_network_views)
-        discovered_netview_names = []
+        persisted_netview_ids = utils.get_values_from_records(
+            'id', self.db_network_views)
+        discovered_netview_ids = []
 
         for netview in discovered_netviews:
             netview_name = netview['name']
             shared_val = utils.get_ea_value(const.EA_IS_SHARED, netview)
             is_shared = types.Boolean()(shared_val) if shared_val else False
-            discovered_netview_names.append(netview_name)
-
-            # find the network view id
-            netview_id = None
-            netview_row = utils.find_one_in_list('network_view', netview_name,
-                                                 self.db_network_views)
-            if netview_row:
-                netview_id = netview_row.id
 
             # authority member is default to GM
             gm_row = utils.find_one_in_list('member_type',
@@ -127,24 +134,64 @@ class GridMappingManager(object):
                 discovered_delegations[netview_name] = (
                     delegated_member.member_id)
 
-            # update or add a network view
-            if netview_name in persisted_netview_names:
-                dbi.update_network_view(session, netview_name, self._grid_id,
-                                        authority_member_id, is_shared)
+            dns_view = (dns_views[netview_name] if dns_views.get(netview_name)
+                        else None)
+
+            # get network view id from NIOS and see if db entry is there
+            # if db is cleared and rebuilt, NIOS may have this EA value but no
+            # db entry yet. in this case, nios network view id needs to be
+            # reset.
+            require_sync_nios = False
+            require_db_update = False
+            nios_netview_id = utils.get_ea_value(const.EA_NETWORK_VIEW_ID,
+                                                 netview)
+            if nios_netview_id:
+                netview_row = utils.find_one_in_list('id',
+                                                     nios_netview_id,
+                                                     self.db_network_views)
+                if netview_row:
+                    require_db_update = True
+                else:
+                    require_sync_nios = True
+                    netview_row = utils.find_one_in_list('network_view',
+                                                         netview_name,
+                                                         self.db_network_views)
+                    require_db_update = True if netview_row else False
             else:
-                new_netview = dbi.add_network_view(session, netview_name,
+                require_sync_nios = True
+                netview_row = utils.find_one_in_list('network_view',
+                                                     netview_name,
+                                                     self.db_network_views)
+                require_db_update = True if netview_row else False
+
+            if require_db_update:
+                netview_id = netview_row.id
+                dbi.update_network_view(session, netview_id, netview_name,
+                                        authority_member_id, is_shared,
+                                        dns_view)
+            else:
+                new_netview = dbi.add_network_view(session,
+                                                   netview_name,
                                                    self._grid_id,
                                                    authority_member_id,
-                                                   is_shared)
+                                                   is_shared,
+                                                   dns_view,
+                                                   netview_name,
+                                                   dns_view)
                 netview_id = new_netview.id
+
+            if require_sync_nios:
+                self._sync_nios_for_network_view(netview_id, netview_name)
+
+            discovered_netview_ids.append(netview_id)
 
             # update mapping conditions for the current network view
             self._update_mapping_conditions(netview, netview_id)
 
         # we have added new network views. now let's remove persisted
         # network views not found from discovery
-        persisted_set = set(persisted_netview_names)
-        removable_set = persisted_set.difference(discovered_netview_names)
+        persisted_set = set(persisted_netview_ids)
+        removable_set = persisted_set.difference(discovered_netview_ids)
         removable_netviews = list(removable_set)
         if removable_netviews:
             dbi.remove_network_views_by_names(session, removable_netviews,
@@ -248,6 +295,12 @@ class GridMappingManager(object):
         if not ipv6networks:
             ipv6networks = []
         return ipv4networks + ipv6networks
+
+    def _discover_dns_views(self):
+        return_fields = ['name', 'network_view']
+        dns_views = self._connector.get_object('view',
+                                               return_fields=return_fields)
+        return dns_views
 
     def _get_member_mapping(self, discovered_networks, discovered_delegations):
         """Returns members that are used for authority and dhcp.
@@ -408,3 +461,19 @@ class GridMappingManager(object):
                                          network_view_id,
                                          neutron_object_name,
                                          neutron_object_value)
+
+    def _sync_nios_for_network_view(self, netview_id, netview_name):
+        ib_network_view = ib_objects.NetworkView.search(
+            self._connector,
+            name=netview_name)
+        if ib_network_view:
+            if ib_network_view.extattrs is None:
+                ea_network_view = eam.get_ea_for_network_view(
+                    None, None, netview_id)
+                ib_network_view.extattrs = ea_network_view
+            else:
+                ib_network_view.extattrs.set(const.EA_NETWORK_VIEW_ID,
+                                             netview_id)
+            ib_network_view.update()
+            LOG.info("Network view (%s) has updated id (%s).",
+                     netview_name, netview_id)
