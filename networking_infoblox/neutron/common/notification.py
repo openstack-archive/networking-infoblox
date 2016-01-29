@@ -75,7 +75,7 @@ class NotificationService(service.Service):
     """Listener for notification service."""
 
     NOTIFICATION_TOPIC = 'notifications'
-    RESYNC_TRY_INTERVAL = 300
+    RESYNC_TRY_INTERVAL = 30
 
     def __init__(self, report_interval=None):
         super(NotificationService, self).__init__()
@@ -101,22 +101,26 @@ class NotificationService(service.Service):
         self.event_endpoints = [NotificationEndpoint(self.context,
                                                      self.grid_manager)]
 
-    def _init_periodic_resync(self):
+    def _get_resync_interval(self):
         conf = self.grid_manager.grid_config
         try:
-            interval = int(conf.grid_sync_maximum_wait_time)
+            return int(conf.grid_sync_maximum_wait_time)
         except TypeError:
             LOG.warning(_LE("Invalid resync interval set: %s"),
                         conf.grid_sync_maximum_wait_time)
-            interval = self.RESYNC_TRY_INTERVAL
+            return self.RESYNC_TRY_INTERVAL
+
+    def _init_periodic_resync(self):
         self.resync_thread = loopingcall.FixedIntervalLoopingCall(
             self._periodic_resync)
-        self.resync_thread.start(interval=interval)
+        self.resync_thread.start(interval=self.RESYNC_TRY_INTERVAL)
 
     def _periodic_resync(self):
         try:
-            LOG.info(_LE("Initiating resync."))
-            self.grid_manager.sync()
+            interval = self._get_resync_interval()
+            if self.grid_manager.is_sync_needed(interval):
+                LOG.info(_LE("Initiating resync."))
+                self.grid_manager.sync(True)
         except Exception as e:
             LOG.exception(_LE("Resync failed due to error: %s"), e)
 
