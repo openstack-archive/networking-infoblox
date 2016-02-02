@@ -260,10 +260,11 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                        end_addr='11.11.1.30'))
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
+        rollback_list = []
         with mock.patch.object(ib_objects.IPRange,
                                'search_all',
                                return_value=ib_pools):
-            ipam_controller.update_subnet_allocation_pools()
+            ipam_controller.update_subnet_allocation_pools(rollback_list)
 
             # 1st range from ib_pools should be removed
             ib_pools[0].connector.delete_object.assert_called_once_with(None)

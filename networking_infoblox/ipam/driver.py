@@ -64,8 +64,9 @@ def rollback_wrapper(f):
             return f(args[0], rollback_list, *args[1:], **kwargs)
         except Exception as e:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("An exception occurred during subnet "
-                              "creation: %s."), e)
+                LOG.error(_LE("An exception occurred during %(action)s: "
+                              "%(error)s"),
+                          {'action': f.__name__, 'error': e})
                 for ib_object in reversed(rollback_list):
                     try:
                         ib_object.delete()
@@ -219,7 +220,8 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         return ib_network
 
     @catch_ib_client_exception
-    def update_subnet(self, subnet_request):
+    @rollback_wrapper
+    def update_subnet(self, rollback_list, subnet_request):
         """Update IPAM Subnet.
 
         Updates allocation pools, dns zones, or EAs for the subnet in the
@@ -244,12 +246,12 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         ipam_controller = ipam.IpamSyncController(ib_cxt)
         dns_controller = dns.DnsController(ib_cxt)
 
-        ipam_controller.update_subnet_allocation_pools()
+        ipam_controller.update_subnet_allocation_pools(rollback_list)
 
         if self._is_new_zone_required(neutron_subnet, ib_network):
             # subnet name is used in the domain suffix pattern and the name
             # has been changed; we need to create new zones.
-            dns_controller.create_dns_zones()
+            dns_controller.create_dns_zones(rollback_list)
 
         ipam_controller.update_subnet_details(ib_network)
 

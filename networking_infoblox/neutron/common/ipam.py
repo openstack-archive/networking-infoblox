@@ -233,7 +233,7 @@ class IpamSyncController(object):
             LOG.info("ip range has been created: %s", ib_ip_range)
             rollback_list.append(ib_ip_range)
 
-    def update_subnet_allocation_pools(self):
+    def update_subnet_allocation_pools(self, rollback_list):
         cidr = self.ib_cxt.subnet.get('cidr')
         ip_version = self.ib_cxt.subnet.get('ip_version')
         allocation_pools = self.ib_cxt.subnet.get('allocation_pools')
@@ -252,9 +252,6 @@ class IpamSyncController(object):
         for pool in removed_pool:
             pool.delete()
 
-        # Note(pbondar): no rollback actions is currently happens
-        # on update failure, so just stub for now.
-        rollback_list = []
         self._allocate_pools(rollback_list, added_pool, cidr, ip_version)
         self._restart_services()
 
