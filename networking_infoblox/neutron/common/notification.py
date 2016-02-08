@@ -161,7 +161,8 @@ class NotificationService(service.Service):
         self.event_listener = get_notification_listener(
             self.transport,
             self.event_targets,
-            self.event_endpoints
+            self.event_endpoints,
+            pool=const.AGENT_NOTIFICATION_POOL
         )
         self.event_listener.start()
 
@@ -175,8 +176,8 @@ class NotificationService(service.Service):
 
 
 def get_notification_listener(transport, targets, endpoints,
-                              allow_requeue=False):
+                              allow_requeue=False, pool=None):
     """Return a configured oslo_messaging notification listener."""
     return oslo_messaging.get_notification_listener(
         transport, targets, endpoints, executor='eventlet',
-        allow_requeue=allow_requeue)
+        allow_requeue=allow_requeue, pool=pool)
