@@ -22,6 +22,7 @@ CLOUD_PLATFORM_NAME = 'OpenStack'
 AGENT_BINARY_NAME = 'infoblox-ipam-agent'
 AGENT_TYPE_INFOBLOX_IPAM = 'Infoblox IPAM agent'
 AGENT_TOPIC = 'infoblox_ipam_agent'
+AGENT_NOTIFICATION_POOL = 'infoblox-ipam-notification'
 
 GRID_STATUS_ON = 'ON'
 GRID_STATUS_OFF = 'OFF'
