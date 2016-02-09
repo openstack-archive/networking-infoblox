@@ -286,21 +286,22 @@ exclude the GM from being selected to serve DHCP or DHCP.
 
 Installing the Driver
 =====================
-If you are installing the most recent production release, you can install
-directly from PyPi. In that case, on each controller node that is running the
-Neutron service, at the command line::
+The driver need to be installed on each controller node that is running the
+Neutron service. The driver is available from PyPi, and can be installed using
+the ``pip install`` command.
+
+Latest Release
+--------------
+To install the most recent production release, use the following command::
 
     $ sudo pip install networking-infoblox
 
-Currently the version 2.x driver supports Liberty and Mitaka. You can download
-the package from PyPi or from Launchpad, and install it via your chosen Python
-package management system::
+Liberty and Mitaka
+------------------
+Version 2.x of the driver supports Liberty and Mitaka. Version 2.0.0 of the
+driver can be installed using the following command::
 
-    $ sudo easy_install networking_infoblox-2.0.0-py2.7.egg
-
-or::
-
-    $ sudo wheel install networking_infoblox-2.0.0-py2-none-any.whl
+    $ sudo pip install networking-infoblox==2.0.0
 
 Creating the Infoblox Neutron Database
 ======================================
