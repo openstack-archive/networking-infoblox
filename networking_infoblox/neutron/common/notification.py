@@ -58,10 +58,11 @@ class NotificationEndpoint(object):
 
     def __init__(self, context, grid_manager):
         self.context = context
-
-        self.filter_rule = oslo_messaging.NotificationFilter(
-            publisher_id='^(network|compute).*',
-            event_type='|'.join(self.event_subscription_list))
+        # Using filter in oslo_messaing 4.1.1 did not work for some reason
+        # so commenting filter out
+        # self.filter_rule = oslo_messaging.NotificationFilter(
+        #    publisher_id='^(network|compute).*',
+        #    event_type='|'.join(self.event_subscription_list))
         self.handler = notification_handler.IpamEventHandler(
             self.context, grid_manager=grid_manager)
 
@@ -96,7 +97,10 @@ class NotificationService(service.Service):
     def _init_notification_listener(self):
         self.transport = oslo_messaging.get_transport(config.CONF)
         self.event_targets = [
-            oslo_messaging.Target(topic=self.NOTIFICATION_TOPIC)
+            oslo_messaging.Target(exchange=const.NOTIFICATION_EXCHANGE_NEUTRON,
+                                  topic=self.NOTIFICATION_TOPIC),
+            oslo_messaging.Target(exchange=const.NOTIFICATION_EXCHANGE_NOVA,
+                                  topic=self.NOTIFICATION_TOPIC)
         ]
         self.event_endpoints = [NotificationEndpoint(self.context,
                                                      self.grid_manager)]

@@ -24,6 +24,9 @@ AGENT_TYPE_INFOBLOX_IPAM = 'Infoblox IPAM agent'
 AGENT_TOPIC = 'infoblox_ipam_agent'
 AGENT_NOTIFICATION_POOL = 'infoblox-ipam-notification'
 
+NOTIFICATION_EXCHANGE_NEUTRON = 'neutron'
+NOTIFICATION_EXCHANGE_NOVA = 'nova'
+
 GRID_STATUS_ON = 'ON'
 GRID_STATUS_OFF = 'OFF'
 
