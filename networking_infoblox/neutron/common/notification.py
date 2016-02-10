@@ -96,7 +96,10 @@ class NotificationService(service.Service):
     def _init_notification_listener(self):
         self.transport = oslo_messaging.get_transport(config.CONF)
         self.event_targets = [
-            oslo_messaging.Target(topic=self.NOTIFICATION_TOPIC)
+            oslo_messaging.Target(exchange=const.NOTIFICATION_EXCHANGE_NEUTRON,
+                                  topic=self.NOTIFICATION_TOPIC),
+            oslo_messaging.Target(exchange=const.NOTIFICATION_EXCHANGE_NOVA,
+                                  topic=self.NOTIFICATION_TOPIC)
         ]
         self.event_endpoints = [NotificationEndpoint(self.context,
                                                      self.grid_manager)]
