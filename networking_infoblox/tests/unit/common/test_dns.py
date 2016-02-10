@@ -19,6 +19,8 @@ from neutron.common import constants as n_const
 from neutron import context
 from neutron.tests.unit import testlib_api
 
+from infoblox_client import objects as ib_objects
+
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.db import infoblox_db as dbi
 from networking_infoblox.tests import base
@@ -95,6 +97,21 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                 extattrs=mock.ANY)
         ]
 
+    def _create_ib_zone_ea(self):
+        zone_ea = {'CMP Type': {'value': 'OpenStack'},
+                   'Cloud API Owned': {'value': 'True'},
+                   'Tenant ID': {'value': 'test-id'},
+                   'Tenant Name': {'value': 'tenant-name'},
+                   'Account': {'value': 'admin'},
+                   'Network View ID': {'value': 'default'}}
+        return ib_objects.EA.from_dict(zone_ea)
+
+    def _reset_ib_zone_ea(self):
+        expected_ea = {'Cloud API Owned': {'value': 'False'},
+                       'CMP Type': {'value': 'N/A'},
+                       'Tenant ID': {'value': 'N/A'}}
+        return expected_ea
+
     @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     def test_delete_dns_zones_for_shared_network_view(self):
         self.ib_cxt.mapping.shared = True
@@ -102,8 +119,16 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.network['shared'] = False
         self.ib_cxt.grid_config.admin_network_deletion = False
 
-        self.controller.delete_dns_zones()
-        assert self.ib_cxt.ibom.method_calls == []
+        ib_zone_ea = self._create_ib_zone_ea()
+        ib_zone_mock = mock.Mock(extattrs=ib_zone_ea)
+        expected_ea = self._reset_ib_zone_ea()
+
+        with mock.patch.object(ib_objects.DNSZone,
+                               'search',
+                               return_value=ib_zone_mock):
+            self.controller.delete_dns_zones()
+            assert ib_zone_mock.update.called
+            assert ib_zone_mock.extattrs.ea_dict == expected_ea
 
     @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     def test_delete_dns_zones_for_external_network(self):
@@ -112,8 +137,16 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.network['shared'] = False
         self.ib_cxt.grid_config.admin_network_deletion = False
 
-        self.controller.delete_dns_zones()
-        assert self.ib_cxt.ibom.method_calls == []
+        ib_zone_ea = self._create_ib_zone_ea()
+        ib_zone_mock = mock.Mock(extattrs=ib_zone_ea)
+        expected_ea = self._reset_ib_zone_ea()
+
+        with mock.patch.object(ib_objects.DNSZone,
+                               'search',
+                               return_value=ib_zone_mock):
+            self.controller.delete_dns_zones()
+            assert ib_zone_mock.update.called
+            assert ib_zone_mock.extattrs.ea_dict == expected_ea
 
     @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     @mock.patch.object(dbi, 'is_last_subnet_in_private_networks', mock.Mock())
@@ -123,10 +156,16 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.network['shared'] = True
         self.ib_cxt.grid_config.admin_network_deletion = False
 
-        self.controller.delete_dns_zones()
+        ib_zone_ea = self._create_ib_zone_ea()
+        ib_zone_mock = mock.Mock(extattrs=ib_zone_ea)
+        expected_ea = self._reset_ib_zone_ea()
 
-        assert self.ib_cxt.ibom.method_calls == []
-        assert not dbi.is_last_subnet_in_private_networks.called
+        with mock.patch.object(ib_objects.DNSZone,
+                               'search',
+                               return_value=ib_zone_mock):
+            self.controller.delete_dns_zones()
+            assert ib_zone_mock.update.called
+            assert ib_zone_mock.extattrs.ea_dict == expected_ea
 
     @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     @mock.patch.object(dbi, 'is_last_subnet_in_private_networks', mock.Mock())
