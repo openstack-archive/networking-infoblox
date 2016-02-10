@@ -290,3 +290,63 @@ class EaManagerTestCase(base.TestCase):
                                         self.tenant_name, network)
         for key, value in expected_ea.items():
             self.assertEqual(value, ea.get(key))
+
+    def test_reset_ea_for_network(self):
+        network_ea = {'CMP Type': {'value': 'OpenStack'},
+                      'Cloud API Owned': {'value': 'True'},
+                      'Tenant ID': {'value': 'test-id'},
+                      'Tenant Name': {'value': 'tenant-name'},
+                      'Account': {'value': 'admin'},
+                      'Network View ID': {'value': 'default'},
+                      'Is External': {'value': 'False'},
+                      'Is Shared': {'value': 'True'},
+                      'Network ID': {'value': 'True'},
+                      'Network Name': {'value': 'True'},
+                      'Subnet ID': {'value': 'True'},
+                      'Subnet Name': {'value': 'True'},
+                      'Network Encap': {'value': 'gre'},
+                      'Segmentation ID': {'value': 'segmentation-id'},
+                      'Physical Network Name': {'value': 'physical-network'}}
+        ib_network_ea = ib_objects.EA.from_dict(network_ea)
+        ib_network_mock = mock.Mock(extattrs=ib_network_ea)
+
+        ea_manager.reset_ea_for_network(ib_network_mock)
+
+        expected_ea = {'Cloud API Owned': {'value': 'N/A'},
+                       'CMP Type': {'value': 'N/A'},
+                       'Tenant ID': {'value': 'N/A'}}
+        ib_network_mock.extattrs.ea_dict == expected_ea
+
+    def test_reset_ea_for_range(self):
+        range_ea = {'CMP Type': {'value': 'OpenStack'},
+                    'Cloud API Owned': {'value': 'True'},
+                    'Tenant ID': {'value': 'test-id'},
+                    'Tenant Name': {'value': 'tenant-name'},
+                    'Account': {'value': 'admin'},
+                    'Network View ID': {'value': 'default'}}
+        ib_range_ea = ib_objects.EA.from_dict(range_ea)
+        ib_range_mock = mock.Mock(extattrs=ib_range_ea)
+
+        ea_manager.reset_ea_for_range(ib_range_mock)
+
+        expected_ea = {'Cloud API Owned': {'value': 'N/A'},
+                       'CMP Type': {'value': 'N/A'},
+                       'Tenant ID': {'value': 'N/A'}}
+        ib_range_mock.extattrs.ea_dict == expected_ea
+
+    def test_reset_ea_for_zone(self):
+        zone_ea = {'CMP Type': {'value': 'OpenStack'},
+                   'Cloud API Owned': {'value': 'True'},
+                   'Tenant ID': {'value': 'test-id'},
+                   'Tenant Name': {'value': 'tenant-name'},
+                   'Account': {'value': 'admin'},
+                   'Network View ID': {'value': 'default'}}
+        ib_zone_ea = ib_objects.EA.from_dict(zone_ea)
+        ib_zone_mock = mock.Mock(extattrs=ib_zone_ea)
+
+        ea_manager.reset_ea_for_zone(ib_zone_mock)
+
+        expected_ea = {'Cloud API Owned': {'value': 'N/A'},
+                       'CMP Type': {'value': 'N/A'},
+                       'Tenant ID': {'value': 'N/A'}}
+        ib_zone_mock.extattrs.ea_dict == expected_ea

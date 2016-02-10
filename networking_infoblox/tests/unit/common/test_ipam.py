@@ -292,17 +292,62 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.ibom.delete_network.assert_called_once_with(
             self.helper.options['network_view'], self.helper.subnet['cidr'])
 
+    def _create_ib_network_ea(self):
+        network_ea = {'CMP Type': {'value': 'OpenStack'},
+                      'Cloud API Owned': {'value': 'True'},
+                      'Tenant ID': {'value': 'test-id'},
+                      'Tenant Name': {'value': 'tenant-name'},
+                      'Account': {'value': 'admin'},
+                      'Network View ID': {'value': 'default'},
+                      'Is External': {'value': 'False'},
+                      'Is Shared': {'value': 'True'},
+                      'Network ID': {'value': 'True'},
+                      'Network Name': {'value': 'True'},
+                      'Subnet ID': {'value': 'True'},
+                      'Subnet Name': {'value': 'True'},
+                      'Network Encap': {'value': 'gre'},
+                      'Segmentation ID': {'value': 'segmentation-id'},
+                      'Physical Network Name': {'value': 'physical-network'}}
+        return ib_objects.EA.from_dict(network_ea)
+
+    def _create_ib_range_ea(self):
+        range_ea = {'CMP Type': {'value': 'OpenStack'},
+                    'Cloud API Owned': {'value': 'True'},
+                    'Tenant ID': {'value': 'test-id'},
+                    'Tenant Name': {'value': 'tenant-name'},
+                    'Account': {'value': 'admin'},
+                    'Network View ID': {'value': 'default'}}
+        return ib_objects.EA.from_dict(range_ea)
+
+    def _reset_ib_range_ea(self):
+        expected_ea = {'Cloud API Owned': {'value': 'False'},
+                       'CMP Type': {'value': 'N/A'},
+                       'Tenant ID': {'value': 'N/A'}}
+        return expected_ea
+
     def test_delete_subnet_for_external_network_not_deletable(self):
         test_opts = {'external': True, 'network_exists': True}
         self.helper.prepare_test(test_opts)
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
         ipam_controller._release_service_members = mock.Mock()
+
+        ib_network_ea = self._create_ib_network_ea()
+        ib_network_mock = mock.Mock(extattrs=ib_network_ea)
+        ib_range_ea = self._create_ib_range_ea()
+        ib_ranges_mock = [mock.Mock(extattrs=ib_range_ea)]
+        expected_ea = self._reset_ib_range_ea()
+
         with mock.patch.object(ib_objects.Network,
                                'search_all',
                                return_value=[]):
-            ipam_controller.delete_subnet()
-
-        self.ib_cxt.ibom.delete_network.assert_not_called()
+            with mock.patch.object(ib_objects.IPRange,
+                                   'search_all',
+                                   return_value=ib_ranges_mock):
+                ipam_controller.delete_subnet(ib_network_mock)
+                assert ib_network_mock.update.called
+                assert ib_network_mock.extattrs.to_dict() == expected_ea
+                assert ib_ranges_mock[0].update.called
+                assert ib_ranges_mock[0].extattrs.to_dict() == expected_ea
 
     def test_delete_subnet_for_external_network_deletable(self):
         test_opts = {'external': True, 'network_exists': True}

@@ -289,8 +289,8 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         ipam_controller = ipam.IpamSyncController(ib_cxt)
         dns_controller = dns.DnsController(ib_cxt)
 
-        ipam_controller.delete_subnet()
-        dns_controller.delete_dns_zones()
+        ipam_controller.delete_subnet(ib_network)
+        dns_controller.delete_dns_zones(ib_network=ib_network)
 
     def _get_ib_network(self, subnet_id, ip_version=None):
         db_netviews = dbi.get_network_view_by_mapping(
