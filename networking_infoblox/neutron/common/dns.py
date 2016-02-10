@@ -19,6 +19,7 @@ from oslo_utils import excutils
 from neutron.common import constants as n_const
 
 from infoblox_client import exceptions as ibc_exc
+from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import ea_manager as eam
 from networking_infoblox.neutron.common import pattern
@@ -83,7 +84,7 @@ class DnsController(object):
                 extattrs=ea_zone)
             rollback_list.append(ib_zone_cidr)
 
-    def delete_dns_zones(self, dns_zone=None):
+    def delete_dns_zones(self, dns_zone=None, ib_network=None):
         session = self.ib_cxt.context.session
         dns_view = self.ib_cxt.mapping.dns_view
         cidr = self.ib_cxt.subnet['cidr']
@@ -112,6 +113,20 @@ class DnsController(object):
 
             # delete reverse zone
             self.ib_cxt.ibom.delete_dns_zone(dns_view, cidr)
+        else:
+            ib_forward_zone = ib_objects.DNSZone.search(self.ib_cxt.connector,
+                                                        fqdn=dns_zone,
+                                                        view=dns_view)
+            if ib_forward_zone:
+                eam.reset_ea_for_zone(ib_forward_zone)
+                ib_forward_zone.update()
+
+            ib_reverse_zone = ib_objects.DNSZone.search(self.ib_cxt.connector,
+                                                        fqdn=dns_zone,
+                                                        view=cidr)
+            if ib_reverse_zone:
+                eam.reset_ea_for_zone(ib_reverse_zone)
+                ib_reverse_zone.update()
 
     def _is_forward_zone_removable(self):
         session = self.ib_cxt.context.session

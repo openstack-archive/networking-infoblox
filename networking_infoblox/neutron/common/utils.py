@@ -149,6 +149,17 @@ def get_ea_value(name, extattrs, should_return_list_value=False):
     return value
 
 
+def reset_required_eas(ib_obj):
+    if not ib_obj or not ib_obj.extattrs or not ib_obj.extattrs.to_dict():
+        return
+
+    for ea in const.REQUIRED_EA_LIST:
+        if ea == const.EA_CLOUD_API_OWNED:
+            ib_obj.extattrs.set(ea, 'False')
+        else:
+            ib_obj.extattrs.set(ea, const.EA_RESET_VALUE)
+
+
 def get_ip_version(ip_address):
     valid = ip_address and isinstance(ip_address, six.string_types)
     if not valid:
