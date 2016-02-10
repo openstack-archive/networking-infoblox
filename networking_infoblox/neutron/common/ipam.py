@@ -225,6 +225,14 @@ class IpamSyncController(object):
                     start_addr=start_ip,
                     end_addr=end_ip)
                 if ib_ip_range:
+                    eas = ib_ip_range.extattrs
+                    if eas:
+                        ea_dict = ib_ip_range.extattrs.ea_dict
+                        ea_dict.update(ea_range.ea_dict)
+                        ib_ip_range.extattrs = ib_objects.EA(ea_dict)
+                    else:
+                        ib_ip_range.extattrs = ea_range
+                    ib_ip_range.update()
                     LOG.info("ip range already existed: %s", ib_ip_range)
                     continue
 
@@ -315,7 +323,7 @@ class IpamSyncController(object):
         removed_list = [ib_pool_map[pool] for pool in removed_pools]
         return added_list, removed_list
 
-    def delete_subnet(self):
+    def delete_subnet(self, ib_network=None):
         """Frees up resources taken by the subnet and removes the subnet.
 
         Resources to be released are
@@ -335,6 +343,10 @@ class IpamSyncController(object):
         subnet_id = subnet.get('id')
         cidr = subnet.get('cidr')
 
+        # subnet id is already gone since community plugin already called
+        # subnet delete in db level by the time ipam driver reaches here.
+        dbi.dissociate_network_view(session, network_id, subnet_id)
+
         ib_networks = ib_objects.Network.search_all(self.ib_cxt.connector,
                                                     network_view=network_view)
         is_last_subnet_in_netview = len(ib_networks) == 1
@@ -348,13 +360,23 @@ class IpamSyncController(object):
 
             # delete ib network
             self.ib_cxt.ibom.delete_network(network_view, cidr)
-            dbi.dissociate_network_view(session, network_id, subnet_id)
 
             # if no more network exists, remove network view
             if is_last_subnet_in_netview:
                 self._remove_network_view()
 
             self._restart_services()
+        else:
+            eam.reset_ea_for_network(ib_network)
+            ib_network.update()
+
+            ib_ranges = ib_objects.IPRange.search_all(
+                self.ib_cxt.connector,
+                network_view=network_view,
+                network=cidr)
+            for ib_range in ib_ranges:
+                eam.reset_ea_for_range(ib_range)
+                ib_range.update()
 
     def _release_service_members(self, is_last_subnet_in_netview):
         """Frees up service members

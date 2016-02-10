@@ -21,6 +21,7 @@ from neutron.extensions import external_net
 from neutron.extensions import providernet
 
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import utils
 
 
 def get_ea_for_network_view(tenant_id, tenant_name, network_view_id):
@@ -33,7 +34,7 @@ def get_ea_for_network_view(tenant_id, tenant_name, network_view_id):
     # OpenStack should not own entire network view,
     # since shared or external networks may be created in it
     attributes = {const.EA_CMP_TYPE: const.CLOUD_PLATFORM_NAME,
-                  const.EA_TENANT_ID: tenant_id or 'None',
+                  const.EA_TENANT_ID: tenant_id or const.EA_RESET_VALUE,
                   const.EA_TENANT_NAME: tenant_name,
                   const.EA_CLOUD_API_OWNED: 'False',
                   const.EA_NETWORK_VIEW_ID: network_view_id}
@@ -72,9 +73,33 @@ def get_ea_for_network(user_id, tenant_id, tenant_name, network, subnet):
     return ib_objects.EA(attributes)
 
 
+def reset_ea_for_network(ib_network):
+    if not ib_network or not ib_network.extattrs:
+        return
+
+    utils.reset_required_eas(ib_network)
+
+    eas = ib_network.extattrs
+    ea_dict = eas.to_dict()
+    map(lambda ea: ea_dict.pop(ea, None), const.NETWORK_EA_LIST)
+    ib_network.extattrs = ib_objects.EA.from_dict(ea_dict)
+
+
 def get_ea_for_range(user_id, tenant_id, tenant_name, network):
     return ib_objects.EA(get_common_ea(network, user_id, tenant_id,
                                        tenant_name))
+
+
+def reset_ea_for_range(ib_range):
+    if not ib_range or not ib_range.extattrs:
+        return
+
+    utils.reset_required_eas(ib_range)
+
+    eas = ib_range.extattrs
+    ea_dict = eas.to_dict()
+    map(lambda ea: ea_dict.pop(ea, None), const.RANGE_EA_LIST)
+    ib_range.extattrs = ib_objects.EA.from_dict(ea_dict)
 
 
 def get_dict_for_ip(port_id, device_owner, device_id,
@@ -115,6 +140,18 @@ def get_ea_for_zone(user_id, tenant_id, tenant_name, network=None):
                                        tenant_name))
 
 
+def reset_ea_for_zone(ib_zone):
+    if not ib_zone or not ib_zone.extattrs:
+        return
+
+    utils.reset_required_eas(ib_zone)
+
+    eas = ib_zone.extattrs
+    ea_dict = eas.to_dict()
+    map(lambda ea: ea_dict.pop(ea, None), const.ZONE_EA_LIST)
+    ib_zone.extattrs = ib_objects.EA.from_dict(ea_dict)
+
+
 def get_common_ea(network, user_id, tenant_id, tenant_name, for_network=False):
     if network:
         is_external = network.get(external_net.EXTERNAL, False)
@@ -125,7 +162,7 @@ def get_common_ea(network, user_id, tenant_id, tenant_name, for_network=False):
 
     is_cloud_owned = not (is_external or is_shared)
     ea_dict = {const.EA_CMP_TYPE: const.CLOUD_PLATFORM_NAME,
-               const.EA_TENANT_ID: tenant_id or 'None',
+               const.EA_TENANT_ID: tenant_id or const.EA_RESET_VALUE,
                const.EA_TENANT_NAME: tenant_name,
                const.EA_ACCOUNT: user_id,
                const.EA_CLOUD_API_OWNED: str(is_cloud_owned)}

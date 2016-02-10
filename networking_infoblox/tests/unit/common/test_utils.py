@@ -207,6 +207,30 @@ class TestUtils(testlib_api.SqlTestCase):
         invalid_ea = utils.get_ea_value(None, None)
         self.assertEqual(None, invalid_ea)
 
+    def test_reset_required_eas(self):
+        network_ea = {'CMP Type': {'value': 'OpenStack'},
+                      'Cloud API Owned': {'value': 'True'},
+                      'Tenant ID': {'value': 'test-id'},
+                      'Tenant Name': {'value': 'tenant-name'},
+                      'Account': {'value': 'admin'},
+                      'Network View ID': {'value': 'default'},
+                      'Is External': {'value': 'False'},
+                      'Is Shared': {'value': 'True'},
+                      'Network ID': {'value': 'True'},
+                      'Network Name': {'value': 'True'},
+                      'Subnet ID': {'value': 'True'}}
+        ib_network_ea = ib_objects.EA.from_dict(network_ea)
+        ib_network_mock = mock.Mock(extattrs=ib_network_ea)
+
+        utils.reset_required_eas(ib_network_mock)
+
+        for ea in const.REQUIRED_EA_LIST:
+            ea_value = ib_network_mock.extattrs.get(ea)
+            if ea == const.EA_CLOUD_API_OWNED:
+                assert ea_value == 'False'
+            else:
+                assert ea_value == const.EA_RESET_VALUE
+
     def test_get_ip_version(self):
         ips = ('10.10.0.1', '8.8.8.8')
         for ip in ips:
