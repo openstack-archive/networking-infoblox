@@ -194,8 +194,7 @@ class GridMappingManager(object):
         removable_set = persisted_set.difference(discovered_netview_ids)
         removable_netviews = list(removable_set)
         if removable_netviews:
-            dbi.remove_network_views_by_names(session, removable_netviews,
-                                              self._grid_id)
+            dbi.remove_network_views(session, removable_netviews)
         session.flush()
         return discovered_delegations
 
@@ -467,10 +466,14 @@ class GridMappingManager(object):
             self._connector,
             name=netview_name)
         if ib_network_view:
+            ea_network_view = eam.get_ea_for_network_view(
+                None, None, netview_id)
             if ib_network_view.extattrs is None:
-                ea_network_view = eam.get_ea_for_network_view(
-                    None, None, netview_id)
                 ib_network_view.extattrs = ea_network_view
+            elif ib_network_view.extattrs.get(const.EA_TENANT_ID) is None:
+                ea_dict = ib_network_view.extattrs.ea_dict
+                ea_dict.update(ea_network_view.ea_dict)
+                ib_network_view.extattrs = ib_objects.EA(ea_dict)
             else:
                 ib_network_view.extattrs.set(const.EA_NETWORK_VIEW_ID,
                                              netview_id)
