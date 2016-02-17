@@ -122,6 +122,9 @@ class GridManager(object):
         return grid_conf
 
     def _report_sync_time(self):
+        if self.grid_config.report_grid_sync_time is False:
+            return
+
         conn = self.grid_config.gm_connector
         host_ip = getattr(conn, 'host')
         if utils.get_ip_version(host_ip) == 4:
@@ -182,6 +185,7 @@ class GridConfiguration(object):
         'dhcp_support': const.EA_GRID_CONFIG_DHCP_SUPPORT,
         'relay_support': const.EA_GRID_CONFIG_RELAY_SUPPORT,
         'use_grid_master_for_dhcp': const.EA_GRID_CONFIG_USE_GM_FOR_DHCP,
+        'report_grid_sync_time': const.EA_GRID_CONFIG_REPORT_GRID_SYNC_TIME,
         'tenant_name_persistence': const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE
     }
 
@@ -243,6 +247,8 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_RELAY_SUPPORT]
         self.use_grid_master_for_dhcp = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_USE_GM_FOR_DHCP]
+        self.report_grid_sync_time = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_REPORT_GRID_SYNC_TIME]
         self.tenant_name_persistence = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE]
 

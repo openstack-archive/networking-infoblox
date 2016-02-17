@@ -187,6 +187,7 @@ class GridTestCase(base.TestCase, testlib_api.SqlTestCase):
         # sync
         grid_mgr.grid_config.grid_sync_support = True
         grid_mgr.grid_config.grid_sync_minimum_wait_time = 0
+        grid_mgr.grid_config.report_grid_sync_time = True
         grid_mgr.sync()
 
         member_ea = member_mock['extattrs'].to_dict()
@@ -218,7 +219,7 @@ class GridTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         grid_mgr.grid_config.grid_sync_support = True
         grid_mgr.grid_config.grid_sync_minimum_wait_time = 0
-
+        grid_mgr.grid_config.report_grid_sync_time = True
         grid_mgr.sync()
 
         member_ea = member_mock['extattrs'].to_dict()
