@@ -171,6 +171,10 @@ class IpamSyncController(object):
         return list(service_member_set)
 
     def _restart_services(self):
+        if (self.grid_config.dhcp_support is False and
+                self.grid_config.dns_support is False):
+            return
+
         member_names = self._get_service_members('member_name')
         for member_name in member_names:
             ib_member = ib_objects.Member(self.ib_cxt.connector,

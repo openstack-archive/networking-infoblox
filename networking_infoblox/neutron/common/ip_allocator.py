@@ -156,17 +156,16 @@ class FixedAddressIPAllocator(IPAllocator):
         bind_cfg = self.opts['dns_record_binding_types']
         device_owner = extattrs.get(const.EA_PORT_DEVICE_OWNER)
         if device_owner in const.NEUTRON_FLOATING_IP_DEVICE_OWNERS:
-            self.manager.update_fixed_address_eas(
-                network_view, ip, extattrs)
-            self.manager.update_dns_record_eas(
-                dns_view, ip, extattrs)
-        if bind_cfg:
+            self.manager.update_fixed_address_eas(network_view, ip, extattrs)
+            if self.opts['configure_for_dns']:
+                self.manager.update_dns_record_eas(dns_view, ip, extattrs)
+        if bind_cfg and self.opts['configure_for_dns']:
             self.manager.bind_name_with_record_a(
                 dns_view, ip, name, bind_cfg, extattrs)
 
     def unbind_names(self, network_view, dns_view, ip, name, extattrs):
         unbind_cfg = self.opts['dns_record_unbinding_types']
-        if unbind_cfg:
+        if unbind_cfg and self.opts['configure_for_dns']:
             self.manager.unbind_name_from_record_a(
                 dns_view, ip, name, unbind_cfg)
 
@@ -185,7 +184,7 @@ class FixedAddressIPAllocator(IPAllocator):
 
     def deallocate_ip(self, network_view, dns_view_name, ip):
         delete_cfg = self.opts['dns_record_removable_types']
-        if delete_cfg:
+        if delete_cfg and self.opts['configure_for_dns']:
             self.manager.unbind_name_from_record_a(dns_view_name, ip,
                                                    None, delete_cfg)
         self.manager.delete_fixed_address(network_view, ip)

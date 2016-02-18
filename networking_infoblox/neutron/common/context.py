@@ -498,13 +498,12 @@ class InfobloxContext(object):
 
     def _get_ip_allocator(self, for_dhcp_port=False):
         options = dict()
+        options['configure_for_dns'] = self.grid_config.dns_support
         if (for_dhcp_port or self.grid_config.ip_allocation_strategy ==
                 const.IP_ALLOCATION_STRATEGY_HOST_RECORD):
             options['use_host_record'] = True
             if for_dhcp_port:
                 options['configure_for_dhcp'] = False
-                if self.grid_config.dns_support is False:
-                    options['configure_for_dns'] = False
         else:
             options['use_host_record'] = False
             options['dns_record_binding_types'] = (

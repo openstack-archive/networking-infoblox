@@ -159,9 +159,6 @@ class DnsController(object):
     def bind_names(self, ip_address, instance_name=None, port_id=None,
                    port_tenant_id=None, device_id=None, device_owner=None,
                    is_floating_ip=False):
-        if self.grid_config.dns_support is False:
-            return
-
         if not device_owner:
             return
 
@@ -191,9 +188,6 @@ class DnsController(object):
 
     def unbind_names(self, ip_address, instance_name=None, port_id=None,
                      port_tenant_id=None, device_id=None, device_owner=None):
-        if self.grid_config.dns_support is False:
-            return
-
         if not device_owner:
             return
 
