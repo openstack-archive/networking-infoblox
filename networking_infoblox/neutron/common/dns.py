@@ -39,6 +39,9 @@ class DnsController(object):
         self.dns_zone = self.pattern_builder.get_zone_name()
 
     def create_dns_zones(self, rollback_list):
+        if self.grid_config.dns_support is False:
+            return
+
         ea_zone = eam.get_ea_for_zone(self.ib_cxt.user_id,
                                       self.ib_cxt.tenant_id,
                                       self.ib_cxt.tenant_name,
@@ -84,6 +87,9 @@ class DnsController(object):
             rollback_list.append(ib_zone_cidr)
 
     def delete_dns_zones(self, dns_zone=None, ib_network=None):
+        if self.grid_config.dns_support is False:
+            return
+
         session = self.ib_cxt.context.session
         dns_view = self.ib_cxt.mapping.dns_view
         cidr = self.ib_cxt.subnet['cidr']
@@ -153,6 +159,9 @@ class DnsController(object):
     def bind_names(self, ip_address, instance_name=None, port_id=None,
                    port_tenant_id=None, device_id=None, device_owner=None,
                    is_floating_ip=False):
+        if self.grid_config.dns_support is False:
+            return
+
         if not device_owner:
             return
 
@@ -182,6 +191,9 @@ class DnsController(object):
 
     def unbind_names(self, ip_address, instance_name=None, port_id=None,
                      port_tenant_id=None, device_id=None, device_owner=None):
+        if self.grid_config.dns_support is False:
+            return
+
         if not device_owner:
             return
 

@@ -67,7 +67,7 @@ class FixedAddressAllocatorTestCase(base.TestCase):
 
 class HostRecordAllocatorTestCase(base.TestCase):
 
-    def _test_creates_host_record_on_allocate_ip(self, use_dhcp):
+    def _test_creates_host_record_on_allocate_ip(self, use_dhcp, use_dns):
         ib_mock = mock.MagicMock()
 
         netview = 'some-test-net-view'
@@ -79,22 +79,24 @@ class HostRecordAllocatorTestCase(base.TestCase):
 
         ib_mock.find_hostname.return_value = None
         options = {'use_host_record': True,
-                   'configure_for_dhcp': use_dhcp}
+                   'configure_for_dhcp': use_dhcp,
+                   'configure_for_dns': use_dns}
 
         allocator = ip_allocator.IPAllocator(ib_mock, options)
         allocator.allocate_given_ip(netview, dnsview, zone_auth, hostname,
                                     mac, ip)
 
         ib_mock.create_host_record_for_given_ip.assert_called_once_with(
-            dnsview, zone_auth, hostname, mac, ip, mock.ANY, use_dhcp)
+            dnsview, zone_auth, hostname, mac, ip, mock.ANY, use_dhcp, use_dns)
 
     def test_creates_host_record_on_allocate_ip_use_dhcp(self):
-        self._test_creates_host_record_on_allocate_ip(True)
+        self._test_creates_host_record_on_allocate_ip(True, True)
 
     def test_creates_host_record_on_allocate_ip_no_dhcp(self):
-        self._test_creates_host_record_on_allocate_ip(False)
+        self._test_creates_host_record_on_allocate_ip(False, False)
 
-    def _test_creates_host_record_range_on_range_allocation(self, use_dhcp):
+    def _test_creates_host_record_range_on_range_allocation(self, use_dhcp,
+                                                            use_dns):
         ib_mock = mock.MagicMock()
 
         netview = 'some-test-net-view'
@@ -107,7 +109,8 @@ class HostRecordAllocatorTestCase(base.TestCase):
 
         ib_mock.find_hostname.return_value = None
         options = {'use_host_record': True,
-                   'configure_for_dhcp': use_dhcp}
+                   'configure_for_dhcp': use_dhcp,
+                   'configure_for_dns': use_dns}
 
         allocator = ip_allocator.IPAllocator(ib_mock, options)
         allocator.allocate_ip_from_range(
@@ -115,13 +118,13 @@ class HostRecordAllocatorTestCase(base.TestCase):
 
         ib_mock.create_host_record_from_range.assert_called_once_with(
             dnsview, netview, zone_auth, hostname,
-            mac, first_ip, last_ip, mock.ANY, use_dhcp)
+            mac, first_ip, last_ip, mock.ANY, use_dhcp, use_dns)
 
     def test_creates_host_record_range_on_range_allocation_use_dhcp(self):
-        self._test_creates_host_record_range_on_range_allocation(True)
+        self._test_creates_host_record_range_on_range_allocation(True, True)
 
     def _test_creates_host_record_range_on_range_allocation_no_dhcp(self):
-        self._test_creates_host_record_range_on_range_allocation(False)
+        self._test_creates_host_record_range_on_range_allocation(False, False)
 
     def test_deletes_host_record(self):
         ib_mock = mock.MagicMock()

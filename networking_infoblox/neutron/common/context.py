@@ -503,6 +503,8 @@ class InfobloxContext(object):
             options['use_host_record'] = True
             if for_dhcp_port:
                 options['configure_for_dhcp'] = False
+                if self.grid_config.dns_support is False:
+                    options['configure_for_dns'] = False
         else:
             options['use_host_record'] = False
             options['dns_record_binding_types'] = (

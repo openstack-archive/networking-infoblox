@@ -183,6 +183,7 @@ class GridConfiguration(object):
         'dns_record_removable_types':
             const.EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES,
         'dhcp_support': const.EA_GRID_CONFIG_DHCP_SUPPORT,
+        'dns_support': const.EA_GRID_CONFIG_DNS_SUPPORT,
         'relay_support': const.EA_GRID_CONFIG_RELAY_SUPPORT,
         'use_grid_master_for_dhcp': const.EA_GRID_CONFIG_USE_GM_FOR_DHCP,
         'report_grid_sync_time': const.EA_GRID_CONFIG_REPORT_GRID_SYNC_TIME,
@@ -243,6 +244,8 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES]
         self.dhcp_support = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_DHCP_SUPPORT]
+        self.dns_support = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_DNS_SUPPORT]
         self.relay_support = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_RELAY_SUPPORT]
         self.use_grid_master_for_dhcp = const.GRID_CONFIG_DEFAULTS[
