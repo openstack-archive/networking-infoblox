@@ -68,10 +68,10 @@ function configure_networking_infoblox {
     update_conf_option $NEUTRON_CONF DEFAULT notification_topics notifications 0
 
     # Run create_ea_defs.py to create EA definitions
-    (cd $DIR_INFOBLOX/tools; ./create_ea_defs.py -s -u "$NETWORKING_INFOBLOX_SUPERUSER_USERNAME" -p "$NETWORKING_INFOBLOX_SUPERUSER_PASSWORD")
+    create_ea_defs -s -u "$NETWORKING_INFOBLOX_SUPERUSER_USERNAME" -p "$NETWORKING_INFOBLOX_SUPERUSER_PASSWORD"
 
     # Run infoblox_grid_sync to sync Infoblox Grid information
-    (cd $DIR_INFOBLOX/tools; ./infoblox_grid_sync.py --config-file=$NEUTRON_CONF)
+    infoblox_grid_sync.py --config-file=$NEUTRON_CONF
 }
 
 DIR_INFOBLOX=$DEST/networking-infoblox
