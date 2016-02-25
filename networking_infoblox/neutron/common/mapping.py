@@ -275,6 +275,8 @@ class GridMappingManager(object):
 
         netviews = self._connector.get_object('networkview',
                                               return_fields=return_fields)
+        if not netviews:
+            return []
         return netviews
 
     def _discover_networks(self):
@@ -299,6 +301,8 @@ class GridMappingManager(object):
         return_fields = ['name', 'network_view']
         dns_views = self._connector.get_object('view',
                                                return_fields=return_fields)
+        if not dns_views:
+            return []
         return dns_views
 
     def _get_member_mapping(self, discovered_networks, discovered_delegations):
