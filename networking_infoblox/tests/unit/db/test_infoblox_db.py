@@ -255,6 +255,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
 
     def _create_network_views(self, network_view_dict):
         for network_view in network_view_dict:
+            is_default = True if network_view == 'default' else False
             dns_view = ('default' if network_view == 'default' else
                         'default.' + network_view)
             infoblox_db.add_network_view(self.ctx.session,
@@ -264,7 +265,9 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                                          False,
                                          dns_view,
                                          network_view,
-                                         dns_view)
+                                         dns_view,
+                                         True,
+                                         is_default)
 
     def _create_simple_members(self):
         for i in range(1, 6):

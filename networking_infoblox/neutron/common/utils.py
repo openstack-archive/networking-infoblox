@@ -20,6 +20,7 @@ import netaddr
 import random
 import re
 import six
+import time
 import urllib
 
 from oslo_log import log as logging
@@ -269,7 +270,6 @@ def exists_in_list(list_to_find, full_list):
 def find_one_in_list(search_key, search_value, search_list):
     """Find one item that match searching one key and value."""
     valid = (isinstance(search_key, six.string_types) and
-             isinstance(search_value, six.string_types) and
              isinstance(search_list, list))
     if not valid:
         raise ValueError("Invalid argument was passed.")
@@ -333,8 +333,7 @@ def find_in_list(search_key, search_values, search_list):
 def find_in_list_by_value(search_value, search_list,
                           first_occurrence_only=True):
     """Find item(s) that match(es) the search value from the search list."""
-    valid = (isinstance(search_value, six.string_types) and
-             isinstance(search_list, list))
+    valid = isinstance(search_list, list)
     if not valid:
         raise ValueError("Invalid argument was passed.")
 
@@ -387,11 +386,11 @@ def remove_any_space(text):
     return text
 
 
-def get_hash(text):
+def get_hash(text=None):
     if text and isinstance(text, six.string_types):
         text = text.encode('utf-8')
         return hashlib.md5(text).hexdigest()
-    return None
+    return hashlib.md5(str(time.time())).hexdigest()
 
 
 def get_oid_from_nios_ref(obj_ref):
@@ -468,6 +467,8 @@ def get_connector(credentials=None):
     opts = {field: grid_opts[mapping[field]]
             if mapping[field] else grid_opts[field]
             for field in mapping}
+    if opts['ssl_verify'] == 'False':
+        opts['silent_ssl_warnings'] = True
     if credentials:
         opts['username'] = credentials['username']
         opts['password'] = credentials['password']
