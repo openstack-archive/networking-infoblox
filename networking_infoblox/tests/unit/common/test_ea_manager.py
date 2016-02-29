@@ -28,6 +28,7 @@ class EaManagerTestCase(base.TestCase):
 
     def setUp(self):
         super(EaManagerTestCase, self).setUp()
+        self.grid_id = 100
         self.user_id = mock.Mock()
         self.tenant_id = 'Tenant ID'
         self.tenant_name = 'Tenant Name'
@@ -105,10 +106,12 @@ class EaManagerTestCase(base.TestCase):
         network_view_id = 'network-view-id'
         ea = ea_manager.get_ea_for_network_view(self.tenant_id,
                                                 self.tenant_name,
-                                                network_view_id)
+                                                network_view_id,
+                                                self.grid_id)
         self.assertEqual(self.tenant_id, ea.get('Tenant ID'))
         self.assertEqual(self.tenant_name, ea.get('Tenant Name'))
         self.assertEqual(str(False), ea.get('Cloud API Owned'))
+        self.assertEqual('100', ea.get('Cloud Adapter ID'))
         self.assertEqual('OpenStack', ea.get('CMP Type'))
         self.assertEqual(network_view_id, ea.get('Network View ID'))
 

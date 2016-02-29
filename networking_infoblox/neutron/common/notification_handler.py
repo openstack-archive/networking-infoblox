@@ -78,7 +78,7 @@ class IpamEventHandler(object):
                 handler(payload)
             return oslo_messaging.NotificationResult.HANDLED
         except sql_exc.OperationalError as e:
-            LOG.warning("Operational Error occurred")
+            LOG.info("Operational Error occurred. Please restart the agent.")
             LOG.error(encodeutils.exception_to_unicode(e))
         except Exception as e:
             LOG.error(encodeutils.exception_to_unicode(e))

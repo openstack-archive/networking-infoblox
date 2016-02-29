@@ -118,6 +118,14 @@ class GridMappingManager(object):
 
         for netview in discovered_netviews:
             netview_name = netview['name']
+            is_default = netview[const.IS_DEFAULT]
+
+            cloud_adapter_id_vals = utils.get_ea_value(
+                const.EA_CLOUD_ADAPTER_ID, netview, True)
+            cloud_adapter_ids = [gid for gid in cloud_adapter_id_vals
+                                 if int(gid) == self._grid_id]
+            participated = True if cloud_adapter_ids else False
+
             shared_val = utils.get_ea_value(const.EA_IS_SHARED, netview)
             is_shared = types.Boolean()(shared_val) if shared_val else False
 
@@ -168,16 +176,22 @@ class GridMappingManager(object):
                 netview_id = netview_row.id
                 dbi.update_network_view(session, netview_id, netview_name,
                                         authority_member_id, is_shared,
-                                        dns_view)
+                                        dns_view, participated, is_default)
             else:
+                internal_netview = (const.DEFAULT_NETWORK_VIEW if is_default
+                                    else netview_name)
+                internal_dnsview = (const.DEFAULT_DNS_VIEW if is_default
+                                    else dns_view)
                 new_netview = dbi.add_network_view(session,
                                                    netview_name,
                                                    self._grid_id,
                                                    authority_member_id,
                                                    is_shared,
                                                    dns_view,
-                                                   netview_name,
-                                                   dns_view)
+                                                   internal_netview,
+                                                   internal_dnsview,
+                                                   participated,
+                                                   is_default)
                 netview_id = new_netview.id
 
             if require_sync_nios:
@@ -186,7 +200,7 @@ class GridMappingManager(object):
             discovered_netview_ids.append(netview_id)
 
             # update mapping conditions for the current network view
-            self._update_mapping_conditions(netview, netview_id)
+            self._update_mapping_conditions(netview, netview_id, participated)
 
         # we have added new network views. now let's remove persisted
         # network views not found from discovery
@@ -325,6 +339,8 @@ class GridMappingManager(object):
         for netview in discovered_delegations:
             netview_row = utils.find_one_in_list('network_view', netview,
                                                  self.db_network_views)
+            if not netview_row:
+                continue
             netview_id = netview_row.id
             authority_member = discovered_delegations[netview]
             mapping_relation = const.MAPPING_RELATION_DELEGATED
@@ -338,6 +354,9 @@ class GridMappingManager(object):
             netview = network['network_view']
             netview_row = utils.find_one_in_list('network_view', netview,
                                                  self.db_network_views)
+            if not netview_row:
+                continue
+
             netview_id = netview_row.id
 
             # get authority member
@@ -424,9 +443,13 @@ class GridMappingManager(object):
                 dns_members.append(dns_member)
         return dns_members
 
-    def _update_mapping_conditions(self, discovered_netview, netview_id):
+    def _update_mapping_conditions(self, discovered_netview, netview_id,
+                                   participated):
         session = self._context.session
-        mapping_conditions = self._get_mapping_conditions(discovered_netview)
+        mapping_conditions = dict()
+        if participated:
+            mapping_conditions = self._get_mapping_conditions(
+                discovered_netview)
         discovered_condition_rows = []
         for condition_name in mapping_conditions:
             conditions = [netview_id + DELIMITER + condition_name + DELIMITER +
@@ -471,7 +494,7 @@ class GridMappingManager(object):
             name=netview_name)
         if ib_network_view:
             ea_network_view = eam.get_ea_for_network_view(
-                None, None, netview_id)
+                None, None, netview_id, self._grid_id)
             if ib_network_view.extattrs is None:
                 ib_network_view.extattrs = ea_network_view
             elif ib_network_view.extattrs.get(const.EA_TENANT_ID) is None:
