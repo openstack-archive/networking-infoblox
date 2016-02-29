@@ -97,7 +97,8 @@ class DnsController(object):
 
         db_network_views = dbi.get_network_views(
             session,
-            network_view_id=self.ib_cxt.mapping.network_view_id)
+            network_view_id=self.ib_cxt.mapping.network_view_id,
+            participated=True)
         if not db_network_views:
             LOG.info("Network view has been removed so dns zone is already"
                      "removed.")

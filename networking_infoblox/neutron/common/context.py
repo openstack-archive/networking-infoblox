@@ -174,7 +174,9 @@ class InfobloxContext(object):
                                                False,
                                                dns_view,
                                                network_view,
-                                               dns_view)
+                                               dns_view,
+                                               True,
+                                               False)
         self.mapping.network_view_id = db_network_view.id
         self.mapping.authority_member = authority_member
         self.mapping.dns_view = dns_view
@@ -579,10 +581,10 @@ class InfobloxContext(object):
         # First check if mapping already exists
         network_id = self.subnet.get('network_id')
         subnet_id = self.subnet.get('id')
-        netview_mapping = dbi.get_network_view_mappings(
+        netview_mappings = dbi.get_network_view_mappings(
             session, network_id=network_id, subnet_id=subnet_id)
-        if netview_mapping:
-            netview_id = netview_mapping[0].network_view_id
+        if netview_mappings:
+            netview_id = netview_mappings[0].network_view_id
             netview_row = utils.find_one_in_list(
                 'id', netview_id, self.discovered_network_views)
             self.mapping.network_view_id = netview_id
@@ -681,10 +683,22 @@ class InfobloxContext(object):
                 for field in mappings]
 
     def _get_network_view_by_scope(self, netview_scope, neutron_objs):
-        netview_name = 'default'
+        netview_name = None
 
         if netview_scope == const.NETWORK_VIEW_SCOPE_SINGLE:
-            netview_name = self.grid_config.default_network_view
+            db_netview = utils.find_one_in_list(
+                'network_view',
+                self.grid_config.default_network_view,
+                self.discovered_network_views)
+            if db_netview:
+                if db_netview.participated:
+                    netview_name = self.grid_config.default_network_view
+                else:
+                    raise exc.InfobloxNetworkViewNotParticipated(
+                        network_view=self.grid_config.default_network_view)
+            else:
+                raise exc.InfobloxNetworkViewNotFound(
+                    network_view=self.grid_config.default_network_view)
         else:
             object_id = None
             object_name = None
@@ -709,12 +723,29 @@ class InfobloxContext(object):
         # see if formulated netview name matches internal name in db
         # if matches then return the current netview name;
         # this is needed to support the netview name change
-        db_netview = dbi.get_network_views(
+        db_netviews = dbi.get_network_views(
             self.context.session,
             grid_id=self.grid_id,
             internal_network_view=netview_name)
-        if db_netview:
-            netview_name = db_netview[0].network_view
+        if db_netviews:
+            if db_netviews[0].participated:
+                netview_name = db_netviews[0].network_view
+            else:
+                raise exc.InfobloxNetworkViewNotParticipated(
+                    network_view=netview_name)
+
+        # still no network view, then try to use default
+        if not netview_name:
+            default_netview = utils.find_one_in_list(
+                'default', True, self.discovered_network_views)
+            if default_netview:
+                if default_netview.participated:
+                    netview_name = default_netview.network_view
+                else:
+                    raise exc.InfobloxNetworkViewNotParticipated(
+                        network_view=netview_name)
+            else:
+                raise exc.InfobloxDefaultNetworkViewNotFound()
 
         return netview_name
 
