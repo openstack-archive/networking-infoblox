@@ -37,6 +37,8 @@ corresponding variables:
      - NETWORKING_INFOBLOX_DC_HTTP_POOL_MAXSIZE
    * - http_request_timeout
      - NETWORKING_INFOBLOX_DC_HTTP_REQUEST_TIMEOUT
+   * - wapi_max_results
+     - NETWORKING_INFOBLOX_DC_WAPI_MAX_RESULTS
    * - n/a (DevStack only)
      - NETWORKING_INFOBLOX_SUPERUSER_USERNAME
    * - n/a (DevStack only)

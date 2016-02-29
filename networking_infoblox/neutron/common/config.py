@@ -56,7 +56,14 @@ data_center_opts = [
                help=_("HTTP pool max size.")),
     cfg.IntOpt('http_request_timeout',
                default=120,
-               help=_("HTTP request timeout."))
+               help=_("HTTP request timeout.")),
+    cfg.IntOpt('wapi_max_results',
+               default=-1000,
+               help=_("Maximum number of objects to be returned. If set to a "
+                      "negative number the appliance will return an error "
+                      "when the number of returned objects would exceed the "
+                      "setting. If this is set to a positive number, the "
+                      "results will be truncated when necessary."))
 ]
 
 CONF = cfg.CONF
