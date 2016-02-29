@@ -48,7 +48,7 @@ class GridSyncStub(object):
 
         # register infoblox stanza
         config.register_infoblox_ipam_opts(cfg.CONF)
-        cfg.CONF.set_override("cloud_data_center_id", 1000, 'infoblox')
+        cfg.CONF.set_override("cloud_data_center_id", 100, 'infoblox')
         cfg.CONF.set_override("ipam_agent_workers", 1, 'infoblox')
 
         # register infoblox data center stanza

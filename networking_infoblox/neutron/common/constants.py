@@ -84,6 +84,8 @@ EA_MAPPING_NETWORK_NAME = 'Network Name Mapping'
 EA_MAPPING_SUBNET_ID = 'Subnet ID Mapping'
 EA_MAPPING_SUBNET_CIDR = 'Subnet CIDR Mapping'
 
+EA_CLOUD_ADAPTOR_ID = 'Cloud Adapter ID'
+
 EA_IS_CLOUD_MEMBER = 'Is Cloud Member'
 
 EA_SUBNET_ID = 'Subnet ID'
@@ -147,6 +149,8 @@ MAPPING_RELATION_DELEGATED = 'DELEGATED'
 
 DEFAULT_NETWORK_VIEW = 'default'
 DEFAULT_DNS_VIEW = 'default'
+
+IS_DEFUALT = 'is_default'
 
 NEUTRON_DEVICE_OWNER_TO_PATTERN_MAP = {
     n_const.DEVICE_OWNER_DHCP: 'dhcp-port-{ip_address}',
@@ -427,6 +431,12 @@ REQUIRED_EA_DEFS = [
      'type': 'STRING', 'flags': 'CGV',
      'allowed_object_types': ['NetworkView'],
      'comment': 'Mapping'},
+
+    # Network view ownership EAs
+    {'name': EA_CLOUD_ADAPTOR_ID,
+     'type': 'INTEGER', 'flags': 'CG',
+     'allowed_object_types': ['NetworkView'],
+     'comment': 'Grid Participation'},
 
     # Member Registration EA
     {'name': EA_IS_CLOUD_MEMBER,
