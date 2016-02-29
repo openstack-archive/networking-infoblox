@@ -63,7 +63,7 @@ class IpamEventHandler(object):
             self.context.session, grid_id=self.grid_id,
             member_status=const.MEMBER_STATUS_ON)
         self._cached_network_views = dbi.get_network_views(
-            self.context.session, grid_id=self.grid_id)
+            self.context.session, grid_id=self.grid_id, participated=True)
         self._cached_mapping_conditions = dbi.get_mapping_conditions(
             self.context.session, grid_id=self.grid_id)
 
