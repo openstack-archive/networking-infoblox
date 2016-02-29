@@ -264,7 +264,8 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                                          False,
                                          dns_view,
                                          network_view,
-                                         dns_view)
+                                         dns_view,
+                                         True)
 
     def _create_simple_members(self):
         for i in range(1, 6):

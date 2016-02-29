@@ -585,7 +585,7 @@ class IpamAsyncController(object):
             netview_mappings = dbi.get_network_view_mappings(
                 session, grid_id=self.grid_id, network_id=network_id,
                 subnet_id=subnet_id)
-            if netview_mappings:
+            if netview_mappings and netview_mappings[0].participated:
                 netview_row = utils.find_one_in_list(
                     'id', netview_mappings[0].network_view_id,
                     self.ib_cxt.discovered_network_views)
@@ -615,22 +615,21 @@ class IpamAsyncController(object):
                 grid_id=self.grid_id,
                 network_id=port['network_id'],
                 subnet_id=subnet_id)
-            if not netview_mappings:
-                continue
+            if netview_mappings and netview_mappings[0].participated:
+                netview_row = utils.find_one_in_list(
+                    'id', netview_mappings[0].network_view_id,
+                    self.ib_cxt.discovered_network_views)
+                network_view = netview_row.network_view
 
-            netview_row = utils.find_one_in_list(
-                'id', netview_mappings[0].network_view_id,
-                self.ib_cxt.discovered_network_views)
-            network_view = netview_row.network_view
-
-            port_tenant_name = self.ib_cxt.get_tenant_name(port['tenant_id'])
-            ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
-                                              port['tenant_id'],
-                                              port_tenant_name,
-                                              network_view,
-                                              port['id'],
-                                              port['device_id'],
-                                              port['device_owner'])
-            self.ib_cxt.ibom.update_fixed_address_eas(network_view,
-                                                      ip_address,
-                                                      ea_ip_address)
+                port_tenant_name = self.ib_cxt.get_tenant_name(
+                    port['tenant_id'])
+                ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,
+                                                  port['tenant_id'],
+                                                  port_tenant_name,
+                                                  network_view,
+                                                  port['id'],
+                                                  port['device_id'],
+                                                  port['device_owner'])
+                self.ib_cxt.ibom.update_fixed_address_eas(network_view,
+                                                          ip_address,
+                                                          ea_ip_address)

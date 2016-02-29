@@ -579,10 +579,10 @@ class InfobloxContext(object):
         # First check if mapping already exists
         network_id = self.subnet.get('network_id')
         subnet_id = self.subnet.get('id')
-        netview_mapping = dbi.get_network_view_mappings(
+        netview_mappings = dbi.get_network_view_mappings(
             session, network_id=network_id, subnet_id=subnet_id)
-        if netview_mapping:
-            netview_id = netview_mapping[0].network_view_id
+        if netview_mappings and netview_mappings[0].participated:
+            netview_id = netview_mappings[0].network_view_id
             netview_row = utils.find_one_in_list(
                 'id', netview_id, self.discovered_network_views)
             self.mapping.network_view_id = netview_id
