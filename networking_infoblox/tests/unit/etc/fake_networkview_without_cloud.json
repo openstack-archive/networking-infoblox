@@ -1,7 +1,11 @@
 [
     {
         "_ref": "networkview/ZG5zLm5ldHdvcmtfdmlldyQw:default/true",
-        "extattrs": {},
+        "extattrs": {
+            "Cloud Adapter ID": {
+                "value": ["100"]
+            }
+        },
         "is_default": true,
         "name": "default"
     },
@@ -13,6 +17,9 @@
                     "90fbad5a098a4b7cb98826128d5b40b3",
                     "80afaaba012acb9c12888128d5123a09"
                 ]
+            },
+            "Cloud Adapter ID": {
+                "value": ["100"]
             }
         },
         "is_default": false,
@@ -32,6 +39,9 @@
             },
             "Is Shared": {
                 "value": "True"
+            },
+            "Cloud Adapter ID": {
+                "value": ["100"]
             }
         },
         "is_default": false,
@@ -39,13 +49,21 @@
     },
     {
         "_ref": "networkview/ZG5zLm5ldHdvcmtfdmlldyQ3:hs-view-3/false",
-        "extattrs": {},
+        "extattrs": {
+            "Cloud Adapter ID": {
+                "value": ["100"]
+            }
+        },
         "is_default": false,
         "name": "hs-view-3"
     },
     {
         "_ref": "networkview/ZG5zLm5ldHdvcmtfdmlldyQ4:hs-view-4/false",
-        "extattrs": {},
+        "extattrs": {
+            "Cloud Adapter ID": {
+                "value": ["100"]
+            }
+        },
         "is_default": false,
         "name": "hs-view-4"
     }
