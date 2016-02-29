@@ -17,6 +17,7 @@ from datetime import datetime
 from oslo_log import log as logging
 import random
 from sqlalchemy import func
+from sqlalchemy.sql.expression import true
 
 from neutron.db import address_scope_db
 from neutron.db import external_net_db
@@ -158,7 +159,7 @@ def remove_members(session, member_ids):
 def get_network_views(session, network_view_id=None, network_view=None,
                       grid_id=None, authority_member_id=None, shared=None,
                       dns_view=None, internal_network_view=None,
-                      internal_dns_view=None):
+                      internal_dns_view=None, participated=None):
     q = session.query(ib_models.InfobloxNetworkView)
     if network_view_id:
         q = q.filter(ib_models.InfobloxNetworkView.id == network_view_id)
@@ -170,6 +171,9 @@ def get_network_views(session, network_view_id=None, network_view=None,
                      authority_member_id)
     if shared:
         q = q.filter(ib_models.InfobloxNetworkView.shared == shared)
+    if participated:
+        q = q.filter(ib_models.InfobloxNetworkView.participated ==
+                     participated)
     if dns_view:
         q = q.filter(ib_models.InfobloxNetworkView.dns_view == dns_view)
     if internal_network_view:
@@ -187,7 +191,6 @@ def get_network_view_by_mapping(session, network_view_id=None, grid_id=None,
                                 network_id=None, subnet_id=None):
     netview_mapping = get_network_view_mappings(
         session,
-        grid_id=grid_id,
         network_view_id=network_view_id,
         network_id=network_id,
         subnet_id=subnet_id)
@@ -201,23 +204,27 @@ def get_network_view_by_mapping(session, network_view_id=None, grid_id=None,
     netviews = get_network_views(
         session,
         network_view_id=netview_id,
-        grid_id=grid_id)
+        grid_id=grid_id,
+        participated=True)
     return netviews
 
 
 def update_network_view(session, network_view_id, network_view,
-                        authority_member_id, shared, dns_view):
+                        authority_member_id, shared, dns_view, participated,
+                        is_default):
     (session.query(ib_models.InfobloxNetworkView).
      filter_by(id=network_view_id).
      update({'network_view': network_view,
              'authority_member_id': authority_member_id,
              'shared': shared,
-             'dns_view': dns_view}))
+             'dns_view': dns_view,
+             'participated': participated,
+             'default': is_default}))
 
 
 def add_network_view(session, network_view, grid_id, authority_member_id,
                      shared, dns_view, internal_network_view,
-                     internal_dns_view):
+                     internal_dns_view, participated, is_default):
     network_view = ib_models.InfobloxNetworkView(
         network_view=network_view,
         grid_id=grid_id,
@@ -225,7 +232,9 @@ def add_network_view(session, network_view, grid_id, authority_member_id,
         shared=shared,
         dns_view=dns_view,
         internal_network_view=internal_network_view,
-        internal_dns_view=internal_dns_view)
+        internal_dns_view=internal_dns_view,
+        participated=participated,
+        default=is_default)
     session.add(network_view)
     session.flush()
     return network_view
@@ -250,8 +259,8 @@ def remove_network_views_by_names(session, network_views, grid_id):
 
 
 # Network View Mapped to Neutron
-def get_network_view_mappings(session, network_view_id=None, grid_id=None,
-                              network_id=None, subnet_id=None):
+def get_network_view_mappings(session, network_view_id=None, network_id=None,
+                              subnet_id=None):
     q = session.query(ib_models.InfobloxNetworkViewMapping)
     if network_view_id:
         q = q.filter(ib_models.InfobloxNetworkViewMapping.network_view_id ==
@@ -262,12 +271,12 @@ def get_network_view_mappings(session, network_view_id=None, grid_id=None,
     if subnet_id:
         q = q.filter(ib_models.InfobloxNetworkViewMapping.subnet_id ==
                      subnet_id)
-    if grid_id:
-        sub_qry = session.query(ib_models.InfobloxNetworkView.id)
-        sub_qry = sub_qry.filter(ib_models.InfobloxNetworkView.grid_id ==
-                                 grid_id)
-        q = q.filter(ib_models.InfobloxNetworkViewMapping.network_view_id.in_(
-                     sub_qry))
+
+    sub_qry = session.query(ib_models.InfobloxNetworkView.id)
+    sub_qry = sub_qry.filter(ib_models.InfobloxNetworkView.participated ==
+                             true())
+    q = q.filter(ib_models.InfobloxNetworkViewMapping.network_view_id.in_(
+                 sub_qry))
     return q.all()
 
 
@@ -318,7 +327,6 @@ def add_mapping_condition(session, network_view_id, neutron_object_name,
                           neutron_object_value):
     mapping_condition = ib_models.InfobloxMappingCondition(
         network_view_id=network_view_id,
-
         neutron_object_name=neutron_object_name,
         neutron_object_value=neutron_object_value)
     session.add(mapping_condition)
