@@ -28,6 +28,7 @@ def get_ea_for_network_view(tenant_id, tenant_name, network_view_id):
     """Generates EAs for Network View.
 
     :param tenant_id: tenant_id
+    :param tenant_name: tenant_name
     :return: dict with extensible attributes ready to be sent as part of
     NIOS WAPI
     """
@@ -37,7 +38,8 @@ def get_ea_for_network_view(tenant_id, tenant_name, network_view_id):
                   const.EA_TENANT_ID: tenant_id or const.EA_RESET_VALUE,
                   const.EA_TENANT_NAME: tenant_name,
                   const.EA_CLOUD_API_OWNED: 'False',
-                  const.EA_NETWORK_VIEW_ID: network_view_id}
+                  const.EA_NETWORK_VIEW_ID: network_view_id,
+                  const.EA_USE_FOR_OPENSTACK: 'True'}
     return ib_objects.EA(attributes)
 
 

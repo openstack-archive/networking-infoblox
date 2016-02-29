@@ -345,17 +345,17 @@ class TestUtils(testlib_api.SqlTestCase):
 
     def test_find_one_in_list(self):
         self.assertRaises(ValueError, utils.find_one_in_list, None, None, None)
-        self.assertRaises(ValueError, utils.find_one_in_list, 'key', None, [])
+        self.assertEqual(None, utils.find_one_in_list('key', None, []))
         self.assertEqual(None, utils.find_one_in_list('key', 'val', []))
 
-        search_list = [{'key1': 'val1', 'key2': 'val2', 'key3': 'val3'},
-                       {'key1': 'val11', 'key2': 'val22', 'key3': 'val33'}]
+        search_list = [{'key1': 'val1', 'key2': 'val2', 'key3': True},
+                       {'key1': 'val11', 'key2': 'val22', 'key3': False}]
 
         expected = None
         actual = utils.find_one_in_list('key2', 'val33', search_list)
         self.assertEqual(expected, actual)
 
-        expected = {'key1': 'val11', 'key2': 'val22', 'key3': 'val33'}
+        expected = {'key1': 'val11', 'key2': 'val22', 'key3': False}
         actual = utils.find_one_in_list('key2', 'val22', search_list)
         self.assertEqual(expected, actual)
 
