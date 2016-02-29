@@ -206,18 +206,19 @@ def get_network_view_by_mapping(session, network_view_id=None, grid_id=None,
 
 
 def update_network_view(session, network_view_id, network_view,
-                        authority_member_id, shared, dns_view):
+                        authority_member_id, shared, dns_view, participated):
     (session.query(ib_models.InfobloxNetworkView).
      filter_by(id=network_view_id).
      update({'network_view': network_view,
              'authority_member_id': authority_member_id,
              'shared': shared,
-             'dns_view': dns_view}))
+             'dns_view': dns_view,
+             'participated': participated}))
 
 
 def add_network_view(session, network_view, grid_id, authority_member_id,
                      shared, dns_view, internal_network_view,
-                     internal_dns_view):
+                     internal_dns_view, participated):
     network_view = ib_models.InfobloxNetworkView(
         network_view=network_view,
         grid_id=grid_id,
@@ -225,7 +226,8 @@ def add_network_view(session, network_view, grid_id, authority_member_id,
         shared=shared,
         dns_view=dns_view,
         internal_network_view=internal_network_view,
-        internal_dns_view=internal_dns_view)
+        internal_dns_view=internal_dns_view,
+        participated=participated)
     session.add(network_view)
     session.flush()
     return network_view
@@ -318,7 +320,6 @@ def add_mapping_condition(session, network_view_id, neutron_object_name,
                           neutron_object_value):
     mapping_condition = ib_models.InfobloxMappingCondition(
         network_view_id=network_view_id,
-
         neutron_object_name=neutron_object_name,
         neutron_object_value=neutron_object_value)
     session.add(mapping_condition)

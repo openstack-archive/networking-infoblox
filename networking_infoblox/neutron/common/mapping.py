@@ -118,6 +118,11 @@ class GridMappingManager(object):
 
         for netview in discovered_netviews:
             netview_name = netview['name']
+            used_for_openstack_val = utils.get_ea_value(
+                const.EA_USE_FOR_OPENSTACK, netview)
+            used_for_openstack = (types.Boolean()(used_for_openstack_val)
+                                  if used_for_openstack_val else False)
+
             shared_val = utils.get_ea_value(const.EA_IS_SHARED, netview)
             is_shared = types.Boolean()(shared_val) if shared_val else False
 
@@ -168,7 +173,7 @@ class GridMappingManager(object):
                 netview_id = netview_row.id
                 dbi.update_network_view(session, netview_id, netview_name,
                                         authority_member_id, is_shared,
-                                        dns_view)
+                                        dns_view, used_for_openstack)
             else:
                 new_netview = dbi.add_network_view(session,
                                                    netview_name,
@@ -177,7 +182,8 @@ class GridMappingManager(object):
                                                    is_shared,
                                                    dns_view,
                                                    netview_name,
-                                                   dns_view)
+                                                   dns_view,
+                                                   used_for_openstack)
                 netview_id = new_netview.id
 
             if require_sync_nios:
@@ -186,7 +192,8 @@ class GridMappingManager(object):
             discovered_netview_ids.append(netview_id)
 
             # update mapping conditions for the current network view
-            self._update_mapping_conditions(netview, netview_id)
+            self._update_mapping_conditions(netview, netview_id,
+                                            used_for_openstack)
 
         # we have added new network views. now let's remove persisted
         # network views not found from discovery
@@ -424,9 +431,13 @@ class GridMappingManager(object):
                 dns_members.append(dns_member)
         return dns_members
 
-    def _update_mapping_conditions(self, discovered_netview, netview_id):
+    def _update_mapping_conditions(self, discovered_netview, netview_id,
+                                   used_for_openstack):
         session = self._context.session
-        mapping_conditions = self._get_mapping_conditions(discovered_netview)
+        mapping_conditions = dict()
+        if used_for_openstack:
+            mapping_conditions = self._get_mapping_conditions(
+                discovered_netview)
         discovered_condition_rows = []
         for condition_name in mapping_conditions:
             conditions = [netview_id + DELIMITER + condition_name + DELIMITER +

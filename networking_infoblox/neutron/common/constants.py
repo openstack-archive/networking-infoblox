@@ -84,6 +84,8 @@ EA_MAPPING_NETWORK_NAME = 'Network Name Mapping'
 EA_MAPPING_SUBNET_ID = 'Subnet ID Mapping'
 EA_MAPPING_SUBNET_CIDR = 'Subnet CIDR Mapping'
 
+EA_USE_FOR_OPENSTACK = 'Use for OpenStack'
+
 EA_IS_CLOUD_MEMBER = 'Is Cloud Member'
 
 EA_SUBNET_ID = 'Subnet ID'
@@ -427,6 +429,14 @@ REQUIRED_EA_DEFS = [
      'type': 'STRING', 'flags': 'CGV',
      'allowed_object_types': ['NetworkView'],
      'comment': 'Mapping'},
+
+    # Network view ownership EAs
+    {'name': EA_USE_FOR_OPENSTACK,
+     'type': 'ENUM', 'flags': '',
+     'allowed_object_types': ['NetworkView'],
+     'list_values': [{'value': 'True'},
+                     {'value': 'False'}],
+     'comment': 'Grid Participation'},
 
     # Member Registration EA
     {'name': EA_IS_CLOUD_MEMBER,
