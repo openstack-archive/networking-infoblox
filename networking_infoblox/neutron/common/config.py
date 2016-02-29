@@ -44,10 +44,10 @@ data_center_opts = [
     cfg.StrOpt('wapi_version',
                default='',
                help=_("WAPI (Web API) version.")),
-    cfg.StrOpt('ssl_verify',
-               default='False',
-               help=_("Ensure whether WAPI requests sent over HTTPS require "
-                      "SSL verification.")),
+    cfg.BoolOpt('ssl_verify',
+                default=False,
+                help=_("Ensure whether WAPI requests sent over HTTPS require "
+                       "SSL verification.")),
     cfg.IntOpt('http_pool_connections',
                default=100,
                help=_("HTTP pool connection.")),
