@@ -60,6 +60,18 @@ class MultipleNetworkViewMappingFound(exceptions.Conflict):
                 "filters to narrow down the search")
 
 
+class InfobloxNetworkViewNotFound(exceptions.NeutronException):
+    message = _("Network view '%(network_view)s' does not exist.")
+
+
+class InfobloxNetworkViewNotParticipated(exceptions.NeutronException):
+    message = _("Network view '%(network_view)s' found but not participated.")
+
+
+class InfobloxDefaultNetworkViewNotFound(exceptions.NeutronException):
+    message = _("No default network view exists.")
+
+
 class InfobloxCannotCreateSubnet(exceptions.NeutronException):
     message = _("Cannot create a subnet because %(reason)s")
 
