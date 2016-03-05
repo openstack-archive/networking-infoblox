@@ -107,18 +107,17 @@ EA_CLOUD_API_OWNED = 'Cloud API Owned'
 EA_CMP_TYPE = 'CMP Type'
 EA_IS_EXTERNAL = 'Is External'
 EA_IS_SHARED = 'Is Shared'
-EA_NETWORK_VIEW_ID = 'Network View ID'
 
 REQUIRED_EA_LIST = [EA_CMP_TYPE, EA_TENANT_ID, EA_CLOUD_API_OWNED]
 
-NETWORK_EA_LIST = [EA_ACCOUNT, EA_TENANT_NAME, EA_NETWORK_VIEW_ID,
+NETWORK_EA_LIST = [EA_ACCOUNT, EA_TENANT_NAME,
                    EA_IS_EXTERNAL, EA_IS_SHARED, EA_SUBNET_ID, EA_SUBNET_NAME,
                    EA_NETWORK_ID, EA_NETWORK_NAME, EA_NETWORK_ENCAP,
                    EA_SEGMENTATION_ID, EA_PHYSICAL_NETWORK_NAME]
 
-RANGE_EA_LIST = [EA_ACCOUNT, EA_TENANT_NAME, EA_NETWORK_VIEW_ID]
+RANGE_EA_LIST = [EA_ACCOUNT, EA_TENANT_NAME]
 
-ZONE_EA_LIST = [EA_ACCOUNT, EA_TENANT_NAME, EA_NETWORK_VIEW_ID]
+ZONE_EA_LIST = [EA_ACCOUNT, EA_TENANT_NAME]
 
 IP_TYPE_FIXED = 'Fixed'
 IP_TYPE_FLOATING = 'Floating'
@@ -212,9 +211,6 @@ REQUIRED_EA_DEFS = [
 
     {'name': EA_NETWORK_ENCAP, 'type': 'STRING', 'flags': 'C',
      'comment': 'Type of IP address'},
-
-    {'name': EA_NETWORK_VIEW_ID, 'type': 'STRING', 'flags': 'C',
-     'comment': 'Network View ID in OpenStack'},
 
     {'name': EA_NETWORK_ID, 'type': 'STRING', 'flags': 'C',
      'comment': 'Network ID in OpenStack'},
