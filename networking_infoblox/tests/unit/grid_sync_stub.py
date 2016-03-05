@@ -56,6 +56,8 @@ class GridSyncStub(object):
         config.register_infoblox_grid_opts(cfg.CONF, data_center_id)
         data_center = 'infoblox-dc:%s' % data_center_id
         cfg.CONF.set_override('grid_master_host', '192.168.1.7', data_center)
+        cfg.CONF.set_override('grid_master_name', 'nios-7.2.0-master.com',
+                              data_center)
         cfg.CONF.set_override('data_center_name', 'admin', data_center)
         cfg.CONF.set_override('admin_user_name', 'admin', data_center)
         cfg.CONF.set_override('admin_password', 'infoblox', data_center)

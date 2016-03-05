@@ -52,8 +52,10 @@ class TestUtils(testlib_api.SqlTestCase):
     def test_get_values_from_records(self):
         grid_1_id = 100
         grid_2_id = 200
-        dbi.add_grid(self.ctx.session, grid_1_id, 'test grid 1', '{}', 'ON')
-        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'OFF')
+        dbi.add_grid(self.ctx.session, grid_1_id, 'test grid 1', '{}', 'ON',
+                     'gm-id-1')
+        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'OFF',
+                     'gm-id-2')
 
         grids = dbi.get_grids(self.ctx.session)
         grid_ids = utils.get_values_from_records('grid_id', grids)
@@ -71,8 +73,10 @@ class TestUtils(testlib_api.SqlTestCase):
         grid_2_id = 200
         grid_2_name = 'test grid 2'
         dbi.remove_grids(self.ctx.session, [grid_1_id, grid_2_id])
-        dbi.add_grid(self.ctx.session, grid_1_id, grid_1_name, '{}', 'ON')
-        dbi.add_grid(self.ctx.session, grid_2_id, grid_2_name, '{}', 'OFF')
+        dbi.add_grid(self.ctx.session, grid_1_id, grid_1_name, '{}', 'ON',
+                     'gm-id-1')
+        dbi.add_grid(self.ctx.session, grid_2_id, grid_2_name, '{}', 'OFF',
+                     'gm-id-2')
 
         grids = dbi.get_grids(self.ctx.session)
         composite_keys = ['grid_id', 'grid_name']
@@ -91,8 +95,10 @@ class TestUtils(testlib_api.SqlTestCase):
                      '{"wapi_version": "2.0",'
                      '"wapi_admin_user": '
                      '{ "name": "admin", "password": "infoblox" }}',
-                     'ON')
-        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'OFF')
+                     'ON',
+                     'gm-id-1')
+        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'OFF',
+                     'gm-id-2')
 
         grids = dbi.get_grids(self.ctx.session)
 
@@ -125,8 +131,10 @@ class TestUtils(testlib_api.SqlTestCase):
                      '{"wapi_version": "2.0",'
                      '"wapi_admin_user": '
                      '{ "name": "admin", "password": "infoblox" }}',
-                     'ON')
-        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'ON')
+                     'ON',
+                     'gm-id-1')
+        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'ON',
+                     'gm-id-2')
 
         grids = dbi.get_grids(self.ctx.session)
         grid_obj = utils.db_records_to_obj('Grid', grids)
@@ -483,6 +491,10 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual(None, oid)
 
         ref = ""
+        oid = utils.get_oid_from_nios_ref(ref)
+        self.assertEqual(None, oid)
+
+        ref = 123344
         oid = utils.get_oid_from_nios_ref(ref)
         self.assertEqual(None, oid)
 

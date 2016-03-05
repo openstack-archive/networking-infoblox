@@ -61,7 +61,8 @@ class GridMemberManager(object):
                          self._grid_config.grid_id,
                          self._grid_config.grid_name,
                          grid_connection_json,
-                         const.GRID_STATUS_ON)
+                         const.GRID_STATUS_ON,
+                         utils.get_hash())
 
         # deleting grids are delicate operation so we won't allow it
         # but we will set grid status to OFF to unused grids.
@@ -83,7 +84,14 @@ class GridMemberManager(object):
         """
         session = self._context.session
         grid_id = self._grid_config.grid_id
+
+        db_grids = dbi.get_grids(session)
+        db_grid = utils.find_one_in_list('grid_id', grid_id, db_grids)
+        gm_member_id = db_grid.gm_id
+
         db_members = dbi.get_members(session, grid_id=grid_id)
+        gm_member = utils.find_one_in_list('member_id', gm_member_id,
+                                           db_members)
 
         discovered_members = self._discover_members()
         if not discovered_members:
@@ -91,28 +99,29 @@ class GridMemberManager(object):
 
         discovered_licenses = self._discover_member_licenses()
 
-        gm_info = self._get_gm_info()
         discovered_member_ids = []
 
         for member in discovered_members:
             member_name = member['host_name']
-            member_ipv4 = member['vip_setting']['address']
+            member_ip = member['vip_setting']['address']
             member_ipv6 = (member['ipv6_setting'].get('virtual_ip')
                            if member.get('ipv6_setting') else None)
-            node_status = None
-            for ns in member['node_info'][0]['service_status']:
-                if ns['service'] == 'NODE_STATUS':
-                    node_status = ns['status']
-                    break
+            member_wapi = member_ip if member_ip else member_ipv6
             member_hwid = member['node_info'][0].get('hwid')
-            member_status = utils.get_member_status(node_status)
-            member_type = self._get_member_type(gm_info,
-                                                discovered_licenses,
-                                                member_hwid,
+            member_status = self._get_member_status(
+                member['node_info'][0]['service_status'])
+            member_type = self._get_member_type(discovered_licenses,
                                                 member_name,
-                                                member_ipv4,
-                                                member_ipv6)
-            if member_type != const.MEMBER_TYPE_GRID_MASTER:
+                                                member_hwid)
+
+            require_db_update = False
+            if member_type == const.MEMBER_TYPE_GRID_MASTER:
+                if gm_member:
+                    require_db_update = True
+                member_id = gm_member_id
+                member_wapi = self._grid_config.grid_master_host
+            else:
+                # no need to process 'Is Cloud Member' flag for non GM members
                 ea_is_cloud_member = utils.get_ea_value(
                     const.EA_IS_CLOUD_MEMBER, member)
                 is_cloud_member = (types.Boolean()(ea_is_cloud_member)
@@ -120,29 +129,49 @@ class GridMemberManager(object):
                 if not is_cloud_member:
                     continue
 
-            # update the existing member or add a new member
-            db_member = utils.find_one_in_list('member_name', member_name,
-                                               db_members)
-            if db_member:
-                member_id = db_member.member_id
+                db_member = utils.find_one_in_list('member_name', member_name,
+                                                   db_members)
+                if db_member:
+                    require_db_update = True
+                    member_id = db_member.member_id
+                else:
+                    member_id = utils.get_hash(str(grid_id) + member_name)
+
+            # TODO(hhwang): we will figure out correct interfaces in
+            # OPENSTACK-800
+            member_dhcp_ip = None
+            member_dhcp_ipv6 = None
+            member_dns_ip = None
+            member_dns_ipv6 = None
+
+            if require_db_update:
                 dbi.update_member(session,
                                   member_id,
                                   grid_id,
                                   member_name,
-                                  member_ipv4,
+                                  member_ip,
                                   member_ipv6,
                                   member_type,
-                                  member_status)
+                                  member_status,
+                                  member_dhcp_ip,
+                                  member_dhcp_ipv6,
+                                  member_dns_ip,
+                                  member_dns_ipv6,
+                                  member_wapi)
             else:
-                member_id = utils.get_hash(str(grid_id) + member_name)
                 dbi.add_member(session,
                                member_id,
                                grid_id,
                                member_name,
-                               member_ipv4,
+                               member_ip,
                                member_ipv6,
                                member_type,
-                               member_status)
+                               member_status,
+                               member_dhcp_ip,
+                               member_dhcp_ipv6,
+                               member_dns_ip,
+                               member_dns_ipv6,
+                               member_wapi)
 
             discovered_member_ids.append(member_id)
 
@@ -183,10 +212,10 @@ class GridMemberManager(object):
     def _get_gm_info(self):
         """Get detail GM info.
 
-         'grid_master_host' configuration accepts host IP or name of GM, so
-         we need to figure whether hostname is used or ip address for either
-         ipv4 or ipv6.
-         """
+        'grid_master_host' configuration accepts host IP or name of GM, so
+        we need to figure whether hostname is used or ip address for either
+        ipv4 or ipv6.
+        """
         gm_ipv4 = None
         gm_ipv6 = None
         gm_hostname = None
@@ -203,12 +232,16 @@ class GridMemberManager(object):
 
         return {'ipv4': gm_ipv4, 'ipv6': gm_ipv6, 'host': gm_hostname}
 
-    def _get_member_type(self, gm_info, member_licenses, member_hwid,
-                         member_name, member_ipv4, member_ipv6):
-        # figure out GM from gm configuration from neutron conf
-        if (gm_info['ipv4'] and gm_info['ipv4'] == member_ipv4) or \
-                (gm_info['ipv6'] and gm_info['ipv6'] == member_ipv6) or \
-                (gm_info['host'] and gm_info['host'] == member_name):
+    def _get_member_status(self, member_service_status):
+        node_status = None
+        for ns in member_service_status:
+            if ns['service'] == 'NODE_STATUS':
+                node_status = ns['status']
+                break
+        return utils.get_member_status(node_status)
+
+    def _get_member_type(self, member_licenses, member_name, member_hwid):
+        if self._grid_config.grid_master_name == member_name:
             return const.MEMBER_TYPE_GRID_MASTER
 
         # member is not GM, so figure out whether the member is CPM or REGULAR

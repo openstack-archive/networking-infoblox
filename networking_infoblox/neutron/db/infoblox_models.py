@@ -28,6 +28,7 @@ class InfobloxGrid(model_base.BASEV2):
     grid_name = sa.Column(sa.String(128), nullable=True)
     grid_connection = sa.Column(sa.String(1024), nullable=False)
     grid_status = sa.Column(sa.String(length=6), nullable=False)
+    gm_id = sa.Column(sa.String(32), nullable=False)
     __table_args__ = (
         sa.Index('ix_infoblox_grids_grid_name', 'grid_name'),
         model_base.BASEV2.__table_args__
@@ -35,8 +36,9 @@ class InfobloxGrid(model_base.BASEV2):
 
     def __repr__(self):
         return ("grid_id: %s, grid_name: %s, grid_connection: %s, "
-                "grid_status: %s" % (self.grid_id, self.grid_name,
-                                     self.grid_connection, self.grid_status))
+                "grid_status: %s, gm_id: %s" % (self.grid_id, self.grid_name,
+                                                self.grid_connection,
+                                                self.grid_status, self.gm_id))
 
 
 class InfobloxGridMember(model_base.BASEV2):
@@ -54,6 +56,11 @@ class InfobloxGridMember(model_base.BASEV2):
     member_ipv6 = sa.Column(sa.String(64), nullable=True)
     member_type = sa.Column(sa.String(12), nullable=False)
     member_status = sa.Column(sa.String(16), nullable=False)
+    member_dhcp_ip = sa.Column(sa.String(length=15), nullable=True)
+    member_dhcp_ipv6 = sa.Column(sa.String(length=64), nullable=True)
+    member_dns_ip = sa.Column(sa.String(length=15), nullable=True)
+    member_dns_ipv6 = sa.Column(sa.String(length=64), nullable=True)
+    member_wapi = sa.Column(sa.String(length=255), nullable=True)
     __table_args__ = (
         sa.UniqueConstraint(
             'grid_id', 'member_name',
@@ -71,18 +78,24 @@ class InfobloxGridMember(model_base.BASEV2):
     )
 
     def __repr__(self):
-        return ("member_id: %s, grid_id: %s, member_name: %s, member_ip: %s, "
-                "member_ipv6: %s, member_type: %s, member_status: %s" %
+        return ("member_id: %s, grid_id: %s, member_name: %s, "
+                "member_wapi: %s, member_ip: %s, member_ipv6: %s, "
+                "member_dhcp_ip: %s, member_dhcp_ipv6: %s, "
+                "member_dns_ip: %s, member_dns_ipv6: %s, "
+                "member_type: %s, member_status: %s" %
                 (self.member_id, self.grid_id, self.member_name,
-                 self.member_ip, self.member_ipv6, self.member_type,
-                 self.member_status))
+                 self.member_wapi, self.member_ip, self.member_ipv6,
+                 self.member_dhcp_ip, self.member_dhcp_ipv6,
+                 self.member_dns_ip, self.member_dns_ipv6,
+                 self.member_type, self.member_status))
 
 
-class InfobloxNetworkView(model_base.BASEV2, models_v2.HasId):
+class InfobloxNetworkView(model_base.BASEV2):
     """Network views"""
 
     __tablename__ = 'infoblox_network_views'
 
+    id = sa.Column(sa.String(length=36), nullable=False, primary_key=True)
     network_view = sa.Column(sa.String(255), nullable=False)
     grid_id = sa.Column(sa.Integer(), nullable=False)
     authority_member_id = sa.Column(sa.String(length=32), nullable=False)
@@ -106,12 +119,14 @@ class InfobloxNetworkView(model_base.BASEV2, models_v2.HasId):
     )
 
     def __repr__(self):
-        return ("network_view: %s, grid_id: %s, authority_member_id: %s, "
-                "shared: %s, dns_view: %s, internal_network_view:%s, "
-                "internal_dns_view:%s, participated: %s, default: %s" %
-                (self.network_view, self.grid_id, self.authority_member_id,
-                 self.shared, self.dns_view, self.internal_network_view,
-                 self.internal_dns_view, self.participated, self.default))
+        return ("id: %s, network_view: %s, grid_id: %s, "
+                "authority_member_id: %s, shared: %s, dns_view: %s, "
+                "internal_network_view:%s, internal_dns_view:%s,"
+                "participated: %s, default: %s" %
+                (self.id, self.network_view, self.grid_id,
+                 self.authority_member_id, self.shared, self.dns_view,
+                 self.internal_network_view, self.internal_dns_view,
+                 self.participated, self.default))
 
 
 class InfobloxNetworkViewMapping(model_base.BASEV2):

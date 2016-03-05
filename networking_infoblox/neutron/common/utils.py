@@ -142,11 +142,12 @@ def get_ea_value(name, extattrs, should_return_list_value=False):
     value = None
     if extattrs:
         root = extattrs.get("extattrs")
-        name_attr = root.get(name)
-        if name_attr:
-            value = name_attr.get('value')
-            if should_return_list_value and not isinstance(value, list):
-                value = [value]
+        if root:
+            name_attr = root.get(name)
+            if name_attr:
+                value = name_attr.get('value')
+                if should_return_list_value and not isinstance(value, list):
+                    value = [value]
     return value
 
 
@@ -394,7 +395,7 @@ def get_hash(text=None):
 
 
 def get_oid_from_nios_ref(obj_ref):
-    if obj_ref and len(obj_ref) > 0:
+    if obj_ref and isinstance(obj_ref, six.string_types) and len(obj_ref) > 0:
         match = re.search('\S+\/(\S+):(\S+)', obj_ref)
         if match:
             return match.group(1)
