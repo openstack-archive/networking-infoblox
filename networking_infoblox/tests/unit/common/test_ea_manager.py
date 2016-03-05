@@ -103,17 +103,14 @@ class EaManagerTestCase(base.TestCase):
             self.assertEqual(str(False), generated_ea['Cloud API Owned'])
 
     def test_get_ea_for_network_view(self):
-        network_view_id = 'network-view-id'
         ea = ea_manager.get_ea_for_network_view(self.tenant_id,
                                                 self.tenant_name,
-                                                network_view_id,
                                                 self.grid_id)
         self.assertEqual(self.tenant_id, ea.get('Tenant ID'))
         self.assertEqual(self.tenant_name, ea.get('Tenant Name'))
         self.assertEqual(str(False), ea.get('Cloud API Owned'))
         self.assertEqual('100', ea.get('Cloud Adapter ID'))
         self.assertEqual('OpenStack', ea.get('CMP Type'))
-        self.assertEqual(network_view_id, ea.get('Network View ID'))
 
     def test_get_ea_for_network(self):
         network = {'id': mock.Mock(),
@@ -300,7 +297,6 @@ class EaManagerTestCase(base.TestCase):
                       'Tenant ID': {'value': 'test-id'},
                       'Tenant Name': {'value': 'tenant-name'},
                       'Account': {'value': 'admin'},
-                      'Network View ID': {'value': 'default'},
                       'Is External': {'value': 'False'},
                       'Is Shared': {'value': 'True'},
                       'Network ID': {'value': 'True'},
@@ -325,8 +321,7 @@ class EaManagerTestCase(base.TestCase):
                     'Cloud API Owned': {'value': 'True'},
                     'Tenant ID': {'value': 'test-id'},
                     'Tenant Name': {'value': 'tenant-name'},
-                    'Account': {'value': 'admin'},
-                    'Network View ID': {'value': 'default'}}
+                    'Account': {'value': 'admin'}}
         ib_range_ea = ib_objects.EA.from_dict(range_ea)
         ib_range_mock = mock.Mock(extattrs=ib_range_ea)
 
@@ -342,8 +337,7 @@ class EaManagerTestCase(base.TestCase):
                    'Cloud API Owned': {'value': 'True'},
                    'Tenant ID': {'value': 'test-id'},
                    'Tenant Name': {'value': 'tenant-name'},
-                   'Account': {'value': 'admin'},
-                   'Network View ID': {'value': 'default'}}
+                   'Account': {'value': 'admin'}}
         ib_zone_ea = ib_objects.EA.from_dict(zone_ea)
         ib_zone_mock = mock.Mock(extattrs=ib_zone_ea)
 

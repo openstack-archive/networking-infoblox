@@ -40,6 +40,7 @@ class GridTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.test_grid_config.grid_id = 100
         self.test_grid_config.grid_name = "Test Grid 1"
         self.test_grid_config.grid_master_host = '192.168.1.7'
+        self.test_grid_config.grid_master_name = 'nios-7.2.0-master.com'
         self.test_grid_config.admin_username = 'admin'
         self.test_grid_config.admin_password = 'infoblox'
         self.test_grid_config.wapi_version = '2.2'

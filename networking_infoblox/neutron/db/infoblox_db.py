@@ -44,11 +44,12 @@ def get_grids(session, grid_id=None, grid_name=None, grid_status=None):
     return q.all()
 
 
-def add_grid(session, grid_id, grid_name, grid_connection, grid_status):
+def add_grid(session, grid_id, grid_name, grid_connection, grid_status, gm_id):
     grid = ib_models.InfobloxGrid(grid_id=grid_id,
                                   grid_name=grid_name,
                                   grid_connection=grid_connection,
-                                  grid_status=grid_status)
+                                  grid_status=grid_status,
+                                  gm_id=gm_id)
     session.add(grid)
     return grid
 
@@ -113,21 +114,31 @@ def search_members(session, member_ids=None, member_names=None,
 
 
 def add_member(session, member_id, grid_id, member_name, member_ip,
-               member_ipv6, member_type, member_status):
+               member_ipv6, member_type, member_status, member_dhcp_ip,
+               member_dhcp_ipv6, member_dns_ip, member_dns_ipv6,
+               member_wapi):
     member = ib_models.InfobloxGridMember(member_id=member_id,
                                           grid_id=grid_id,
                                           member_name=member_name,
                                           member_ip=member_ip,
                                           member_ipv6=member_ipv6,
                                           member_type=member_type,
-                                          member_status=member_status)
+                                          member_status=member_status,
+                                          member_dhcp_ip=member_dhcp_ip,
+                                          member_dhcp_ipv6=member_dhcp_ipv6,
+                                          member_dns_ip=member_dns_ip,
+                                          member_dns_ipv6=member_dns_ipv6,
+                                          member_wapi=member_wapi)
     session.add(member)
     return member
 
 
 def update_member(session, member_id, grid_id, member_name=None,
-                  member_ip=None, member_ipv6=None, member_type=None,
-                  member_status=None):
+                  member_ip=None, member_ipv6=None,
+                  member_type=None, member_status=None,
+                  member_dhcp_ip=None, member_dhcp_ipv6=None,
+                  member_dns_ip=None, member_dns_ipv6=None,
+                  member_wapi=None):
     update_data = dict()
     if member_name:
         update_data['member_name'] = member_name
@@ -139,6 +150,16 @@ def update_member(session, member_id, grid_id, member_name=None,
         update_data['member_type'] = member_type
     if member_status:
         update_data['member_status'] = member_status
+    if member_dhcp_ip:
+        update_data['member_dhcp_ip'] = member_dhcp_ip
+    if member_dhcp_ipv6:
+        update_data['member_dhcp_ipv6'] = member_dhcp_ipv6
+    if member_dns_ip:
+        update_data['member_dns_ip'] = member_dns_ip
+    if member_dns_ipv6:
+        update_data['member_dns_ipv6'] = member_dns_ipv6
+    if member_wapi:
+        update_data['member_wapi'] = member_wapi
 
     if update_data:
         session.query(ib_models.InfobloxGridMember).\
@@ -222,10 +243,18 @@ def update_network_view(session, network_view_id, network_view,
              'default': is_default}))
 
 
-def add_network_view(session, network_view, grid_id, authority_member_id,
-                     shared, dns_view, internal_network_view,
-                     internal_dns_view, participated, is_default):
+def update_network_view_id(session, old_id, new_id):
+    (session.query(ib_models.InfobloxNetworkView).
+     filter_by(id=old_id).
+     update({'id': new_id}))
+
+
+def add_network_view(session, network_view_id, network_view, grid_id,
+                     authority_member_id, shared, dns_view,
+                     internal_network_view, internal_dns_view, participated,
+                     is_default):
     network_view = ib_models.InfobloxNetworkView(
+        id=network_view_id,
         network_view=network_view,
         grid_id=grid_id,
         authority_member_id=authority_member_id,

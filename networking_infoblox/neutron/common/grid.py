@@ -95,6 +95,7 @@ class GridManager(object):
                 data_center_id=grid_conf.grid_id)
         grid_conf.grid_name = grid_opts['data_center_name']
         grid_conf.grid_master_host = grid_opts['grid_master_host']
+        grid_conf.grid_master_name = grid_opts['grid_master_name']
         grid_conf.admin_user_name = grid_opts['admin_user_name']
         grid_conf.admin_password = grid_opts['admin_password']
         grid_conf.wapi_version = grid_opts['wapi_version']
@@ -199,6 +200,7 @@ class GridConfiguration(object):
         self.grid_id = None
         self.grid_name = None
         self.grid_master_host = None
+        self.grid_master_name = None
 
         # grid connection from neutron conf
         self.admin_user_name = None

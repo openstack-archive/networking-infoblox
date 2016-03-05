@@ -16,10 +16,7 @@
 import oslo_config.types as types
 from oslo_log import log as logging
 
-from infoblox_client import objects as ib_objects
-
 from networking_infoblox.neutron.common import constants as const
-from networking_infoblox.neutron.common import ea_manager as eam
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
@@ -119,12 +116,16 @@ class GridMappingManager(object):
         for netview in discovered_netviews:
             netview_name = netview['name']
             is_default = netview[const.IS_DEFAULT]
+            netview_id = utils.get_oid_from_nios_ref(netview['_ref'])
 
             cloud_adapter_id_vals = utils.get_ea_value(
                 const.EA_CLOUD_ADAPTER_ID, netview, True)
-            cloud_adapter_ids = [gid for gid in cloud_adapter_id_vals
-                                 if int(gid) == self._grid_id]
-            participated = True if cloud_adapter_ids else False
+            if cloud_adapter_id_vals is None:
+                participated = False
+            else:
+                cloud_adapter_ids = [gid for gid in cloud_adapter_id_vals
+                                     if int(gid) == self._grid_id]
+                participated = True if cloud_adapter_ids else False
 
             shared_val = utils.get_ea_value(const.EA_IS_SHARED, netview)
             is_shared = types.Boolean()(shared_val) if shared_val else False
@@ -145,35 +146,11 @@ class GridMappingManager(object):
             dns_view = (dns_views[netview_name] if dns_views.get(netview_name)
                         else None)
 
-            # get network view id from NIOS and see if db entry is there
-            # if db is cleared and rebuilt, NIOS may have this EA value but no
-            # db entry yet. in this case, nios network view id needs to be
-            # reset.
-            require_sync_nios = False
-            require_db_update = False
-            nios_netview_id = utils.get_ea_value(const.EA_NETWORK_VIEW_ID,
-                                                 netview)
-            if nios_netview_id:
-                netview_row = utils.find_one_in_list('id',
-                                                     nios_netview_id,
-                                                     self.db_network_views)
-                if netview_row:
-                    require_db_update = True
-                else:
-                    require_sync_nios = True
-                    netview_row = utils.find_one_in_list('network_view',
-                                                         netview_name,
-                                                         self.db_network_views)
-                    require_db_update = True if netview_row else False
-            else:
-                require_sync_nios = True
-                netview_row = utils.find_one_in_list('network_view',
-                                                     netview_name,
-                                                     self.db_network_views)
-                require_db_update = True if netview_row else False
-
-            if require_db_update:
-                netview_id = netview_row.id
+            # see if the network view already exists in db
+            netview_row = utils.find_one_in_list('id',
+                                                 netview_id,
+                                                 self.db_network_views)
+            if netview_row:
                 dbi.update_network_view(session, netview_id, netview_name,
                                         authority_member_id, is_shared,
                                         dns_view, participated, is_default)
@@ -182,20 +159,17 @@ class GridMappingManager(object):
                                     else netview_name)
                 internal_dnsview = (const.DEFAULT_DNS_VIEW if is_default
                                     else dns_view)
-                new_netview = dbi.add_network_view(session,
-                                                   netview_name,
-                                                   self._grid_id,
-                                                   authority_member_id,
-                                                   is_shared,
-                                                   dns_view,
-                                                   internal_netview,
-                                                   internal_dnsview,
-                                                   participated,
-                                                   is_default)
-                netview_id = new_netview.id
-
-            if require_sync_nios:
-                self._sync_nios_for_network_view(netview_id, netview_name)
+                dbi.add_network_view(session,
+                                     netview_id,
+                                     netview_name,
+                                     self._grid_id,
+                                     authority_member_id,
+                                     is_shared,
+                                     dns_view,
+                                     internal_netview,
+                                     internal_dnsview,
+                                     participated,
+                                     is_default)
 
             discovered_netview_ids.append(netview_id)
 
@@ -487,23 +461,3 @@ class GridMappingManager(object):
                                          network_view_id,
                                          neutron_object_name,
                                          neutron_object_value)
-
-    def _sync_nios_for_network_view(self, netview_id, netview_name):
-        ib_network_view = ib_objects.NetworkView.search(
-            self._connector,
-            name=netview_name)
-        if ib_network_view:
-            ea_network_view = eam.get_ea_for_network_view(
-                None, None, netview_id, self._grid_id)
-            if ib_network_view.extattrs is None:
-                ib_network_view.extattrs = ea_network_view
-            elif ib_network_view.extattrs.get(const.EA_TENANT_ID) is None:
-                ea_dict = ib_network_view.extattrs.ea_dict
-                ea_dict.update(ea_network_view.ea_dict)
-                ib_network_view.extattrs = ib_objects.EA(ea_dict)
-            else:
-                ib_network_view.extattrs.set(const.EA_NETWORK_VIEW_ID,
-                                             netview_id)
-            ib_network_view.update()
-            LOG.info("Network view (%s) has updated id (%s).",
-                     netview_name, netview_id)
