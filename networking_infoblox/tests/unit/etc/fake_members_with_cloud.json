@@ -2,6 +2,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQw:nios-7.2.0-master.com",
         "host_name": "nios-7.2.0-master.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "ipv6_setting": {
             "auto_router_config_enabled": false,
             "cidr_prefix": 64,

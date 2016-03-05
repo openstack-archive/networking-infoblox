@@ -92,15 +92,20 @@ class IpamSyncController(object):
         return ib_network
 
     def _create_ib_network_view(self):
+        session = self.ib_cxt.context.session
+
         ea_network_view = eam.get_ea_for_network_view(
             self.ib_cxt.tenant_id,
             self.ib_cxt.tenant_name,
-            self.ib_cxt.mapping.network_view_id,
             self.grid_id)
 
         ib_network_view = self.ib_cxt.ibom.create_network_view(
             self.ib_cxt.mapping.network_view,
             ea_network_view)
+
+        network_view_id = utils.get_oid_from_nios_ref(ib_network_view._ref)
+        self.ib_cxt.mapping.network_view_id = network_view_id
+        dbi.update_network_view_id(session, network_view_id)
 
         LOG.info(_LI("Created a network view: %s"), ib_network_view)
         return ib_network_view

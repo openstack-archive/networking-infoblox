@@ -132,8 +132,9 @@ class IpamControllerTestHelper(object):
             self.ib_cxt.mapping.dhcp_members = []
             self.ib_cxt.mapping.dns_members = []
         else:
-            self.ib_cxt.mapping.network_view_id = str.format("{}-id",
-                                                             network_view)
+            self.ib_cxt.mapping.network_view_id = str.format(
+                "networkview/ZG5zLm5ldHdvcmtfdmlldyQw:{}/false",
+                network_view)
             self.ib_cxt.mapping.authority_member = mock.Mock()
             self.ib_cxt.mapping.dhcp_members = [mock.Mock()]
             self.ib_cxt.mapping.dns_members = [mock.Mock()]
@@ -172,6 +173,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             True,
             mock.ANY)
 
+    @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     @mock.patch('infoblox_client.objects.IPRange')
     def test_create_subnet_new_network_view(self, ip_range_mock):
@@ -190,6 +192,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.validate_network_creation(self.helper.options['network_view'],
                                        self.helper.subnet)
 
+    @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     @mock.patch('infoblox_client.objects.IPRange')
     def test_create_subnet_existing_network_view(self, ip_range_mock):
@@ -208,6 +211,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.validate_network_creation(self.helper.options['network_view'],
                                        self.helper.subnet)
 
+    @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     def test_create_subnet_existing_private_network(self):
         test_opts = {'network_exists': True}
@@ -222,6 +226,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                               ipam_controller.create_subnet,
                               [])
 
+    @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     def test_create_subnet_existing_external_network(self):
         test_opts = {'network_name': 'extnet',
@@ -298,7 +303,6 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                       'Tenant ID': {'value': 'test-id'},
                       'Tenant Name': {'value': 'tenant-name'},
                       'Account': {'value': 'admin'},
-                      'Network View ID': {'value': 'default'},
                       'Is External': {'value': 'False'},
                       'Is Shared': {'value': 'True'},
                       'Network ID': {'value': 'True'},
@@ -315,8 +319,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                     'Cloud API Owned': {'value': 'True'},
                     'Tenant ID': {'value': 'test-id'},
                     'Tenant Name': {'value': 'tenant-name'},
-                    'Account': {'value': 'admin'},
-                    'Network View ID': {'value': 'default'}}
+                    'Account': {'value': 'admin'}}
         return ib_objects.EA.from_dict(range_ea)
 
     def _reset_ib_range_ea(self):

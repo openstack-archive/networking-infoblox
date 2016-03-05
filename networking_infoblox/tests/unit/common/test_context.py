@@ -263,7 +263,8 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         test_authority_member = utils.json_to_obj(
             'AuthorityMember',
             {'member_id': 'member-id', 'member_type': 'GM',
-             'member_ip': '11.11.1.10', 'member_ipv6': None})
+             'member_ip': '11.11.1.10', 'member_ipv6': None,
+             'member_wapi': '11.11.1.10'})
         dbi_next_authority_mock.return_value = test_authority_member
 
         test_network_view = utils.json_to_obj(
@@ -277,7 +278,8 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         ib_cxt.reserve_authority_member()
 
-        self.assertEqual(test_network_view.id, ib_cxt.mapping.network_view_id)
+        self.assertEqual(test_network_view.network_view,
+                         ib_cxt.mapping.network_view)
         self.assertEqual(test_authority_member.member_id,
                          ib_cxt.mapping.authority_member.member_id)
 
@@ -304,20 +306,22 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'AuthorityMember',
             {'member_id': 'member-id', 'member_type': 'CPM',
              'member_ip': '11.11.1.11', 'member_ipv6': None,
-             'member_name': 'm1', 'member_status': 'ON'})
+             'member_name': 'm1', 'member_status': 'ON',
+             'member_wapi': '11.11.1.11'})
         dbi_next_authority_mock.return_value = test_authority_member
 
         test_network_view = utils.json_to_obj(
             'NetworkView',
-            {'id': 'test-id', 'network_view': 'test-view', 'shared': False})
+            {'id': 'ZG5zLm5ldHdvcmtfdmlldyQ1', 'network_view': 'hs-view-1',
+             'shared': False})
         dbi_network_view_mock.return_value = test_network_view
 
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
         ib_cxt.reserve_authority_member()
 
-        self.assertEqual(test_network_view.id,
-                         ib_cxt.mapping.network_view_id)
+        self.assertEqual(test_network_view.network_view,
+                         ib_cxt.mapping.network_view)
         self.assertEqual(test_authority_member.member_id,
                          ib_cxt.mapping.authority_member.member_id)
 
@@ -342,7 +346,8 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'AuthorityMember',
             {'member_id': 'member-id', 'member_type': 'CPM',
              'member_ip': '11.11.1.11', 'member_ipv6': None,
-             'member_name': 'm1', 'member_status': 'ON'})
+             'member_name': 'm1', 'member_status': 'ON',
+             'member_wapi': '11.11.1.11'})
 
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
@@ -376,7 +381,8 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'AuthorityMember',
             {'member_id': 'member-id-gm', 'member_type': 'GM',
              'member_ip': '11.11.1.11', 'member_ipv6': None,
-             'member_name': 'gm', 'member_status': 'ON'})
+             'member_name': 'gm', 'member_status': 'ON',
+             'member_wapi': '11.11.1.11'})
 
         dbi_service_member_mock.return_value = []
 
@@ -456,7 +462,8 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'DhcpMember',
             {'member_id': 'member-id', 'member_type': 'REGULAR',
              'member_ip': '11.11.1.12', 'member_ipv6': None,
-             'member_name': 'm1', 'member_status': 'ON'})
+             'member_name': 'm1', 'member_status': 'ON',
+             'member_wapi': '11.11.1.11'})
 
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
@@ -556,7 +563,8 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'AuthorityMember',
             {'member_id': 'member-id', 'member_type': 'GM',
              'member_ip': '11.11.1.11', 'member_ipv6': None,
-             'member_name': 'm1', 'member_status': 'ON'})
+             'member_name': 'm1', 'member_status': 'ON',
+             'member_wapi': '11.11.1.11'})
         ib_cxt.mapping.authority_member = test_authority_member
 
         grid_primaries, grid_secondaries = ib_cxt.get_dns_members()
@@ -591,19 +599,22 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'AuthorityMember',
             {'member_id': 'member-id', 'member_type': 'GM',
              'member_ip': '11.11.1.11', 'member_ipv6': None,
-             'member_name': 'gm', 'member_status': 'ON'})
+             'member_name': 'gm', 'member_status': 'ON',
+             'member_wapi': '11.11.1.11'})
         ib_cxt.mapping.authority_member = test_authority_member
 
         test_dhcp_member_1 = utils.json_to_obj(
             'DhcpMember',
             {'member_id': 'member-id', 'member_type': 'REGULAR',
              'member_ip': '11.11.1.12', 'member_ipv6': None,
-             'member_name': 'm1', 'member_status': 'ON'})
+             'member_name': 'm1', 'member_status': 'ON',
+             'member_wapi': '11.11.1.12'})
         test_dhcp_member_2 = utils.json_to_obj(
             'DhcpMember',
             {'member_id': 'member-id', 'member_type': 'CPM',
              'member_ip': '11.11.1.13', 'member_ipv6': None,
-             'member_name': 'm2', 'member_status': 'ON'})
+             'member_name': 'm2', 'member_status': 'ON',
+             'member_wapi': '11.11.1.13'})
         ib_cxt.mapping.dhcp_members = [test_dhcp_member_1, test_dhcp_member_2]
         ib_cxt.mapping.dns_members = [test_dhcp_member_1, test_dhcp_member_2]
 
