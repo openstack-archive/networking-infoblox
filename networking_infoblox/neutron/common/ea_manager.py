@@ -24,8 +24,7 @@ from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import utils
 
 
-def get_ea_for_network_view(tenant_id, tenant_name, network_view_id,
-                            cloud_adapter_id):
+def get_ea_for_network_view(tenant_id, tenant_name, cloud_adapter_id):
     """Generates EAs for Network View.
 
     :param tenant_id: tenant_id
@@ -39,7 +38,6 @@ def get_ea_for_network_view(tenant_id, tenant_name, network_view_id,
                   const.EA_TENANT_ID: tenant_id or const.EA_RESET_VALUE,
                   const.EA_TENANT_NAME: tenant_name,
                   const.EA_CLOUD_API_OWNED: 'False',
-                  const.EA_NETWORK_VIEW_ID: network_view_id,
                   const.EA_CLOUD_ADAPTER_ID: str(cloud_adapter_id)}
     return ib_objects.EA(attributes)
 

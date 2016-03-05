@@ -33,6 +33,9 @@ data_center_opts = [
     cfg.StrOpt('grid_master_host',
                default='',
                help=_('Host IP or name of the grid master.')),
+    cfg.StrOpt('grid_master_name',
+               default='',
+               help=_('Name of the grid master.')),
     cfg.StrOpt('admin_user_name',
                default='',
                help=_("Admin user name to access the grid master or "

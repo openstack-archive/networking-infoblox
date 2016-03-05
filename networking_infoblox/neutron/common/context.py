@@ -167,24 +167,26 @@ class InfobloxContext(object):
 
         # create network view mapping and update mapping
         dns_view = self._get_dns_view()
-        db_network_view = dbi.add_network_view(session,
-                                               network_view,
-                                               self.grid_id,
-                                               authority_member.member_id,
-                                               False,
-                                               dns_view,
-                                               network_view,
-                                               dns_view,
-                                               True,
-                                               False)
-        self.mapping.network_view_id = db_network_view.id
+        # network_view_id will be updated with nios object id once the network
+        # view is created
+        network_view_id = utils.get_hash()
+        dbi.add_network_view(session,
+                             network_view_id,
+                             network_view,
+                             self.grid_id,
+                             authority_member.member_id,
+                             False,
+                             dns_view,
+                             network_view,
+                             dns_view,
+                             True,
+                             False)
+        self.mapping.network_view_id = network_view_id
         self.mapping.authority_member = authority_member
         self.mapping.dns_view = dns_view
 
         # change connector if authority member is changed.
-        if (self.connector.host not in
-                [self.mapping.authority_member.member_ip,
-                 self.mapping.authority_member.member_ipv6]):
+        if self.connector.host != self.mapping.authority_member.member_wapi:
             self._load_managers()
 
     def reserve_service_members(self, ib_network=None):
@@ -535,15 +537,11 @@ class InfobloxContext(object):
                 const.MEMBER_STATUS_ON):
             return self.grid_config.gm_connector
 
-        cpm_member_ip = (self.mapping.authority_member.member_ip
-                         if self.mapping.authority_member.member_ip
-                         else self.mapping.authority_member.member_ipv6)
-
         grid_connection = self.grid_config.get_grid_connection()
         wapi_user = grid_connection['admin_user'].get('name')
         wapi_pwd = grid_connection['admin_user'].get('password')
         opts = {
-            'host': cpm_member_ip,
+            'host': self.mapping.authority_member.member_wapi,
             'wapi_version': grid_connection['wapi_version'],
             'username': wapi_user,
             'password': wapi_pwd,

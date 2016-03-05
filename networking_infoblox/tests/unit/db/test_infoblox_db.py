@@ -71,14 +71,16 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
 
     def _create_default_grid(self):
         infoblox_db.add_grid(self.ctx.session, self.grid_id, self.grid_name,
-                             self.grid_connection, self.grid_status)
+                             self.grid_connection, self.grid_status,
+                             'gm-id-' + str(self.grid_id))
         self.ctx.session.flush()
 
     def _create_grids(self, grid_list):
         for grid in grid_list:
             infoblox_db.add_grid(self.ctx.session, grid['grid_id'],
                                  grid['grid_name'], grid['grid_connection'],
-                                 grid['grid_status'])
+                                 grid['grid_status'],
+                                 'gm-id-' + str(grid['grid_id']))
 
     def test_grid_management(self):
         grid_list = [{'grid_id': 100,
@@ -183,7 +185,9 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                                    member['member_ip'],
                                    member['member_ipv6'],
                                    member['member_type'],
-                                   member['member_status'])
+                                   member['member_status'],
+                                   None, None, None, None,
+                                   member['member_ip'])
 
     def test_member_management(self):
         # prepare grid
@@ -254,11 +258,14 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
         infoblox_db.remove_grids(self.ctx.session, [self.grid_id])
 
     def _create_network_views(self, network_view_dict):
+        netview_count = 1
         for network_view in network_view_dict:
             is_default = True if network_view == 'default' else False
             dns_view = ('default' if network_view == 'default' else
                         'default.' + network_view)
+            netview_id = 'netview-id-' + str(netview_count)
             infoblox_db.add_network_view(self.ctx.session,
+                                         netview_id,
                                          network_view,
                                          self.grid_id,
                                          network_view_dict[network_view],
@@ -268,6 +275,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                                          dns_view,
                                          True,
                                          is_default)
+            netview_count += 1
 
     def _create_simple_members(self):
         for i in range(1, 6):
@@ -277,7 +285,7 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
             member_type = "GM" if i == 1 else "CPM"
             infoblox_db.add_member(self.ctx.session, member_id, self.grid_id,
                                    member_name, member_ipv4, None, member_type,
-                                   'ON')
+                                   'ON', None, None, None, None, member_ipv4)
 
     def test_network_view_management(self):
         # prepare grid
