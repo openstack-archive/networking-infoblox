@@ -318,6 +318,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
+        ib_cxt.mapping.network_view = test_network_view.network_view
         ib_cxt.reserve_authority_member()
 
         self.assertEqual(test_network_view.network_view,
