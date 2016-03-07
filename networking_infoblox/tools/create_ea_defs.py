@@ -16,6 +16,8 @@
 
 import getpass
 import os
+import six
+import socket
 import sys
 
 from oslo_config import cfg
@@ -28,10 +30,13 @@ from infoblox_client import objects
 from infoblox_client import utils as ib_utils
 from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import ea_manager as eam
 from networking_infoblox.neutron.common import utils
 
 ENV_SUPERUSER_USERNAME = 'NETWORKING_INFOBLOX_SUPERUSER_USERNAME'
 ENV_SUPERUSER_PASSWORD = 'NETWORKING_INFOBLOX_SUPERUSER_PASSWORD'
+
+PRINT_LINE = 80
 
 LOG = logging.getLogger(__name__)
 
@@ -52,6 +57,18 @@ cfg.CONF(args=sys.argv[1:])
 
 
 def main():
+    cfg.CONF(args=sys.argv[1:],
+             default_config_files=['/etc/neutron/neutron.conf'])
+    common_config.setup_logging()
+    config.register_infoblox_ipam_opts(cfg.CONF)
+    grid_id = cfg.CONF.infoblox.cloud_data_center_id
+    config.register_infoblox_grid_opts(cfg.CONF, grid_id)
+
+    create_ea_defs()
+    participate_network_views(grid_id)
+
+
+def get_credentias():
     credentials = None
     # User command line arguments if specified
     if cfg.CONF.username and cfg.CONF.password:
@@ -68,7 +85,6 @@ def main():
                 credentials = {'username': username, 'password': password}
 
     if not credentials and not cfg.CONF.script:
-        print("\n\n")
         print("In order to create Extensible Attribute definitions,")
         print("superuser privilege is required.\n")
         print("If the preconfigured credentials already has superuser ")
@@ -79,15 +95,18 @@ def main():
         if len(username) > 0:
             password = getpass.getpass("Enter password: ")
             credentials = {'username': username, 'password': password}
+        print("\n")
+    return credentials
 
-    cfg.CONF(args=sys.argv[1:],
-             default_config_files=['/etc/neutron/neutron.conf'])
-    common_config.setup_logging()
-    config.register_infoblox_ipam_opts(cfg.CONF)
-    grid_id = cfg.CONF.infoblox.cloud_data_center_id
-    config.register_infoblox_grid_opts(cfg.CONF, grid_id)
 
+def create_ea_defs():
+    print("\nCreating EA definitions...")
+    print("-" * PRINT_LINE)
+    print("")
+
+    credentials = get_credentias()
     conn = utils.get_connector(credentials)
+
     if not (utils.get_features(conn).create_ea_def):
         LOG.error("WAPI Version '%s' is not supported - Script ABORTED!",
                   conn.wapi_version)
@@ -96,10 +115,19 @@ def main():
     mgr = object_manager.InfobloxObjectManager(conn)
     ea_defs_created = mgr.create_required_ea_definitions(
         const.REQUIRED_EA_DEFS)
-    LOG.info("The following EA Definitions have been created: '%s'" %
-             [ea_def['name'] for ea_def in ea_defs_created])
+    if ea_defs_created:
+        print("The following EA Definitions have been created: '%s'" %
+              [ea_def['name'] for ea_def in ea_defs_created])
+    else:
+        print("All the EAs has been already created.")
+    print("\n")
 
-    host_ip = getattr(conn, 'host')
+    host = getattr(conn, 'host')
+    if utils.is_valid_ip(host):
+        host_ip = host
+    else:
+        host_ip = socket.gethostbyname(host)
+
     if ib_utils.determine_ip_version(host_ip) == 4:
         member = objects.Member.search(conn, ipv4_address=host_ip)
     else:
@@ -107,9 +135,12 @@ def main():
 
     if member is None:
         LOG.error("Cannot retrieve member information at host_ip='%s'" %
-                  host_ip)
+                  host)
         exit(1)
 
+    print("Adding grid configuration EAs to the grid master...")
+    print("-" * PRINT_LINE)
+    print("")
     ea_set = {}
     if member.extattrs is None:
         member.extattrs = objects.EA({})
@@ -120,9 +151,132 @@ def main():
             member.extattrs.set(ea, val)
 
     if ea_set:
-        LOG.info("Adding the following EA values to Grid Member: '%s'" %
-                 ea_set)
+        print("Grid configurations: '%s'" % ea_set)
         member.update()
+    else:
+        print("All the grid configurations have been already added.")
+    print("\n")
+
+
+def participate_network_views(grid_id):
+    print("Participating network views for Openstack...")
+    print("-" * PRINT_LINE)
+    print("")
+
+    grid_id_str = str(grid_id)
+    conn = utils.get_connector()
+
+    ib_netviews = objects.NetworkView.search_all(conn)
+    if not ib_netviews:
+        print("No network view exists\n")
+        return
+
+    netview_names = [ib_netview.name for ib_netview in ib_netviews]
+    print ("Found %s network views from the grid.\n" % len(netview_names))
+
+    operation = 'P'
+    question = ("Do you wish to select network views and make them "
+                "available for Openstack?")
+    choice = ask_question(question)
+    if choice != 'y':
+        question = ("Do you wish to remove network view participation from "
+                    "Openstack?")
+        choice = ask_question(question)
+        if choice != 'y':
+            return
+        operation = 'U'
+
+    question = "Do you want to list network views?"
+    choice = ask_question(question)
+    if choice == 'y':
+        print (', '.join(netview_names))
+        print("")
+    question = ("Please provide a comma separated list of "
+                "network views: ")
+    netview_input = raw_input(question)
+    if not netview_input:
+        print("")
+        return
+
+    netview_list = []
+    [netview_list.append(x.strip()) for x in netview_input.split(',')
+     if x and x not in netview_list]
+    if not netview_list:
+        print("")
+        return
+
+    for nv in netview_list:
+        ib_netview_found = [ib_net for ib_net in ib_netviews
+                            if ib_net.name == nv]
+        if not ib_netview_found:
+            print("'%s' is not found." % nv)
+            continue
+
+        ib_netview = ib_netview_found[0]
+        ea_netview = eam.get_ea_for_network_view(None, None, grid_id)
+        if operation == 'P':
+            if ib_netview.extattrs is None:
+                ib_netview.extattrs = ea_netview
+            else:
+                cloud_adapter_ids = ib_netview.extattrs.get(
+                    const.EA_CLOUD_ADAPTER_ID)
+                if cloud_adapter_ids:
+                    if isinstance(cloud_adapter_ids, six.string_types):
+                        cloud_adapter_ids = [cloud_adapter_ids]
+
+                    found_ids = [id for id in cloud_adapter_ids
+                                 if id == grid_id_str]
+                    if found_ids:
+                        print("'%s' already participated." % nv)
+                        continue
+
+                    cloud_adapter_ids.append(grid_id_str)
+                else:
+                    cloud_adapter_ids = [grid_id_str]
+
+                ib_netview.extattrs.set(const.EA_CLOUD_ADAPTER_ID,
+                                        cloud_adapter_ids)
+            ib_netview.update()
+            print("'%s' is participated." % nv)
+        else:
+            if ib_netview.extattrs is None:
+                print("'%s' not participated." % nv)
+                continue
+
+            cloud_adapter_ids = ib_netview.extattrs.get(
+                const.EA_CLOUD_ADAPTER_ID)
+            if cloud_adapter_ids:
+                if isinstance(cloud_adapter_ids, six.string_types):
+                    cloud_adapter_ids = [cloud_adapter_ids]
+
+                found_ids = [id for id in cloud_adapter_ids
+                             if id == grid_id_str]
+                if found_ids:
+                    cloud_adapter_ids.remove(grid_id_str)
+                    ib_netview.extattrs.set(const.EA_CLOUD_ADAPTER_ID,
+                                            cloud_adapter_ids)
+                    ib_netview.update()
+                    print("'%s' is un-participated." % nv)
+                else:
+                    print("'%s' not participated." % nv)
+                    continue
+            else:
+                print("'%s' not participated." % nv)
+                continue
+
+    print("\n")
+
+
+def ask_question(question):
+    while True:
+        choice = raw_input("%s Enter 'y' or 'n': " % question)
+        if choice not in ['y', 'n']:
+            print ("Enter a valid choice. Please try again.\n")
+            continue
+        else:
+            break
+    print ("")
+    return choice
 
 
 if __name__ == "__main__":
