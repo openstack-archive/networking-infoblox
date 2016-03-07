@@ -455,7 +455,7 @@ def generate_network_view_name(object_id, object_name=None):
 def get_connector(credentials=None):
     grid_id = cfg.CONF.infoblox.cloud_data_center_id
     grid_opts = cfg.get_infoblox_grid_opts(grid_id)
-    # map connector opions to config
+    # map connector options to config
     # None as value means no name change needed
     mapping = {'host': 'grid_master_host',
                'username': 'admin_user_name',
