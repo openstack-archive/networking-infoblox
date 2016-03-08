@@ -79,9 +79,10 @@ class IpamSyncController(object):
             ib_network_view = self._create_ib_network_view()
             rollback_list.append(ib_network_view)
 
-        ib_network = self._create_ib_network()
+        ib_network, created = self._create_ib_network()
         if ib_network:
-            rollback_list.append(ib_network)
+            if created:
+                rollback_list.append(ib_network)
             self._create_ib_ip_range(rollback_list)
 
         # associate the network view to neutron
@@ -139,7 +140,7 @@ class IpamSyncController(object):
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
                 LOG.info("ib network already exists so updated options: %s",
                          ib_network)
-                return ib_network
+                return ib_network, False
             raise exc.InfobloxPrivateSubnetAlreadyExist()
 
         # network creation using template
@@ -152,7 +153,7 @@ class IpamSyncController(object):
             self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
             LOG.info("ib network created from template %s: %s",
                      network_template, ib_network)
-            return ib_network
+            return ib_network, True
 
         # network creation starts
         self.ib_cxt.reserve_service_members()
@@ -170,7 +171,7 @@ class IpamSyncController(object):
         LOG.info("ib network has been created: %s", ib_network)
 
         self._restart_services()
-        return ib_network
+        return ib_network, True
 
     def _get_service_members(self, field='member_id'):
         dhcp_members = [m.get(field) for m in self.ib_cxt.mapping.dhcp_members]
