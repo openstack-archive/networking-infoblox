@@ -359,9 +359,12 @@ class IpamSyncController(object):
         # subnet delete in db level by the time ipam driver reaches here.
         dbi.dissociate_network_view(session, network_id, subnet_id)
 
-        ib_networks = ib_objects.Network.search_all(self.ib_cxt.connector,
-                                                    network_view=network_view)
-        is_last_subnet_in_netview = len(ib_networks) == 1
+        ib_ipv4_networks = ib_objects.NetworkV4.search_all(
+            self.ib_cxt.connector, network_view=network_view)
+        ib_ipv6_networks = ib_objects.NetworkV6.search_all(
+            self.ib_cxt.connector, network_view=network_view)
+        is_last_subnet_in_netview = (len(ib_ipv4_networks) +
+                                     len(ib_ipv6_networks)) == 1
 
         subnet_deletable = ((is_shared is False and
                              is_external is False and
