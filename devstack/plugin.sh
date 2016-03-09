@@ -8,7 +8,7 @@ function install_networking_infoblox {
 
 function init_networking_infoblox {
     echo "init_networking_infoblox"
-    screen_it networking-infoblox "/usr/local/bin/infoblox-ipam-agent --config-file=$NEUTRON_CONF"
+    screen_it networking-infoblox "/usr/local/bin/infoblox-ipam-agent --config-file=$NEUTRON_CONF --config-file=$Q_PLUGIN_CONF_FILE"
 }
 
 function run_db_migration_for_networking_infoblox {
@@ -51,6 +51,7 @@ function configure_networking_infoblox {
 
     # Cloud Data Center Configurations
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID grid_master_host $NETWORKING_INFOBLOX_DC_GRID_MASTER_HOST
+    iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID grid_master_name $NETWORKING_INFOBLOX_DC_GRID_MASTER_NAME
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID admin_user_name $NETWORKING_INFOBLOX_DC_ADMIN_USER_NAME
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID admin_password $NETWORKING_INFOBLOX_DC_ADMIN_PASSWORD
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID wapi_version $NETWORKING_INFOBLOX_DC_WAPI_VERSION
