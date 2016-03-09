@@ -402,6 +402,14 @@ def get_oid_from_nios_ref(obj_ref):
     return None
 
 
+def get_network_view_id(grid_id, obj_ref):
+    if grid_id and obj_ref:
+        obj_id = get_oid_from_nios_ref(obj_ref)
+        if obj_id:
+            return "%s:%s" % (grid_id, obj_id)
+    return None
+
+
 def get_network_info_from_nios_ref(network_ref):
     if network_ref and len(network_ref) > 0:
         match = re.search('(\S+)\/(\S+):(\S+)\/(\d+)\/(\S+)', network_ref)

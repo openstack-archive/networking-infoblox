@@ -103,7 +103,8 @@ class IpamSyncController(object):
             self.ib_cxt.mapping.network_view,
             ea_network_view)
 
-        network_view_id = utils.get_oid_from_nios_ref(ib_network_view._ref)
+        network_view_id = utils.get_network_view_id(self.grid_id,
+                                                    ib_network_view._ref)
         dbi.update_network_view_id(session,
                                    self.ib_cxt.mapping.network_view_id,
                                    network_view_id)

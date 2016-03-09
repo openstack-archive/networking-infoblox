@@ -116,7 +116,8 @@ class GridMappingManager(object):
         for netview in discovered_netviews:
             netview_name = netview['name']
             is_default = netview[const.IS_DEFAULT]
-            netview_id = utils.get_oid_from_nios_ref(netview['_ref'])
+            netview_id = utils.get_network_view_id(self._grid_id,
+                                                   netview['_ref'])
 
             cloud_adapter_id_vals = utils.get_ea_value(
                 const.EA_CLOUD_ADAPTER_ID, netview, True)
