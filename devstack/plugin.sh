@@ -70,7 +70,10 @@ function configure_networking_infoblox {
     update_conf_option $NEUTRON_CONF DEFAULT notification_topics notifications 0
 
     # Run create_ea_defs.py to create EA definitions
-    create_ea_defs -s -u "$NETWORKING_INFOBLOX_SUPERUSER_USERNAME" -p "$NETWORKING_INFOBLOX_SUPERUSER_PASSWORD"
+    if [ -z $NETWORKING_INFOBLOX_DC_PARTICIPATING_NETWORK_VIEWS ]; then
+        NETWORKING_INFOBLOX_DC_PARTICIPATING_NETWORK_VIEWS=''
+    fi
+    create_ea_defs -s -u "$NETWORKING_INFOBLOX_SUPERUSER_USERNAME" -p "$NETWORKING_INFOBLOX_SUPERUSER_PASSWORD" -pnv "$NETWORKING_INFOBLOX_DC_PARTICIPATING_NETWORK_VIEWS"
 
     # Run infoblox_grid_sync to sync Infoblox Grid information
     infoblox_grid_sync --config-file=$NEUTRON_CONF

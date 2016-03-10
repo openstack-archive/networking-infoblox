@@ -36,6 +36,8 @@ from networking_infoblox.neutron.common import utils
 
 ENV_SUPERUSER_USERNAME = 'NETWORKING_INFOBLOX_SUPERUSER_USERNAME'
 ENV_SUPERUSER_PASSWORD = 'NETWORKING_INFOBLOX_SUPERUSER_PASSWORD'
+ENV_NETWORK_VIEW_PARTICIPATION_LIST = (
+    'NETWORKING_INFOBLOX_DC_PARTICIPATING_NETWORK_VIEWS')
 
 PRINT_LINE = 80
 
@@ -51,7 +53,10 @@ cli_opts = [
                help='username of superuser'),
     cfg.StrOpt('password',
                short='p',
-               help='password of superuser')
+               help='password of superuser'),
+    cfg.StrOpt('participating_network_views',
+               short='pnv',
+               help='participating network views')
 ]
 
 cfg.CONF.register_cli_opts(cli_opts)
@@ -158,6 +163,12 @@ def participate_network_views(grid_id):
     print("-" * PRINT_LINE)
     print("")
 
+    netview_input = None
+    if cfg.CONF.participating_network_views:
+        netview_input = cfg.CONF.participating_network_views
+    elif ENV_NETWORK_VIEW_PARTICIPATION_LIST in os.environ:
+        netview_input = os.environ[ENV_NETWORK_VIEW_PARTICIPATION_LIST]
+
     grid_id_str = str(grid_id)
     conn = utils.get_connector()
 
@@ -170,27 +181,34 @@ def participate_network_views(grid_id):
     print ("Found %s network views from the grid.\n" % len(netview_names))
 
     operation = 'P'
-    question = ("Do you wish to select network views and make them "
-                "available for Openstack?")
-    choice = ask_question(question)
-    if choice != 'y':
-        question = ("Do you wish to remove network view participation from "
-                    "Openstack?")
+    if not netview_input and not cfg.CONF.script:
+        question = ("Do you wish to select network views and make them "
+                    "available for Openstack?")
         choice = ask_question(question)
         if choice != 'y':
-            return
-        operation = 'U'
+            question = ("Do you wish to remove network view participation "
+                        "from Openstack?")
+            choice = ask_question(question)
+            if choice != 'y':
+                return
+            operation = 'U'
 
-    question = "Do you want to list network views?"
-    choice = ask_question(question)
-    if choice == 'y':
-        print (', '.join(netview_names))
-        print("")
-    question = ("Please provide a comma separated list of "
-                "network views: ")
-    netview_input = raw_input(question)
-    if not netview_input:
-        print("")
+        question = "Do you want to list network views?"
+        choice = ask_question(question)
+        if choice == 'y':
+            print (', '.join(netview_names))
+            print("")
+        question = "Please provide a comma separated list of network views: "
+        netview_input = raw_input(question)
+
+    if (not netview_input or
+            not isinstance(netview_input, six.string_types)):
+        msg = ("Participating network views should be in the "
+               "comma-delimited string format.")
+        if cfg.CONF.script:
+            LOG.warning(msg)
+        else:
+            print(msg)
         return
 
     netview_list = []
