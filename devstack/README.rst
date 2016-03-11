@@ -23,6 +23,8 @@ corresponding variables:
      - NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID
    * - grid_master_host
      - NETWORKING_INFOBLOX_DC_GRID_MASTER_HOST
+   * - grid_master_name
+     - NETWORKING_INFOBLOX_DC_GRID_MASTER_NAME
    * - admin_user_name
      - NETWORKING_INFOBLOX_DC_ADMIN_USER_NAME
    * - admin_password
@@ -43,3 +45,5 @@ corresponding variables:
      - NETWORKING_INFOBLOX_SUPERUSER_USERNAME
    * - n/a (DevStack only)
      - NETWORKING_INFOBLOX_SUPERUSER_PASSWORD
+   * - n/a (DevStack only)
+     - NETWORKING_INFOBLOX_DC_PARTICIPATING_NETWORK_VIEWS
