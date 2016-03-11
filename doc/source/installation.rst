@@ -14,13 +14,14 @@ basic steps:
 7) Restart nova-compute services
 
 
-Configure Infoblox
-==================
+Configure Infoblox Grid
+=======================
 There are four steps to setting up your Infoblox grid to work with the IPAM
 driver.
 
     a) Add a user and optionally a group, and configure permissions
-    b) Create Extensible Attribute definitions with the create_ea_defs.py script
+    b) Create Extensible Attribute definitions and participate Network Views
+       with the create_ea_defs.py script
     c) Set the EAs to values representing the desired behavior
     d) Tag members that should serve OpenStack domains
 
@@ -29,11 +30,12 @@ Creating the User
 First, you should create a user for the integration. If you have a Cloud
 Network Automation license, this user should be assigned to the Cloud API Only
 admin group. Otherwise, you may want to create a group specifically for this
-integration. The group must be given the following permissions:
+integration. The group must be given the following permissions for full
+IPAM/DHCP/DNS functionality to work:
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 30 30 10
+   :widths: 20 20 20 10
 
    * - Permission Type
      - Resource
@@ -96,8 +98,46 @@ integration. The group must be given the following permissions:
      - Zone
      - RW
 
-Create Extensible Attribute Definitions
----------------------------------------
+If you are testing IPAM only case which does not require DHCP and DNS, here is
+the minimum set of required permissions.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 20 20 10 40
+
+   * - Permission Type
+     - Resource
+     - Resource Type
+     - Permission
+     - Comment
+   * - [GRID]
+     - All Members
+     - Member
+     - RW
+     - This can be set RO if `Report Grid Sync Time` is set to False.
+   * - [CLOUD]
+     - All Tenants
+     - Tenant
+     - RW
+     -
+   * - [DHCP, IPAM]
+     - All Network Views
+     - Network view
+     - RW
+     -
+   * - [DHCP, IPAM]
+     - All IPv4 Networks
+     - IPv4 Network
+     - RW
+     -
+   * - [DHCP, IPAM]
+     - All IPv6 Networks
+     - IPv6 Network
+     - RW
+     -
+
+Create Extensible Attribute Definitions and Network View Participation
+----------------------------------------------------------------------
 The driver uses a variety of Extensible Attributes (EAs) to manage its
 configuration. The needed extensible attributes may be created automatically
 using the ``create_ea_defs.py`` script that can be found under the ``tools``
@@ -107,6 +147,11 @@ directory in the distribution::
 
 The script will prompt you for the user name and password of a superuser, which
 is needed to create the EA definitions.
+
+The script also prompt you for participation or un-participation of network
+views. This is an important step. You can use this script to select network
+views explicitly to use in OpenStack. A participated network view will have
+`Cloud Adapter ID` EA stored in the network view.
 
 Setting EAs to Configure the Integration
 ----------------------------------------
@@ -162,35 +207,38 @@ any of the following values:
    spanning subnets across OpenStack Neutron installations.
 
 Alternatively, You can pre-define mappings by creating a network view and then
-tagging it with the name of a tenant, address scope, or network, in addition to CIDR of
-a subnet. This can be done by creating the following EAs on a network view object.
-Each of these EAs allows multiple values to be specified.
+tagging it with the name of a tenant, address scope, or network, in addition to
+CIDR of a subnet. This can be done by creating the following EAs on a network
+view object. Each of these EAs allows multiple values to be specified.
 
-`Subnet CIDR Mapping` - If a subnet created matches one of the CIDR values specified
-in this EA, the subnet will be created under this network view.
+`Subnet CIDR Mapping` - If a subnet created matches one of the CIDR values
+specified in this EA, the subnet will be created under this network view.
 
-`Subnet ID Mapping` - If the ID of a subnet created matches one of the values specified
-in this EA, the subnet will be created under this network view.
+`Subnet ID Mapping` - If the ID of a subnet created matches one of the values
+specified in this EA, the subnet will be created under this network view.
 
-`Network Name Mapping` - If the name of a network matches one of the values specified
-in this EA, the subnets within the network will be created under this network view.
+`Network Name Mapping` - If the name of a network matches one of the values
+specified in this EA, the subnets within the network will be created under this
+network view.
 
-`Network ID Mapping` - If the ID of a network matches one of the values specified
-in this EA, the subnets within the network will be created under this network view.
+`Network ID Mapping` - If the ID of a network matches one of the values
+specified in this EA, the subnets within the network will be created under this
+network view.
 
-`Tenant Name Mapping` - If the name of a tenant matches one of the values specified
-in this EA, objects within the tenant will be created under this network view.
+`Tenant Name Mapping` - If the name of a tenant matches one of the values
+specified in this EA, objects within the tenant will be created under this
+network view.
 
 `Tenant ID Mapping` - If the ID of a tenant matches one of the values specified
 in this EA, objects within the tenant will be created under this network view.
 
-`Address Scope Name Mapping` - If the name of an address scope matches one of the
-values specified in this EA, objects within the address scope will be created under
-this network view.
+`Address Scope Name Mapping` - If the name of an address scope matches one of
+the values specified in this EA, objects within the address scope will be
+created under this network view.
 
 `Address Scope ID Mapping` - If the ID of an address scope matches one of the
-values specified in this EA, objects within the address scope will be created under
-this network view.
+values specified in this EA, objects within the address scope will be created
+under this network view.
 
 Domain and Host Name Patterns
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -228,7 +276,8 @@ patterns supported for domain names, this EA supports these:
 
 ``{instance_name}``. The Nova instance name of the VM associated with the port.
 
-``{ip_address}``. The IP address for this port or host, with dots replaced by dashes.
+``{ip_address}``. The IP address for this port or host, with dots replaced by
+dashes.
 
 ``{ip_address_octet{n}}`` where n is a number 0-3. This is for IPv4 addresses
 only. For example, if the pattern is
@@ -241,6 +290,35 @@ names it receives from the message bus. This reduces the Keystone API calls
 needed to retrieve tenant name. This EA controls this behavior; it must be
 set to True for tenant name support in domain or host names.
 
+IPAM and DHCP/DNS Support
+-------------------------
+
+IPAM and DHCP/DNS Support can be configured by tuning `DHCP Support` and
+`DNS Support` EAs.
+
+`DHCP Support`. When set to False, DHCP support will be disabled irrespective
+of the "Enable DHCP" option when a subnet is created in OpenStack. The default
+is False.
+
+`DNS Support`. When set to False, DNS support will be disabled. Enabling it
+allows DNS record generation and DNS protocol. The default is False.
+
+Currently only the following configurations are supported.
+
+IPAM Only
+
+ * `DHCP Support` = False
+ * `DNS Support` = False
+
+Full DHCP/DNS Support
+
+ * `DHCP Support` = True
+ * `DNS Support` = True
+
+.. important::
+
+  You cannot set only one option to True. We will support DHCP only and DNS
+  only configurations in coming release.
 
 IP Allocation and DNS Record Creation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -249,7 +327,7 @@ Fixed Address for IP allocation. If chosen for Fixed Address, DNS records
 associated with a fixed address are controlled by the additional EAs below.
 
 `DNS Record Binding Types`. List of DNS records to generate and bind to a
-fixed address during IP allocation. Supported DNS record types are 
+fixed address during IP allocation. Supported DNS record types are
 ``record:a`` (for A records), ``record:aaaa`` (for AAAA records), and
 ``record:ptr`` (for PTR records). This is a multi-value EA, with one of these
 entries per value.
@@ -298,10 +376,22 @@ To install the most recent production release, use the following command::
 
 Liberty and Mitaka
 ------------------
-Version 2.x of the driver supports Liberty and Mitaka. Version 2.0.0 of the
+Version 2.x of the driver supports Liberty and Mitaka. Version 2.0.1 of the
 driver can be installed using the following command::
 
-    $ sudo pip install networking-infoblox==2.0.0
+    $ sudo pip install networking-infoblox==2.0.1
+
+We strongly recommend to use 2.0.1 instead 2.0.0 because 2.0.1 includes
+critical bug fixes that ensure its stability and has undergone important
+database scheme change to support production usability like GM candidate
+promotion, proxying support and better grid sync.
+
+Although db migration script from 2.0.0 to 2.0.1 is in place, we do not
+currently support data migration. This means that existing subnets created in
+OpenStack will be disconnected from NIOS. Before upgrading to 2.0.1, we
+recommend that all the subnets to be deleted, upgrade to 2.0.1, and recreate
+subnets. However, it would be easier and safer to just drop the database and
+recreate it by running ``neutron-db-manage`` command.
 
 Creating the Infoblox Neutron Database
 ======================================
@@ -316,8 +406,8 @@ nodes share a common database cluster.
 
 Modify the OpenStack Configuration
 ==================================
-The ``neutron.conf`` files on each controller node, as well as the ``nova.conf``
-files on each compute node, must be updated as described below.
+The ``neutron.conf`` files on each controller node, as well as the
+``nova.conf`` files on each compute node, must be updated as described below.
 
 Neutron
 -------
@@ -337,15 +427,26 @@ grids is not yet available.
      - An integer ID used for the data center. This is used to form the stanza
        name for the rest of the options.
    * - grid_master_host
-     - The IP address of the Grid Master
+     - The IP address, hostname, or FQDN of the Grid Master (GM).
+       Proxying is supported so this does not have to be the exact IP or
+       hostname of the GM if you have a situation where you cannot reach the GM
+       directly in your network. It can be any connection information that
+       proxies to the GM.
+   * - grid_master_name
+     - The name of the Grid Master (GM)
+       This has to be the exact GM name registered in the Infoblox grid.
    * - admin_user_name
      - The user name to use for the WAPI.
    * - admin_password
      - The password to use for the WAPI.
    * - wapi_version
-     - The WAPI version to use. Default is 1.4. Version 2.2 or later is
-       recommended, if your grid supports it (WAPI version 2.2 is supported
-       in NIOS 7.2)
+     - The WAPI version to use. Version 2.2 or later is recommended, if your
+       grid supports it (WAPI version 2.3 is supported in NIOS 7.3)
+   * - wapi_max_results
+     - The maximum number of objects to be returned by WAPI. If this is set to
+       a negative number, WAPI will return an error when the number of returned
+       objects would exceed the setting. If this is set to a positive number,
+       the results will be truncated when necessary. The default is -1000.
    * - ssl_verify
      - Set to false if you use a self-signed SSL certificate, and true
        if you use a certificate signed by a known certificate authority. You
@@ -372,9 +473,11 @@ installation):
 
    [infoblox-dc:1]
    grid_master_host = GRID_MASTER_HOST
+   grid_master_name = GRID_MASTER_NAME
    admin_user_name = USER
    admin_password = PASSWORD
-   wapi_version = 2.2
+   wapi_version = 2.3
+   wapi_max_results = -1000
 
 In addition to these options, you must enable the notifications options
 within Neutron, if they are not already enabled.
@@ -389,8 +492,8 @@ Nova
 On each controller node running the Nova service, as well as compute node
 running nova-compute, you must configure Nova to send notifications.
 These notifications are used by the Infoblox IPAM agent to manage DNS entries
-and extensible attribute values for VMs. Set the following values in ``nova.conf``,
-if they are not already set.
+and extensible attribute values for VMs. Set the following values in
+``nova.conf``, if they are not already set.
 
 .. code-block:: ini
 
@@ -407,7 +510,7 @@ Once that is done, you should start the agent.
 To start it manually, without any init.d or systemd setup, you run the
 following command as the same user that runs neutron-server::
 
-    # /usr/local/bin/infoblox-ipam-agent >/var/log/neutron/infoblox-ipam-agent.log 2>&1
+    # /usr/local/bin/infoblox-ipam-agent --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini >/var/log/neutron/infoblox-ipam-agent.log 2>&1
 
 Restart the Services
 ====================
