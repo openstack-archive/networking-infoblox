@@ -14,20 +14,27 @@ individual OpenStack entities; those EAs will be set on the specific network
 view in Infoblox. This is discussed in more detail below.
 
 Grid Synchronization Settings
-----------------------------
+-----------------------------
 When you make a change to the EAs in Infoblox that represent the driver
 configuration, that change must be synchronized to the driver's local
 storage. Set on the grid master object, the following EAs define grid
 synchronization settings:
 
-`Grid Sync Support`. This EA is used to choose whether to enable synchronization
-of grid configuration from Infoblox. The default is True.
+`Grid Sync Support`. This EA is used to choose whether to enable
+synchronization of grid configuration from Infoblox. The default is True.
 
 `Grid Sync Minimum Wait Time`. This EA is used to define the minimum wait time,
-in seconds, before a synchronization is allowed to take place. The default is 60.
+in seconds, before a synchronization is allowed to take place. The default is
+60.
 
 `Grid Sync Maximum Wait Time`. This EA is used to define the maximum wait time,
 in seconds, between synchronizations. The default is 300.
+
+`Report Grid Sync Time` This EA is used to allow reporting of grid sync time.
+The default is False. If this is set to True, `Last Grid Sync Time` EA is used
+to store last grid sync time. The infoblox-ipam-agent updates grid sync time.
+It is important to note that setting this EA to True requires a WRITE
+permission on the grid member.
 
 Network View Mapping
 --------------------
@@ -70,35 +77,38 @@ any of the following values:
    spanning subnets across OpenStack Neutron installations.
 
 Alternatively, You can pre-define mappings by creating a network view and then
-tagging it with the name of a tenant, address scope, or network, in addition to CIDR of
-a subnet. This can be done by creating the following EAs on a network view object.
-Each of these EAs allows multiple values to be specified.
+tagging it with the name of a tenant, address scope, or network, in addition to
+CIDR of a subnet. This can be done by creating the following EAs on a network
+view object. Each of these EAs allows multiple values to be specified.
 
-`Subnet CIDR Mapping` - If a subnet created matches one of the CIDR values specified
-in this EA, the subnet will be created under this network view.
+`Subnet CIDR Mapping` - If a subnet created matches one of the CIDR values
+specified in this EA, the subnet will be created under this network view.
 
-`Subnet ID Mapping` - If the ID of a subnet created matches one of the values specified
-in this EA, the subnet will be created under this network view.
+`Subnet ID Mapping` - If the ID of a subnet created matches one of the values
+specified in this EA, the subnet will be created under this network view.
 
-`Network Name Mapping` - If the name of a network matches one of the values specified
-in this EA, the subnets within the network will be created under this network view.
+`Network Name Mapping` - If the name of a network matches one of the values
+specified in this EA, the subnets within the network will be created under this
+network view.
 
-`Network ID Mapping` - If the ID of a network matches one of the values specified
-in this EA, the subnets within the network will be created under this network view.
+`Network ID Mapping` - If the ID of a network matches one of the values
+specified in this EA, the subnets within the network will be created under this
+network view.
 
-`Tenant Name Mapping` - If the name of a tenant matches one of the values specified
-in this EA, objects within the tenant will be created under this network view.
+`Tenant Name Mapping` - If the name of a tenant matches one of the values
+specified in this EA, objects within the tenant will be created under this
+network view.
 
 `Tenant ID Mapping` - If the ID of a tenant matches one of the values specified
 in this EA, objects within the tenant will be created under this network view.
 
-`Address Scope Name Mapping` - If the name of an address scope matches one of the
-values specified in this EA, objects within the address scope will be created under
-this network view.
+`Address Scope Name Mapping` - If the name of an address scope matches one of
+the values specified in this EA, objects within the address scope will be
+created under this network view.
 
 `Address Scope ID Mapping` - If the ID of an address scope matches one of the
-values specified in this EA, objects within the address scope will be created under
-this network view.
+values specified in this EA, objects within the address scope will be created
+under this network view.
 
 Domain and Host Name Patterns
 -----------------------------
@@ -125,8 +135,8 @@ for this to work, the `Tenant Name Persistence` EA must be set to True.
 
 ``{subnet_id}`` will be replaced with the OpenStack Subnet ID.
 
-The DNS zones are created under a DNS View, the name of which is constructed using
-the `DNS View` EA.
+The DNS zones are created under a DNS View, the name of which is constructed
+using the `DNS View` EA.
 
 `Default Host Name Pattern`. This EA controls host names in a manner similar to
 the way `Default Domain Name Pattern` controls domain names. In addition to the
@@ -138,7 +148,8 @@ patterns supported for domain names, this EA supports these:
 
 ``{instance_name}``. The Nova instance name of the VM associated with the port.
 
-``{ip_address}``. The IP address for this port or host, with dots replaced by dashes.
+``{ip_address}``. The IP address for this port or host, with dots replaced by
+dashes.
 
 ``{ip_address_octet{n}}`` where n is a number 0-3. This is for IPv4 addresses
 only. For example, if the pattern is
@@ -151,6 +162,35 @@ names it receives from the message bus. This reduces the Keystone API calls
 needed to retrieve tenant name. This EA controls this behavior; it must be
 set to True for tenant name support in domain or host names.
 
+IPAM and DHCP/DNS Support
+-------------------------
+
+IPAM and DHCP/DNS Support can be configured by tuning `DHCP Support` and
+`DNS Support` EAs.
+
+`DHCP Support`. When set to False, DHCP support by Infoblox will be disabled
+irrespective of the "Enable DHCP" option when a subnet is created in OpenStack.
+The dnsmasq-based DHCP can be used instead. The default is False.
+
+`DNS Support`. When set to False, DNS support will be disabled. Enabling it
+allows DNS record generation and DNS protocol. The default is False.
+
+Currently only the following configurations are supported.
+
+IPAM Only
+
+ * `DHCP Support` = False
+ * `DNS Support` = False
+
+Full DHCP/DNS Support
+
+ * `DHCP Support` = True
+ * `DNS Support` = True
+
+.. important::
+
+  You cannot set only one option to True. We will support DHCP only and DNS
+  only configurations in coming release.
 
 IP Allocation and DNS Record Creation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -174,6 +214,16 @@ independently of the Infoblox IPAM Driver. Supported DNS record types are
 ``record:a``, ``record:aaaa``, ``record:ptr``, ``record:txt``, and
 ``record:cname``.
 
+.. note::
+
+  A DHCP port ip is an exception to this. The DHCP port ip is created as a host
+  record with DHCP disabled to allow IP aliasing, regardless of `IP Allocation
+  Strategy` configuration. IP aliasing is used in OpenStack when multiple
+  subnets are created in the same network. Each subnet requires a DHCP port ip
+  and those ips are all assigned to the same DHCP port, but only one MAC
+  address exists. If IPAM only support configuration is used, DNS is disabled
+  as well for the host record.
+
 Identify Members to Use
 -----------------------
 In order to serve DHCP and DNS, you must pick grid members to be registered to
@@ -189,7 +239,7 @@ To identify a grid member as available for use by OpenStack, you must set the
 EA `Is Cloud Member` to True. If you are running a grid but the GM is not
 configured and licensed for DNS or DHCP, set `Use Grid Master for DHCP`
 EA on the GM object to False. This will exclude the GM from being selected
-to serve DHCP or DHCP.
+to serve DHCP or DNS.
 
 Miscellaneous Grid Configurations
 ---------------------------------
@@ -197,20 +247,17 @@ Miscellaneous Grid Configurations
 for all DNS zones. The default is None, in which case, DNS service members will
 be selected based on mapping conditions.
 
-`Network Template`. Name of the Template to use when a network is created. A Template
-contains predefined network settings. The default is None.
+`Network Template`. Name of the Template to use when a network is created.
+A Template contains predefined network settings. The default is None.
 
-`Admin Network Deletion`. Specifies whether to delete object from Infoblox when an
-Admin Network is deleted from OpenStack. A network that is specified as "external"
-and/or "shared" is considered an Admin Network. The default is False.
-
-`DHCP Support`. When set to False, DHCP support will be disabled irrespective of
-the "Enable DHCP" option when a subnet is created in OpenStack. The default is
+`Admin Network Deletion`. Specifies whether to delete object from Infoblox
+when an Admin Network is deleted from OpenStack. A network that is specified
+as "external" and/or "shared" is considered an Admin Network. The default is
 False.
 
 `Relay Support`. Specifies whether a Relay will be used. If set to False, then
-DNS Servers option will be set to the DNS Member that IPAM driver assigns. If True,
-DNS Servers option will be to the same ip as DHCP Port for the subnet. However, if
-the user specifies Nameservers option when the OpenStack subnet is created, then
-only the user provided nameservers would be used for DNS Servers option,
-irrespective of the `Relay Support` flag.
+DNS Servers option will be set to the DNS Member that IPAM driver assigns.
+If True, DNS Servers option will be to the same ip as DHCP Port for the subnet.
+However, if the user specifies Nameservers option when the OpenStack subnet is
+created, then only the user provided nameservers would be used for DNS Servers
+option, irrespective of the `Relay Support` flag.
