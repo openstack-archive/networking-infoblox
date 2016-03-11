@@ -104,13 +104,7 @@ class DnsController(object):
                      "removed.")
             return
 
-        is_netview_shared = self.ib_cxt.mapping.shared
-        is_network_external = self.ib_cxt.network['router:external']
-        is_network_shared = self.ib_cxt.network['shared']
-
-        zone_removable = ((is_netview_shared is False and
-                           is_network_external is False and
-                           is_network_shared is False) or
+        zone_removable = (not self.ib_cxt.network_is_shared or
                           self.grid_config.admin_network_deletion)
         if zone_removable:
             # delete forward zone

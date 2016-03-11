@@ -118,9 +118,6 @@ class IpamSyncController(object):
         network_view = self.ib_cxt.mapping.network_view
         network = self.ib_cxt.network
         subnet = self.ib_cxt.subnet
-
-        is_shared = network.get('shared')
-        is_external = network.get('router:external')
         cidr = subnet.get('cidr')
         gateway_ip_str = str(subnet.get('gateway_ip'))
 
@@ -136,7 +133,7 @@ class IpamSyncController(object):
                                                network_view=network_view,
                                                cidr=cidr)
         if ib_network:
-            if is_shared or is_external or self.ib_cxt.mapping.shared:
+            if self.ib_cxt.network_is_shared:
                 self.ib_cxt.reserve_service_members(ib_network)
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
                 LOG.info("ib network already exists so updated options: %s",
@@ -276,8 +273,12 @@ class IpamSyncController(object):
             allocation_pools,
             ip_version)
 
+        is_shared = self.ib_cxt.network_is_shared
         for pool in removed_pool:
-            pool.delete()
+            if is_shared:
+                eam.reset_ea_for_range(pool)
+            else:
+                pool.delete()
 
         self._allocate_pools(rollback_list, added_pool, cidr, ip_version)
         self._restart_services()
@@ -352,8 +353,6 @@ class IpamSyncController(object):
         network_view = self.ib_cxt.mapping.network_view
 
         network_id = network.get('id')
-        is_shared = network.get('shared')
-        is_external = network.get('router:external')
         subnet_id = subnet.get('id')
         cidr = subnet.get('cidr')
 
@@ -361,9 +360,7 @@ class IpamSyncController(object):
         # subnet delete in db level by the time ipam driver reaches here.
         dbi.dissociate_network_view(session, network_id, subnet_id)
 
-        subnet_deletable = ((is_shared is False and
-                             is_external is False and
-                             self.ib_cxt.mapping.shared is False) or
+        subnet_deletable = (not self.ib_cxt.network_is_shared or
                             self.grid_config.admin_network_deletion)
         if subnet_deletable:
             ib_ipv4_networks = ib_objects.NetworkV4.search_all(
