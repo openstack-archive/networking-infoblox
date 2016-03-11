@@ -214,10 +214,13 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
     @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     def test_create_subnet_existing_private_network(self):
-        test_opts = {'network_exists': True}
+        test_opts = {'network_exists': True,
+                     'external': False,
+                     'shared': False}
         self.helper.prepare_test(test_opts)
 
         self.ib_cxt.mapping.shared = False
+        self.ib_cxt.network_is_shared = False
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
         with mock.patch.object(ib_objects.Network,
                                'search',
@@ -248,8 +251,12 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             mock.ANY, mock.ANY)
 
     def test_update_subnet_allocation_pools(self):
-        test_opts = {'network_exists': True}
+        test_opts = {'network_exists': True,
+                     'external': False,
+                     'shared': False}
         self.helper.prepare_test(test_opts)
+        self.ib_cxt.mapping.shared = False
+        self.ib_cxt.network_is_shared = False
 
         new_pools = (netaddr.IPRange('11.11.1.25', '11.11.1.30'),
                      netaddr.IPRange('11.11.1.45', '11.11.1.60'))
@@ -283,10 +290,13 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                 mock.ANY, mock.ANY)
 
     def test_delete_subnet_for_private_network(self):
-        test_opts = {'network_exists': True}
+        test_opts = {'network_exists': True,
+                     'external': False,
+                     'shared': False}
         self.helper.prepare_test(test_opts)
 
         self.ib_cxt.mapping.shared = False
+        self.ib_cxt.network_is_shared = False
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
         ipam_controller._release_service_members = mock.Mock()
         with mock.patch.object(ib_objects.Network,

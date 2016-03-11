@@ -211,6 +211,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.network['router:external'] = False
         self.ib_cxt.network['shared'] = False
         self.ib_cxt.grid_config.admin_network_deletion = False
+        self.ib_cxt.mapping.shared = False
+        self.ib_cxt.network_is_shared = False
 
         self.controller.delete_dns_zones()
 
@@ -233,6 +235,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.network['router:external'] = False
         self.ib_cxt.network['shared'] = False
         self.ib_cxt.grid_config.admin_network_deletion = False
+        self.ib_cxt.mapping.shared = False
+        self.ib_cxt.network_is_shared = False
 
         self.controller.delete_dns_zones()
 
@@ -255,6 +259,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.network['router:external'] = False
         self.ib_cxt.network['shared'] = False
         self.ib_cxt.grid_config.admin_network_deletion = False
+        self.ib_cxt.mapping.shared = False
+        self.ib_cxt.network_is_shared = False
 
         self.controller.delete_dns_zones()
 
@@ -278,6 +284,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.network['router:external'] = False
         self.ib_cxt.network['shared'] = False
         self.ib_cxt.grid_config.admin_network_deletion = False
+        self.ib_cxt.mapping.shared = False
+        self.ib_cxt.network_is_shared = False
 
         self.controller.delete_dns_zones()
 

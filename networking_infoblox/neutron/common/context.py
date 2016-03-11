@@ -856,3 +856,9 @@ class InfobloxContext(object):
                 nameservers = utils.get_nameservers(dns_members,
                                                     self.subnet['ip_version'])
         return nameservers
+
+    @property
+    def network_is_shared(self):
+        return (self.network.get('shared') or
+                self.network.get('router:external') or
+                self.mapping.shared)
