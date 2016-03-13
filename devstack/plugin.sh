@@ -76,7 +76,7 @@ function configure_networking_infoblox {
     create_ea_defs -s -u "$NETWORKING_INFOBLOX_SUPERUSER_USERNAME" -p "$NETWORKING_INFOBLOX_SUPERUSER_PASSWORD" -pnv "$NETWORKING_INFOBLOX_DC_PARTICIPATING_NETWORK_VIEWS"
 
     # Run infoblox_grid_sync to sync Infoblox Grid information
-    infoblox_grid_sync --config-file=$NEUTRON_CONF
+    infoblox_grid_sync --config-file=$NEUTRON_CONF --config-file=/$Q_PLUGIN_CONF_FILE
 }
 
 DIR_INFOBLOX=$DEST/networking-infoblox
