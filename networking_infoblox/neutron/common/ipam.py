@@ -225,8 +225,18 @@ class IpamSyncController(object):
 
         for pool in pools:
             disable = True
-            start_ip = netaddr.IPAddress(pool.first, ip_version).format()
-            end_ip = netaddr.IPAddress(pool.last, ip_version).format()
+
+            # db_base_plugin uses netaddr but neutronclient uses dict for
+            # ip range
+            if isinstance(pool, dict) and pool.get('start'):
+                start_ip = pool.get('start')
+            else:
+                start_ip = netaddr.IPAddress(pool.first, ip_version).format()
+
+            if isinstance(pool, dict) and pool.get('end'):
+                end_ip = pool.get('end')
+            else:
+                end_ip = netaddr.IPAddress(pool.last, ip_version).format()
 
             if check_if_exists:
                 ib_ip_range = ib_objects.IPRange.search(
@@ -499,7 +509,11 @@ class IpamSyncController(object):
         dns_view = self.ib_cxt.mapping.dns_view
         zone_auth = self.pattern_builder.get_zone_name()
 
-        allocated_ip = self.ib_cxt.ip_alloc.allocate_given_ip(
+        ip_alloc = (self.ib_cxt.dhcp_port_ip_alloc
+                    if device_owner == n_const.DEVICE_OWNER_DHCP
+                    else self.ib_cxt.ip_alloc)
+
+        allocated_ip = ip_alloc.allocate_given_ip(
             self.ib_cxt.mapping.network_view,
             dns_view,
             zone_auth,
@@ -510,6 +524,8 @@ class IpamSyncController(object):
         if allocated_ip:
             LOG.info('IP address allocated on Infoblox NIOS: %s',
                      allocated_ip)
+            if device_owner == n_const.DEVICE_OWNER_DHCP:
+                self.ib_cxt.update_nameservers(allocated_ip)
 
         return allocated_ip
 

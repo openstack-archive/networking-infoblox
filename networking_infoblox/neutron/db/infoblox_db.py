@@ -642,6 +642,11 @@ def get_floatingip_by_id(session, floatingip_id):
     return q.filter_by(id=floatingip_id).one()
 
 
+def get_floatingip_by_ip_address(session, floatingip):
+    q = session.query(l3_db.FloatingIP)
+    return q.filter_by(floating_ip_address=floatingip).one()
+
+
 def get_address_scope_by_subnetpool_id(session, subnetpool_id):
     sub_qry = (session.query(models_v2.SubnetPool.address_scope_id).
                filter(models_v2.SubnetPool.id == subnetpool_id))
