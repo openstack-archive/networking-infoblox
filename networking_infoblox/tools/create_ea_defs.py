@@ -159,7 +159,7 @@ def create_ea_defs(grid_id):
 
 
 def participate_network_views(grid_id):
-    print("Participating network views for Openstack...")
+    print("Associating/Unassociating network views for OpenStack...")
     print("-" * PRINT_LINE)
     print("")
 
@@ -180,21 +180,18 @@ def participate_network_views(grid_id):
     netview_names = [ib_netview.name for ib_netview in ib_netviews]
     print ("Found %s network views from the grid.\n" % len(netview_names))
 
-    operation = 'P'
+    operation = 'ASSOCIATION'
     if not netview_input and not cfg.CONF.script:
-        question = ("Do you wish to select network views and make them "
-                    "available for Openstack?")
-        choice = ask_question(question)
-        if choice != 'y':
-            question = ("Do you wish to remove network view participation "
-                        "from Openstack?")
-            choice = ask_question(question)
-            if choice != 'y':
-                return
-            operation = 'U'
+        expected_answers_operation = ['a', 'u']
+        expected_answers_yes_no = ['y', 'n']
+
+        question = ("Please type 'a' to associate network views, 'u' to "
+                    "unassociate.")
+        choice = ask_question(question, expected_answers_operation)
+        operation = 'ASSOCIATION' if choice == 'a' else 'UNASSOCIATION'
 
         question = "Do you want to list network views?"
-        choice = ask_question(question)
+        choice = ask_question(question, expected_answers_yes_no)
         if choice == 'y':
             print (', '.join(netview_names))
             print("")
@@ -227,7 +224,7 @@ def participate_network_views(grid_id):
 
         ib_netview = ib_netview_found[0]
         ea_netview = eam.get_ea_for_network_view(None, None, grid_id)
-        if operation == 'P':
+        if operation == 'ASSOCIATION':
             if ib_netview.extattrs is None:
                 ib_netview.extattrs = ea_netview
             else:
@@ -240,7 +237,7 @@ def participate_network_views(grid_id):
                     found_ids = [id for id in cloud_adapter_ids
                                  if id == grid_id_str]
                     if found_ids:
-                        print("'%s' already participated." % nv)
+                        print("'%s' already associated." % nv)
                         continue
 
                     cloud_adapter_ids.append(grid_id_str)
@@ -255,10 +252,10 @@ def participate_network_views(grid_id):
                 if 'Write permission' in e.msg:
                     print("'%s' has no write permission." % nv)
                     continue
-            print("'%s' is participated." % nv)
+            print("'%s' is now associated." % nv)
         else:
             if ib_netview.extattrs is None:
-                print("'%s' not participated." % nv)
+                print("'%s' not associated." % nv)
                 continue
 
             cloud_adapter_ids = ib_netview.extattrs.get(
@@ -279,21 +276,24 @@ def participate_network_views(grid_id):
                         if 'Write permission' in e.msg:
                             print("'%s' has no write permission." % nv)
                             continue
-                    print("'%s' is un-participated." % nv)
+                    print("'%s' is now unassociated." % nv)
                 else:
-                    print("'%s' not participated." % nv)
+                    print("'%s' not associated." % nv)
                     continue
             else:
-                print("'%s' not participated." % nv)
+                print("'%s' not associated." % nv)
                 continue
 
     print("\n")
 
 
-def ask_question(question):
+def ask_question(question, expected_answers):
+    prompt_choice = ["'%s'" % ans for ans in expected_answers]
+    prompt_choice = " or ".join(prompt_choice)
+
     while True:
-        choice = raw_input("%s Enter 'y' or 'n': " % question)
-        if choice not in ['y', 'n']:
+        choice = raw_input("%s Enter %s: " % (question, prompt_choice))
+        if choice not in expected_answers:
             print ("Enter a valid choice. Please try again.\n")
             continue
         else:
