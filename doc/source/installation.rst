@@ -453,7 +453,7 @@ grids is not yet available.
    * - admin_password
      - The password to use for the WAPI.
    * - wapi_version
-     - The WAPI version to use. Version 2.2 or later is recommended, if your
+     - The WAPI version to use. Version 2.2.2 or later is recommended, if your
        grid supports it (WAPI version 2.3 is supported in NIOS 7.3)
    * - wapi_max_results
      - The maximum number of objects to be returned by WAPI. If this is set to
@@ -490,7 +490,7 @@ installation):
    grid_master_name = GRID_MASTER_NAME
    admin_user_name = USER
    admin_password = PASSWORD
-   wapi_version = 2.2.1
+   wapi_version = 2.2.2
    wapi_max_results = -50000
 
 In addition to these options, you must enable the notifications options
