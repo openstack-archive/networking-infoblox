@@ -19,6 +19,8 @@ from neutron.plugins.common import constants as p_const
 
 CLOUD_PLATFORM_NAME = 'OpenStack'
 
+NETVIEW_MAX_LEN = 56
+
 AGENT_BINARY_NAME = 'infoblox-ipam-agent'
 AGENT_TYPE_INFOBLOX_IPAM = 'Infoblox IPAM agent'
 AGENT_TOPIC = 'infoblox_ipam_agent'

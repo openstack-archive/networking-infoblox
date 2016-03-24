@@ -449,6 +449,13 @@ def get_notification_handler_name(event_type):
 
 
 def generate_network_view_name(object_id, object_name=None):
+    """Generates Network View name by id and name.
+
+    Truncates generated network view to do not exceed allowed length of 64
+    characters for network_view. dns_view can be generated from network_view
+    by appending 'default.', so limit max allowed length for network view
+    by 64 - len('default.') = 56.
+    """
     if not object_id or not isinstance(object_id, six.string_types):
         raise ValueError("object_id cannot be empty and must a string.")
 
@@ -457,6 +464,9 @@ def generate_network_view_name(object_id, object_name=None):
 
     netview_name = ("{}-{}".format(object_name, object_id)
                     if object_name else object_id)
+
+    if len(netview_name) > const.NETVIEW_MAX_LEN:
+        return netview_name[:const.NETVIEW_MAX_LEN]
     return netview_name
 
 

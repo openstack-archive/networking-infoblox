@@ -587,6 +587,14 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual('1234', utils.generate_network_view_name('1234'))
         self.assertEqual('hi-23', utils.generate_network_view_name('23', 'hi'))
 
+    def test_generate_network_view_name_max_len(self):
+        name = 'tempest-NetworksTest'
+        id = '279909910-24625c5053c7483ab6273628423989'
+        netview_name = utils.generate_network_view_name(id, name)
+        self.assertEqual(const.NETVIEW_MAX_LEN, len(netview_name))
+        expected_name = '-'.join([name, id])[:const.NETVIEW_MAX_LEN]
+        self.assertEqual(expected_name, netview_name)
+
     def test_get_ipv4_network_prefix(self):
         self.assertEqual(None,
                          utils.get_ipv4_network_prefix('2001:db8:85a3::/64',
