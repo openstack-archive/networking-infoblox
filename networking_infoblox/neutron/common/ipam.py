@@ -119,7 +119,7 @@ class IpamSyncController(object):
         network = self.ib_cxt.network
         subnet = self.ib_cxt.subnet
         cidr = subnet.get('cidr')
-        gateway_ip_str = str(subnet.get('gateway_ip'))
+        gateway_ip = subnet.get('gateway_ip')
 
         ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
                                             self.ib_cxt.tenant_id,
@@ -162,7 +162,7 @@ class IpamSyncController(object):
             cidr,
             self.ib_cxt.mapping.ib_nameservers,
             self.ib_cxt.mapping.ib_dhcp_members,
-            gateway_ip_str,
+            gateway_ip,
             relay_trel_ip,
             ea_network)
         self._register_mapping_member()
