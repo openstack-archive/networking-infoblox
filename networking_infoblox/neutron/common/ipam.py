@@ -184,9 +184,11 @@ class IpamSyncController(object):
 
         member_names = self._get_service_members('member_name')
         for member_name in member_names:
-            ib_member = ib_objects.Member(self.ib_cxt.connector,
-                                          host_name=member_name)
-            self.ib_cxt.ibom.restart_all_services(ib_member)
+            ib_member = ib_objects.Member.search(self.ib_cxt.connector,
+                                                 host_name=member_name,
+                                                 return_fields=[])
+            if ib_member:
+                self.ib_cxt.ibom.restart_all_services(ib_member)
 
     def _register_mapping_member(self):
         session = self.ib_cxt.context.session

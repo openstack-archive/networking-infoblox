@@ -194,12 +194,15 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
     @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
+    @mock.patch('infoblox_client.objects.Member')
     @mock.patch('infoblox_client.objects.IPRange')
-    def test_create_subnet_existing_network_view(self, ip_range_mock):
+    def test_create_subnet_existing_network_view(self, ip_range_mock,
+                                                 member_mock):
         test_opts = {'cidr': '12.12.12.0/24', 'network_view_exists': True}
         self.helper.prepare_test(test_opts)
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
+        member_mock.search = mock.Mock(return_value=None)
         ip_range_mock.search = mock.Mock(return_value=None)
         with mock.patch.object(ib_objects.Network,
                                'search',
