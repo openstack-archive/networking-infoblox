@@ -186,7 +186,7 @@ class IpamSyncController(object):
         for member_name in member_names:
             ib_member = ib_objects.Member.search(self.ib_cxt.connector,
                                                  host_name=member_name,
-                                                 return_fields=[])
+                                                 return_fields=['host_name'])
             if ib_member:
                 self.ib_cxt.ibom.restart_all_services(ib_member)
 
