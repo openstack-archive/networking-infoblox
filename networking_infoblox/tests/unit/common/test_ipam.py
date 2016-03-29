@@ -158,7 +158,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         self.ib_cxt.ibom.create_network.assert_called_once_with(
             network_view, subnet['cidr'], mock.ANY, mock.ANY,
-            str(subnet['gateway_ip']), None, mock.ANY)
+            subnet['gateway_ip'], None, mock.ANY)
 
         allocation_pools = subnet['allocation_pools'][0]
         first_ip = netaddr.IPAddress(allocation_pools.first,
