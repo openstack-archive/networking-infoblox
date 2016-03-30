@@ -14,8 +14,8 @@ set -e
 PIDFILE=/var/run/neutron/infoblox-ipam-agent.pid
 LOGFILE=/var/log/neutron/infoblox-ipam-agent.log
 
-DAEMON=/usr/bin/infoblox-ipam-agent
-DAEMON_ARGS="--log-file=$LOGFILE"
+DAEMON=infoblox-ipam-agent
+DAEMON_ARGS="--log-file=$LOGFILE --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini"
 DAEMON_DIR=/var/run
 
 ENABLED=true
@@ -29,9 +29,10 @@ mkdir -p /var/log/neutron
 
 . /lib/lsb/init-functions
 
-export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
+export PATH="${PATH:+$PATH:}/usr/sbin:/sbin:/usr/local/bin"
 export TMPDIR=/var/lib/neutron/tmp
 
+DAEMON=`which ${DAEMON}`
 if [ ! -x ${DAEMON} ] ; then
     exit 0
 fi
