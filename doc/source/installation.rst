@@ -378,6 +378,12 @@ Installing the Driver
 The driver need to be installed on each controller node that is running the
 Neutron service. The driver is available from PyPi, and can be installed using
 the ``pip install`` command.
+Note that, by default, the init script ``infoblox-ipam-agent`` is installed as
+``/usr/local/etc/init.d/infoblox-ipam-agent``. To install the script in ``/etc/init.d``,
+specify ``--install-option`` as follow::
+
+  $ sudo pip install --install-option="--install-data=/" networking-infoblox
+
 
 Latest Release
 --------------
