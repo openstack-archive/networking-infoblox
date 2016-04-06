@@ -517,8 +517,8 @@ def get_ipv4_network_prefix(cidr, subnet_name):
     return prefix
 
 
-def get_features(version):
-    return feature.Feature(version)
+def get_features(version, feature_versions=None):
+    return feature.Feature(version, feature_versions=feature_versions)
 
 
 def get_dhcp_member_ips(ib_network):
@@ -609,8 +609,11 @@ def get_nameservers(ib_dns_members, ip_version):
             ip_version not in [4, 6]):
         raise ValueError("Invalid argument was passed.")
 
-    nameservers = [n for n in [m.member_ipv6 if ip_version == 6
-                               else m.member_ip for m in ib_dns_members] if n]
+    # Prefer member_dns_ipX and fallback to member_ipX if dns one not set
+    nameservers = [n for n in [m.member_dns_ipv6 or m.member_ipv6
+                               if ip_version == 6
+                               else m.member_dns_ip or m.member_ip
+                               for m in ib_dns_members] if n]
     return nameservers
 
 
