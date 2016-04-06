@@ -497,3 +497,42 @@ class IpamAsyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             ipam_controller.update_network_sync()
             assert self.ib_cxt.ibom.get_network.called
             assert self.ib_cxt.ibom.update_network_options.called
+
+
+class IpamSyncControllerUnitTestCase(base.TestCase):
+
+    def setUp(self):
+        super(IpamSyncControllerUnitTestCase, self).setUp()
+
+    def create_restart_data(self, allow_service_restart=True):
+        helper = IpamControllerTestHelper()
+        ib_cxt = helper.ib_cxt
+        ib_cxt.grid_config.allow_service_restart = allow_service_restart
+        ib_cxt.grid_config.dhcp_support = True
+        ib_cxt.ibom.restart_all_services = mock.Mock()
+        ipam_controller = ipam.IpamSyncController(ib_cxt)
+        member = {'name': 'member1'}
+        mock.patch.object(ipam_controller, '_get_service_members',
+                          return_value=[member['name']]).start()
+        return ib_cxt, ipam_controller, member
+
+    def test_restart_services_positive(self):
+        (ib_cxt, ipam_controller, member) = self.create_restart_data()
+        with mock.patch.object(ib_objects.Member, 'search',
+                               return_value=member):
+            ipam_controller._restart_services()
+            ib_objects.Member.search.assert_called_once_with(
+                ib_cxt.connector, host_name=member['name'],
+                return_fields=['host_name'])
+        ipam_controller._get_service_members.assert_called_once_with(
+            'member_name')
+        ib_cxt.ibom.restart_all_services.assert_called_once_with(member)
+
+    def test_restart_services_negative(self):
+        (ib_cxt, ipam_controller, member) = self.create_restart_data(False)
+        with mock.patch.object(ib_objects.Member, 'search',
+                               return_value=member):
+            ipam_controller._restart_services()
+            ib_objects.Member.search.assert_not_called()
+        ipam_controller._get_service_members.assert_not_called()
+        ib_cxt.ibom.restart_all_services.assert_not_called()

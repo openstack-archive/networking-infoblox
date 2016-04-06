@@ -178,7 +178,8 @@ class IpamSyncController(object):
         return list(service_member_set)
 
     def _restart_services(self):
-        if (self.grid_config.dhcp_support is False and
+        if self.grid_config.allow_service_restart is False or (
+                self.grid_config.dhcp_support is False and
                 self.grid_config.dns_support is False):
             return
 
