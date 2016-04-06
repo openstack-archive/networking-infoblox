@@ -236,12 +236,13 @@ class InfobloxContext(object):
             dhcp_members = self._get_dhcp_members(ib_network)
             if not dhcp_members:
                 dhcp_member = self._reserve_dhcp_member()
+                dhcp_ip = dhcp_member.member_dhcp_ip or dhcp_member.member_ip
                 dhcp_members = [dhcp_member]
                 # assign dhcp member
                 ib_network.members = [ib_objects.AnyMember(
                     _struct='dhcpmember',
                     name=dhcp_member.member_name,
-                    ipv4addr=dhcp_member.member_ip)]
+                    ipv4addr=dhcp_ip)]
 
             # - then set dns servers option
             dns_members = self._get_dns_members(ib_network)
@@ -284,9 +285,10 @@ class InfobloxContext(object):
 
         ib_dhcp_members = []
         for m in dhcp_members:
+            dhcp_ip = m.member_dhcp_ip or m.member_ip
             ib_dhcp_members.append(ib_objects.AnyMember(_struct='dhcpmember',
                                                         name=m.member_name,
-                                                        ipv4addr=m.member_ip))
+                                                        ipv4addr=dhcp_ip))
 
         self.mapping.dhcp_members = dhcp_members
         self.mapping.dns_members = dns_members
@@ -813,9 +815,10 @@ class InfobloxContext(object):
 
         ib_dhcp_members = []
         for m in dhcp_members:
+            dhcp_ip = m.member_dhcp_ip or m.member_ip
             ib_dhcp_members.append(ib_objects.AnyMember(_struct='dhcpmember',
                                                         name=m.member_name,
-                                                        ipv4addr=m.member_ip))
+                                                        ipv4addr=dhcp_ip))
 
         # get dns members from ib network if member exists. if not, get them
         # from service members

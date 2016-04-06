@@ -714,31 +714,52 @@ class TestUtils(testlib_api.SqlTestCase):
         actual = utils.find_member_by_ip_from_list(search_ip, search_list)
         self.assertEqual(search_ip, actual['member_ipv6'])
 
-    def test_get_nameservers(self):
+    def test_get_nameservers_raises_exception(self):
         self.assertRaises(ValueError, utils.get_nameservers, None, None)
         self.assertRaises(ValueError, utils.get_nameservers, [], None)
         self.assertRaises(ValueError, utils.get_nameservers, [], 5)
 
+    def _test_get_nameservers(self, dns_members, expected_field, ip_version):
+        nameservers = utils.get_nameservers(dns_members, ip_version)
+        expected = [getattr(m, expected_field) for m in dns_members]
+        self.assertEqual(expected, nameservers)
+
+    def test_get_nameservers(self):
         test_dhcp_member_1 = utils.json_to_obj(
             'DhcpMember',
             {'member_id': 'member-id', 'member_type': 'REGULAR',
              'member_ip': '11.11.1.12', 'member_ipv6': '2001::1',
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
+             'member_dns_ip': None, 'member_dns_ipv6': None,
              'member_name': 'm1', 'member_status': 'ON'})
         test_dhcp_member_2 = utils.json_to_obj(
             'DhcpMember',
             {'member_id': 'member-id', 'member_type': 'CPM',
              'member_ip': '11.11.1.13', 'member_ipv6': '2001::2',
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
+             'member_dns_ip': None, 'member_dns_ipv6': None,
              'member_name': 'm1', 'member_status': 'ON'})
         dns_members = [test_dhcp_member_1, test_dhcp_member_2]
-        ip_version = 4
 
-        nameservers = utils.get_nameservers(dns_members, ip_version)
+        self._test_get_nameservers(dns_members, 'member_ip', 4)
+        self._test_get_nameservers(dns_members, 'member_ipv6', 6)
 
-        expected = [m.member_ip for m in dns_members]
-        self.assertEqual(expected, nameservers)
+    def test_get_nameservers_dns_fields(self):
+        test_dhcp_member_1 = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'REGULAR',
+             'member_ip': '11.11.1.12', 'member_ipv6': '2001::1',
+             'member_dhcp_ip': '12.12.1.12', 'member_dhcp_ipv6': '2009::1',
+             'member_dns_ip': '15.10.1.2', 'member_dns_ipv6': '2016::1',
+             'member_name': 'm1', 'member_status': 'ON'})
+        test_dhcp_member_2 = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'CPM',
+             'member_ip': '11.11.1.13', 'member_ipv6': '2001::2',
+             'member_dhcp_ip': '12.12.1.13', 'member_dhcp_ipv6': '2009::2',
+             'member_dns_ip': '15.10.1.3', 'member_dns_ipv6': '2016::2',
+             'member_name': 'm1', 'member_status': 'ON'})
+        dns_members = [test_dhcp_member_1, test_dhcp_member_2]
 
-        ip_version = 6
-        nameservers = utils.get_nameservers(dns_members, ip_version)
-
-        expected = [m.member_ipv6 for m in dns_members]
-        self.assertEqual(expected, nameservers)
+        self._test_get_nameservers(dns_members, 'member_dns_ip', 4)
+        self._test_get_nameservers(dns_members, 'member_dns_ipv6', 6)

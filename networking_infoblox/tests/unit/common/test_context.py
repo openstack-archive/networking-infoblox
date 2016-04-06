@@ -264,6 +264,8 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'AuthorityMember',
             {'member_id': 'member-id', 'member_type': 'GM',
              'member_ip': '11.11.1.10', 'member_ipv6': None,
+             'member_dns_ip': '12.11.1.11', 'member_dns_ipv6': None,
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
              'member_wapi': '11.11.1.10'})
         dbi_next_authority_mock.return_value = test_authority_member
 
@@ -306,6 +308,8 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'AuthorityMember',
             {'member_id': 'member-id', 'member_type': 'CPM',
              'member_ip': '11.11.1.11', 'member_ipv6': None,
+             'member_dns_ip': '12.11.1.11', 'member_dns_ipv6': None,
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
              'member_name': 'm1', 'member_status': 'ON',
              'member_wapi': '11.11.1.11'})
         dbi_next_authority_mock.return_value = test_authority_member
@@ -347,6 +351,8 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'AuthorityMember',
             {'member_id': 'member-id', 'member_type': 'CPM',
              'member_ip': '11.11.1.11', 'member_ipv6': None,
+             'member_dns_ip': '12.11.1.11', 'member_dns_ipv6': None,
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
              'member_name': 'm1', 'member_status': 'ON',
              'member_wapi': '11.11.1.11'})
 
@@ -382,6 +388,8 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'AuthorityMember',
             {'member_id': 'member-id-gm', 'member_type': 'GM',
              'member_ip': '11.11.1.11', 'member_ipv6': None,
+             'member_dns_ip': '12.11.1.11', 'member_dns_ipv6': None,
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
              'member_name': 'gm', 'member_status': 'ON',
              'member_wapi': '11.11.1.11'})
 
@@ -463,16 +471,16 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             'DhcpMember',
             {'member_id': 'member-id', 'member_type': 'REGULAR',
              'member_ip': '11.11.1.12', 'member_ipv6': None,
+             'member_dns_ip': '12.11.1.11', 'member_dns_ipv6': None,
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
              'member_name': 'm1', 'member_status': 'ON',
              'member_wapi': '11.11.1.11'})
 
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
         ib_cxt._register_services = mock.Mock()
-        ib_cxt._get_dhcp_members = mock.Mock()
-        ib_cxt._get_dhcp_members.return_value = [test_dhcp_member]
-        ib_cxt._get_dns_members = mock.Mock()
-        ib_cxt._get_dns_members.return_value = [test_dhcp_member]
+        ib_cxt._get_dhcp_members = mock.Mock(return_value=[test_dhcp_member])
+        ib_cxt._get_dns_members = mock.Mock(return_value=[test_dhcp_member])
 
         # ib network with dhcp member assigned
         connector = mock.Mock()

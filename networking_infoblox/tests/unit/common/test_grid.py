@@ -53,11 +53,10 @@ class GridTestCase(base.TestCase, testlib_api.SqlTestCase):
         # create members
         member_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_MEMBERS_WITH_CLOUD)
-        member_mgr._discover_members = mock.Mock()
-        member_mgr._discover_members.return_value = member_json
-
-        member_mgr._discover_member_licenses = mock.Mock()
-        member_mgr._discover_member_licenses.return_value = None
+        member_mgr._discover_members = mock.Mock(return_value=member_json)
+        member_mgr._discover_member_licenses = mock.Mock(return_value=None)
+        member_mgr._discover_dns_settings = mock.Mock(return_value=[])
+        member_mgr._discover_dhcp_settings = mock.Mock(return_value=[])
 
         member_mgr.sync_members()
 
