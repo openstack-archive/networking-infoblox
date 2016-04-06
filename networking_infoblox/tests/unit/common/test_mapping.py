@@ -52,16 +52,15 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
     def _create_members_with_cloud(self):
         member_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_MEMBERS_WITH_CLOUD)
-
-        member_json = self.connector_fixture.get_object(
-            base.FixtureResourceMap.FAKE_MEMBERS_WITH_CLOUD)
-        self.member_mgr._discover_members = mock.Mock()
-        self.member_mgr._discover_members.return_value = member_json
-
         license_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_MEMBER_LICENSES)
-        self.member_mgr._discover_member_licenses = mock.Mock()
-        self.member_mgr._discover_member_licenses.return_value = license_json
+
+        self.member_mgr._discover_members = mock.Mock(return_value=member_json)
+        self.member_mgr._discover_member_licenses = mock.Mock(
+            return_value=license_json)
+
+        self.member_mgr._discover_dns_settings = mock.Mock(return_value=[])
+        self.member_mgr._discover_dhcp_settings = mock.Mock(return_value=[])
 
         self.member_mgr.sync()
 
