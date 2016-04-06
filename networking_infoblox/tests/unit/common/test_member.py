@@ -28,7 +28,6 @@ from networking_infoblox.tests import base
 
 
 class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
-
     def setUp(self):
 
         super(GridMemberTestCase, self).setUp()
@@ -42,7 +41,7 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.test_grid_config.grid_master_name = 'nios-7.2.0-master.com'
         self.test_grid_config.admin_user_name = 'admin'
         self.test_grid_config.admin_password = 'infoblox'
-        self.test_grid_config.wapi_version = '2.2'
+        self.test_grid_config.wapi_version = '2.3'
 
     def test_sync_grid(self):
         member_mgr = member.GridMemberManager(self.test_grid_config)
@@ -103,6 +102,16 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertEqual(expected_grid_connection, actual_grid_connection)
         self.assertEqual('ON', grids[1]['grid_status'])
 
+    def _mock_member_mgr(self, member_mgr, discover_members=None,
+                         discover_member_licenses=None):
+        member_mgr._discover_members = mock.Mock(return_value=discover_members)
+        member_mgr._discover_member_licenses = mock.Mock(
+            return_value=discover_member_licenses)
+
+        member_mgr._discover_dns_settings = mock.Mock(return_value=[])
+        member_mgr._discover_dhcp_settings = mock.Mock(return_value=[])
+        return member_mgr
+
     def test_sync_member_without_cloud_support(self):
         # wapi version less than 2.0 indicates no cloud support
         self.test_grid_config.wapi_version = '1.4.2'
@@ -111,11 +120,8 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         member_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_MEMBERS_WITHOUT_CLOUD)
-        member_mgr._discover_members = mock.Mock()
-        member_mgr._discover_members.return_value = member_json
+        self._mock_member_mgr(member_mgr, discover_members=member_json)
 
-        member_mgr._discover_member_licenses = mock.Mock()
-        member_mgr._discover_member_licenses.return_value = None
         member_mgr.sync_members()
 
         members = dbi.get_members(self.ctx.session)
@@ -132,11 +138,7 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         member_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_MEMBERS_WITH_CLOUD)
-        member_mgr._discover_members = mock.Mock()
-        member_mgr._discover_members.return_value = member_json
-
-        member_mgr._discover_member_licenses = mock.Mock()
-        member_mgr._discover_member_licenses.return_value = None
+        self._mock_member_mgr(member_mgr, discover_members=member_json)
 
         member_mgr.sync_members()
 
@@ -154,13 +156,10 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         member_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_MEMBERS_WITH_CLOUD)
-        member_mgr._discover_members = mock.Mock()
-        member_mgr._discover_members.return_value = member_json
-
         license_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_MEMBER_LICENSES)
-        member_mgr._discover_member_licenses = mock.Mock()
-        member_mgr._discover_member_licenses.return_value = license_json
+        self._mock_member_mgr(member_mgr, discover_members=member_json,
+                              discover_member_licenses=license_json)
 
         member_mgr.sync_members()
 
@@ -192,3 +191,138 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
                     self.assertEqual('CPM', m['member_type'])
                 else:
                     self.assertEqual('REGULAR', m['member_type'])
+
+    def test__discover_dns_settings(self):
+        member_mgr = member.GridMemberManager(self.test_grid_config)
+        member_dns = self.connector_fixture.get_object(
+            base.FixtureResourceMap.FAKE_MEMBER_DNS)
+
+        return_fields = ['host_name', 'use_mgmt_port', 'use_mgmt_ipv6_port',
+                         'use_lan_port', 'use_lan_ipv6_port', 'use_lan2_port',
+                         'use_lan2_ipv6_port', 'additional_ip_list']
+
+        get_mock = mock.Mock(return_value=member_dns)
+        member_mgr._connector.get_object = get_mock
+
+        dns_settings = member_mgr._discover_dns_settings()
+        get_mock.assert_called_once_with('member:dns',
+                                         return_fields=return_fields)
+        self.assertEqual(1, len(dns_settings))
+        self.assertTrue('nios-7.2.0-master.com' in dns_settings)
+
+    def test__discover_dns_settings_old_wapi(self):
+        # make sure wapi calls are not done on wapi older then 2.3
+        self.test_grid_config.wapi_version = '2.2.1'
+        member_mgr = member.GridMemberManager(self.test_grid_config)
+        get_mock = mock.Mock()
+        member_mgr._connector.get_object = get_mock
+
+        dns_settings = member_mgr._discover_dns_settings()
+        self.assertEqual({}, dns_settings)
+        get_mock.assert_not_called()
+
+    def test__discover_dhcp_settings(self):
+        member_mgr = member.GridMemberManager(self.test_grid_config)
+        member_dhcp = self.connector_fixture.get_object(
+            base.FixtureResourceMap.FAKE_MEMBER_DHCP)
+
+        return_fields = ['host_name', 'enable_dhcp']
+
+        get_mock = mock.Mock(return_value=member_dhcp)
+        member_mgr._connector.get_object = get_mock
+
+        dhcp_settings = member_mgr._discover_dhcp_settings()
+        get_mock.assert_called_once_with('member:dhcpproperties',
+                                         return_fields=return_fields)
+        self.assertEqual(1, len(dhcp_settings))
+        self.assertTrue('nios-7.2.0-master.com' in dhcp_settings)
+
+    def test__discover_dhcp_settings_old_wapi(self):
+        # make sure wapi calls are not done on wapi older then 2.2.1
+        self.test_grid_config.wapi_version = '2.2'
+        member_mgr = member.GridMemberManager(self.test_grid_config)
+        get_mock = mock.Mock()
+        member_mgr._connector.get_object = get_mock
+
+        dhcp_settings = member_mgr._discover_dhcp_settings()
+        self.assertEqual({}, dhcp_settings)
+        get_mock.assert_not_called()
+
+    def test__get_dhcp_ips_lan1(self):
+        member_mgr = member.GridMemberManager(self.test_grid_config)
+        member_dict = {'host_name': 'nios-7.2.0-master.com',
+                       'vip_setting': {'address': '172.22.0.10'},
+                       'ipv6_setting': {'virtual_ip': '2001::12'}}
+        dhcp_settings = {'nios-7.2.0-master.com':
+                         {'host_name': 'nios-7.2.0-master.com',
+                          'enabled': True}}
+        # should return lan1 settings
+        ip, ipv6 = member_mgr._get_dhcp_ips(member_dict, dhcp_settings)
+        self.assertEqual('172.22.0.10', ip)
+        self.assertEqual('2001::12', ipv6)
+
+    def test__get_dhcp_ips_lan2(self):
+        member_mgr = member.GridMemberManager(self.test_grid_config)
+        member_dict = {'host_name': 'nios-7.2.0-master.com',
+                       'vip_setting': {'address': '172.22.0.10'},
+                       'ipv6_setting': {'virtual_ip': '2001::12'},
+                       'lan2_port_setting':
+                           {'network_setting': {'address': '172.25.0.10'},
+                            'v6_network_setting': {'virtual_ip': '2022::25'}}}
+        dhcp_settings = {'nios-7.2.0-master.com':
+                         {'host_name': 'nios-7.2.0-master.com',
+                          'enabled': False}}
+        # should return lan2 settings
+        ip, ipv6 = member_mgr._get_dhcp_ips(member_dict, dhcp_settings)
+        self.assertEqual('172.25.0.10', ip)
+        self.assertEqual('2022::25', ipv6)
+
+    def _test__get_dns_ips(self, use_lan2_ipv6_port=False,
+                           use_lan2_port=False, use_lan_ipv6_port=False,
+                           use_lan_port=False, use_mgmt_ipv6_port=False,
+                           use_mgmt_port=False):
+        member_mgr = member.GridMemberManager(self.test_grid_config)
+        member_dict = {'host_name': 'nios-7.2.0-master.com',
+                       'vip_setting': {'address': '172.22.0.10'},
+                       'ipv6_setting': {'virtual_ip': '2001::12'},
+                       'node_info':
+                           {'v6_mgmt_network_setting': {
+                               'virtual_ip': '2050::55'},
+                            'mgmt_network_setting': {
+                                'address': '192.168.1.85'}},
+                       'lan2_port_setting':
+                           {'network_setting': {'address': '172.25.0.10'},
+                            'v6_network_setting': {'virtual_ip': '2022::25'}}}
+        dns_settings = {'nios-7.2.0-master.com':
+                        {'host_name': 'nios-7.2.0-master.com',
+                         "additional_ip_list": ['145.22.0.15', '2012::125'],
+                         "use_lan2_ipv6_port": use_lan2_ipv6_port,
+                         "use_lan2_port": use_lan2_port,
+                         "use_lan_ipv6_port": use_lan_ipv6_port,
+                         "use_lan_port": use_lan_port,
+                         "use_mgmt_ipv6_port": use_mgmt_ipv6_port,
+                         "use_mgmt_port": use_mgmt_port}}
+        return member_mgr._get_dns_ips(member_dict, dns_settings)
+
+    def test__get_dns_ips_lan1(self):
+        ip, ipv6 = self._test__get_dns_ips(use_lan_port=True,
+                                           use_lan_ipv6_port=True)
+        self.assertEqual('172.22.0.10', ip)
+        self.assertEqual('2001::12', ipv6)
+
+    def test__get_dns_ips_lan2(self):
+        ip, ipv6 = self._test__get_dns_ips(use_lan2_port=True,
+                                           use_lan2_ipv6_port=True)
+        self.assertEqual('172.25.0.10', ip)
+        self.assertEqual('2022::25', ipv6)
+
+    def test__get_dns_ips_mgmt(self):
+        ip, ipv6 = self._test__get_dns_ips(use_mgmt_port=True,
+                                           use_mgmt_ipv6_port=True)
+        self.assertEqual('192.168.1.85', ip)
+        self.assertEqual('2050::55', ipv6)
+
+    def test__get_dns_ips_additional_ips(self):
+        ip, ipv6 = self._test__get_dns_ips()
+        self.assertEqual('145.22.0.15', ip)
+        self.assertEqual('2012::125', ipv6)

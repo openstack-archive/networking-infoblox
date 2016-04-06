@@ -37,6 +37,11 @@ class GridSyncStub(object):
         self._setup_config()
         self.grid_mgr = grid.GridManager(self.context)
         self.grid_mgr.grid_config.gm_connector = mock.Mock()
+        self.grid_mgr.member._discover_dns_settings = mock.Mock(
+            return_value=[])
+        self.grid_mgr.member._discover_dhcp_settings = mock.Mock(
+            return_value=[])
+
         self._prepare_discovery_resources()
 
     def get_grid_manager(self):

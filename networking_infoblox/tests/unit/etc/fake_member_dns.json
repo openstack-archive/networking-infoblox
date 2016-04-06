@@ -1,0 +1,7 @@
+[
+    {
+        "_ref": "member:dns/b25lLnZpcnR1YWxfbm9kZSQw:nios-7.2.0-master.com",
+        "host_name": "nios-7.2.0-master.com",
+        "enable_dhcp": true
+    }
+]
