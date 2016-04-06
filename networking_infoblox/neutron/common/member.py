@@ -97,15 +97,16 @@ class GridMemberManager(object):
         if not discovered_members:
             return
 
+        dns_member_settigns = self._discover_dns_settings()
+        dhcp_member_settigns = self._discover_dhcp_settings()
+
         discovered_licenses = self._discover_member_licenses()
 
         discovered_member_ids = []
 
         for member in discovered_members:
             member_name = member['host_name']
-            member_ip = member['vip_setting']['address']
-            member_ipv6 = (member['ipv6_setting'].get('virtual_ip')
-                           if member.get('ipv6_setting') else None)
+            member_ip, member_ipv6 = self._get_lan1_settings(member)
             member_wapi = member_ip if member_ip else member_ipv6
             member_hwid = member['node_info'][0].get('hwid')
             member_status = self._get_member_status(
@@ -137,12 +138,10 @@ class GridMemberManager(object):
                 else:
                     member_id = utils.get_hash(str(grid_id) + member_name)
 
-            # TODO(hhwang): we will figure out correct interfaces in
-            # OPENSTACK-800
-            member_dhcp_ip = None
-            member_dhcp_ipv6 = None
-            member_dns_ip = None
-            member_dns_ipv6 = None
+            member_dhcp_ip, member_dhcp_ipv6 = self._get_dhcp_ips(
+                member, dhcp_member_settigns)
+            member_dns_ip, member_dns_ipv6 = self._get_dns_ips(
+                member, dns_member_settigns)
 
             if require_db_update:
                 dbi.update_member(session,
@@ -193,11 +192,113 @@ class GridMemberManager(object):
         return_fields = ['node_info', 'host_name', 'vip_setting', 'extattrs']
         if utils.get_features(
                 self._grid_config.wapi_version).member_ipv6_setting:
-            return_fields.append('ipv6_setting')
+            return_fields.append('ipv6_setting', 'lan2_port_setting',
+                                 'mgmt_port_setting')
 
         members = self._connector.get_object('member',
                                              return_fields=return_fields)
         return members
+
+    def _discover_dns_settings(self):
+        members = {}
+        return_fields = ['host_name', 'use_mgmt_port', 'use_mgmt_ipv6_port',
+                         'use_lan_port', 'use_lan_ipv6_port', 'use_lan2_port',
+                         'use_lan2_ipv6_port', 'additional_ip_list']
+        dns_members = self._connector.get_object('member:dns',
+                                                 return_fields=return_fields)
+        # Convert members into dict with host_name as a key
+        if dns_members:
+            for member in dns_members:
+                members[members['host_name']] = member
+        return members
+
+    def _discover_dhcp_settings(self):
+        members = {}
+        return_fields = ['host_name', 'enable_dhcp']
+        dhcp_members = self._connector.get_object('member:dhcpproperties',
+                                                  return_fields=return_fields)
+        # Convert members into dict with host_name as a key
+        if dhcp_members:
+            for member in dhcp_members:
+                members[members['host_name']] = member
+        return members
+
+    def _get_lan1_settings(self, member):
+        member_ip = member['vip_setting']['address']
+        member_ipv6 = (member['ipv6_setting'].get('virtual_ip')
+                       if member.get('ipv6_setting') else None)
+        return member_ip, member_ipv6
+
+    def _get_dhcp_ips(self, member, dhcp_member_settigns):
+        member_dhcp_ip = None
+        member_dhcp_ipv6 = None
+        member_name = member['host_name']
+        member_ip, member_ipv6 = self._get_lan1_settings(member)
+
+        if member_name in dhcp_member_settigns:
+            # Use LAN1 interface if enable_dhcp is turned on or LAN2 is
+            # not configured
+            l2 = member.get('lan2_port_setting')
+            if dhcp_member_settigns[member_name].get('enable_dhcp') or not l2:
+                member_dhcp_ip = member_ip
+                member_dhcp_ipv6 = member_ipv6
+            else:
+                if l2.get('network_setting'):
+                    member_dhcp_ip = l2['network_setting'].get('address')
+                if l2.get('v6_network_setting'):
+                    member_dhcp_ipv6 = l2['v6_network_setting'].get(
+                        'virtual_ip')
+        return member_dhcp_ip, member_dhcp_ipv6
+
+    def _get_dns_ips(self, member, dns_member_settigns):
+        member_dns_ip = None
+        member_dns_ipv6 = None
+        member_name = member['host_name']
+        member_ip, member_ipv6 = self._get_lan1_settings(member)
+
+        if member_name in dns_member_settigns:
+            dns_settings = dns_member_settigns[member_name]
+            # Assign IPv4 address
+            if dns_settings.get('use_lan_port'):
+                member_dns_ip = member_ip
+            elif dns_settings.get('use_lan2_port'):
+                l2 = member.get('lan2_port_setting')
+                if l2 and l2.get('network_setting'):
+                    member_dns_ip = l2['network_setting'].get('address')
+            elif dns_settings.get('use_mgmt_port'):
+                n_info = member.get('node_info')
+                if n_info and n_info.get('mgmt_network_setting'):
+                    member_dns_ip = n_info['mgmt_network_setting'].get(
+                        'address')
+            elif dns_settings.get('additional_ip_list'):
+                for ip in dns_settings.get('additional_ip_list'):
+                    if determine_ip_version(ip) == 4:
+                        member_dns_ip = ip
+                        break
+
+            # If ip is still blank fallback to member ip
+            if not member_dns_ip:
+                member_dns_ip = member_ip
+
+            # Assign IPv6 address
+            if dns_settings.get('use_lan_ipv6_port'):
+                member_dns_ipv6 = member_ipv6
+            elif dns_settings.get('use_lan2_ipv6_port'):
+                l2 = member.get('use_lan2_ipv6_port')
+                if l2 and l2.get('v6_network_setting'):
+                    member_dns_ipv6 = l2['v6_network_setting'].get(
+                        'virtual_ip')
+            elif dns_settings.get('use_mgmt_ipv6_port'):
+                n_info = member.get('node_info')
+                if n_info and n_info.get('v6_mgmt_network_setting'):
+                    member_dns_ipv6 = n_info['v6_mgmt_network_setting'].get(
+                        'virtual_ip')
+            elif dns_settings.get('additional_ip_list'):
+                for ip in dns_settings.get('additional_ip_list'):
+                    if determine_ip_version(ip) == 6:
+                        member_dns_ipv6 = ip
+                        break
+        return member_dns_ip, member_dns_ipv6
 
     def _discover_member_licenses(self):
         if not utils.get_features(

@@ -284,9 +284,10 @@ class InfobloxContext(object):
 
         ib_dhcp_members = []
         for m in dhcp_members:
+            ip = m.member_dhcp_ip or m.member_ip
             ib_dhcp_members.append(ib_objects.AnyMember(_struct='dhcpmember',
                                                         name=m.member_name,
-                                                        ipv4addr=m.member_ip))
+                                                        ipv4addr=ip))
 
         self.mapping.dhcp_members = dhcp_members
         self.mapping.dns_members = dns_members
