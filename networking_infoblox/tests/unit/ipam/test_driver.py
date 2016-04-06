@@ -41,6 +41,10 @@ class TestDriver(base.TestCase, testlib_api.SqlTestCase):
         self.grid_mgr = self.grid_stub.get_grid_manager()
         self.grid_mgr._report_sync_time = mock.Mock()
         self.grid_mgr.mapping._sync_nios_for_network_view = mock.Mock()
+        self.grid_mgr.member._discover_dns_settings = mock.Mock(
+            return_value={})
+        self.grid_mgr.member._discover_dhcp_settings = mock.Mock(
+            return_value={})
         self.grid_mgr.sync()
         self.grid_mgr.get_config = mock.Mock()
 
