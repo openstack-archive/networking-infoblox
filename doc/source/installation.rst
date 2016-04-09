@@ -382,7 +382,7 @@ Note that, by default, the init script ``infoblox-ipam-agent`` is installed as
 ``/usr/local/etc/init.d/infoblox-ipam-agent``. To install the script in ``/etc/init.d``,
 specify ``--install-option`` as follow::
 
-  $ sudo pip install --install-option="--install-data=/" networking-infoblox
+    $ sudo pip install --install-option="--install-data=/" networking-infoblox
 
 
 Latest Release
@@ -530,7 +530,7 @@ Once that is done, you should start the agent.
 To start it manually, without any init.d or systemd setup, you run the
 following command as the same user that runs neutron-server::
 
-    # /usr/local/bin/infoblox-ipam-agent --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini >/var/log/neutron/infoblox-ipam-agent.log 2>&1
+    $ /usr/local/bin/infoblox-ipam-agent --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini >/var/log/neutron/infoblox-ipam-agent.log 2>&1
 
 Restart the Services
 ====================
@@ -551,6 +551,43 @@ Compute service on each node running it. The exact command may vary based
 on your distribution. In Ubuntu the command is::
 
     $ sudo service nova-compute restart
+
+Running Data Migration
+======================
+
+Before installing networking-infoblox, you may have already created networks,
+subnets and ports in OpenStack. If you wish to migrate those objects to the
+Infoblox grid, you can run `sync_neutron_to_infoblox.py` script under
+networking_infoblox\tools folder.
+
+In order to run the script, you will need to create a keystone_admin file if
+you don't have one already and source it so that you have the admin credential
+variables available in the shell environment.
+
+networking-infoblox should have been successfully configured before running the
+migration script.
+
+.. code-block:: console
+
+    $ cat keystone_admin
+    unset OS_SERVICE_TOKEN
+    export OS_USERNAME=admin
+    export OS_PASSWORD=admin
+    export OS_AUTH_URL=http://10.39.12.161:5000/v2.0
+    export PS1='[\u@\h \W(keystone_admin)]\$ '
+
+    export OS_TENANT_NAME=admin
+    export OS_REGION_NAME=RegionOne
+
+    $ source keystone_admin
+
+    # if you have not run infoblox-ipam-agent yet, then you need to run
+    # infoblox_grid_sync.py to register the Infoblox grid members to Neutron.
+    $ networking-infoblox(keystone_admin)]# python networking_infoblox/tools/infoblox_grid_sync.py
+
+    $ networking-infoblox(keystone_admin)]# python networking_infoblox/tools/sync_neutron_to_infoblox.py
+
+You can re-run the migration script as many times as needed.
 
 Known Issues and Limitation
 ===========================
