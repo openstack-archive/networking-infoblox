@@ -1,0 +1,13 @@
+[
+    {
+        "_ref": "member:dns/b25lLnZpcnR1YWxfbm9kZSQw:nios-7.2.0-master.com",
+        "additional_ip_list": [],
+        "host_name": "nios-7.2.0-master.com",
+        "use_lan2_ipv6_port": false,
+        "use_lan2_port": false,
+        "use_lan_ipv6_port": false,
+        "use_lan_port": true,
+        "use_mgmt_ipv6_port": false,
+        "use_mgmt_port": false
+    }
+]
