@@ -56,6 +56,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ib_cxt.get_dns_members.return_value = ([mock.ANY], None)
         ib_cxt.grid_config.ns_group = None
         ib_cxt.grid_config.default_domain_name_pattern = self.test_dns_zone
+        # Enable static zone deleteion for test purpose
+        ib_cxt.grid_config.allow_static_zone_deletion = True
         return ib_cxt
 
     def test_create_dns_zones_without_ns_group(self):
@@ -181,6 +183,19 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                 self.ib_cxt.subnet['cidr'])
         ]
         assert dbi.is_last_subnet_in_private_networks.called
+
+    @mock.patch.object(dbi, 'get_network_views', mock.Mock())
+    @mock.patch.object(dbi, 'is_last_subnet_in_private_networks', mock.Mock())
+    def test_delete_dns_zones_for_static_zone_without_allow(self):
+        self.ib_cxt.network_is_shared = False
+        self.ib_cxt.grid_config.admin_network_deletion = False
+        # set allow_static_zone_deletion to default setting
+        self.ib_cxt.grid_config.allow_static_zone_deletion = False
+
+        self.controller.delete_dns_zones()
+        self.ib_cxt.grid_config.allow_static_zone_deletion = True
+
+        self.ib_cxt.ibom.delete_dns_zone.assert_not_called()
 
     @mock.patch.object(dbi, 'get_network_views', mock.Mock())
     @mock.patch.object(dbi, 'is_last_subnet_in_private_networks', mock.Mock())
