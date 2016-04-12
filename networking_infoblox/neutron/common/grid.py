@@ -191,6 +191,8 @@ class GridConfiguration(object):
         'use_grid_master_for_dhcp': const.EA_GRID_CONFIG_USE_GM_FOR_DHCP,
         'report_grid_sync_time': const.EA_GRID_CONFIG_REPORT_GRID_SYNC_TIME,
         'allow_service_restart': const.EA_GRID_CONFIG_ALLOW_SERVICE_RESTART,
+        'allow_static_zone_deletion':
+            const.EA_GRID_CONFIG_ALLOW_STATIC_ZONE_DELETION,
         'tenant_name_persistence': const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE
     }
 
@@ -261,6 +263,8 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE]
         self.allow_service_restart = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_ALLOW_SERVICE_RESTART]
+        self.allow_static_zone_deletion = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_ALLOW_STATIC_ZONE_DELETION]
 
     @property
     def wapi_version(self):
