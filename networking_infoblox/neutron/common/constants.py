@@ -75,6 +75,7 @@ EA_GRID_CONFIG_USE_GM_FOR_DHCP = 'Use Grid Master for DHCP'
 EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE = 'Tenant Name Persistence'
 EA_GRID_CONFIG_REPORT_GRID_SYNC_TIME = 'Report Grid Sync Time'
 EA_GRID_CONFIG_ALLOW_SERVICE_RESTART = 'Allow Service Restart'
+EA_GRID_CONFIG_ALLOW_STATIC_ZONE_DELETION = 'Allow Static Zone Deletion'
 
 EA_LAST_GRID_SYNC_TIME = 'Last Grid Sync Time'
 
@@ -390,6 +391,13 @@ REQUIRED_EA_DEFS = [
                      {'value': 'False'}],
      'comment': 'Grid Configuration'},
 
+    {'name': EA_GRID_CONFIG_ALLOW_STATIC_ZONE_DELETION,
+     'type': 'ENUM', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'list_values': [{'value': 'True'},
+                     {'value': 'False'}],
+     'comment': 'Grid Configuration'},
+
     # Grid Report
     {'name': EA_LAST_GRID_SYNC_TIME,
      'type': 'STRING', 'flags': 'CV',
@@ -482,5 +490,6 @@ GRID_CONFIG_DEFAULTS = {
     EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE: False,
     EA_GRID_CONFIG_REPORT_GRID_SYNC_TIME: False,
     EA_GRID_CONFIG_ALLOW_SERVICE_RESTART: True,
+    EA_GRID_CONFIG_ALLOW_STATIC_ZONE_DELETION: False,
     EA_LAST_GRID_SYNC_TIME: None
 }
