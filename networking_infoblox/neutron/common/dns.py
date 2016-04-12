@@ -149,7 +149,10 @@ class DnsController(object):
                 return True
 
         # now check for static zone
-        return dbi.is_last_subnet_in_private_networks(session, subnet_id)
+        if self.grid_config.allow_static_zone_deletion:
+            return dbi.is_last_subnet_in_private_networks(session, subnet_id)
+        else:
+            return False
 
     def bind_names(self, ip_address, instance_name=None, port_id=None,
                    port_tenant_id=None, device_id=None, device_owner=None,

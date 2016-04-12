@@ -56,6 +56,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ib_cxt.get_dns_members.return_value = ([mock.ANY], None)
         ib_cxt.grid_config.ns_group = None
         ib_cxt.grid_config.default_domain_name_pattern = self.test_dns_zone
+        ib_cxt.grid_config.allow_static_zone_deletion = False
         return ib_cxt
 
     def test_create_dns_zones_without_ns_group(self):
@@ -175,6 +176,19 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         assert self.ib_cxt.ibom.method_calls == [
             mock.call.delete_dns_zone(
                 self.ib_cxt.mapping.dns_view,
+                self.ib_cxt.subnet['cidr'])
+        ]
+        dbi.is_last_subnet_in_private_networks.assert_not_called()
+
+        # Now enable static zone deletion
+        self.ib_cxt.ibom.reset_mock()
+        dbi.is_last_subnet_in_private_networks.reset_mock()
+        self.ib_cxt.grid_config.allow_static_zone_deletion = True
+        self.controller.delete_dns_zones()
+
+        assert self.ib_cxt.ibom.method_calls == [
+            mock.call.delete_dns_zone(
+                self.ib_cxt.mapping.dns_view,
                 self.test_dns_zone),
             mock.call.delete_dns_zone(
                 self.ib_cxt.mapping.dns_view,
@@ -190,6 +204,19 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.network['shared'] = False
         self.ib_cxt.grid_config.admin_network_deletion = True
 
+        self.controller.delete_dns_zones()
+
+        assert self.ib_cxt.ibom.method_calls == [
+            mock.call.delete_dns_zone(
+                self.ib_cxt.mapping.dns_view,
+                self.ib_cxt.subnet['cidr'])
+        ]
+        dbi.is_last_subnet_in_private_networks.assert_not_called()
+
+        # Now enable static zone deletion
+        self.ib_cxt.ibom.reset_mock()
+        dbi.is_last_subnet_in_private_networks.reset_mock()
+        self.ib_cxt.grid_config.allow_static_zone_deletion = True
         self.controller.delete_dns_zones()
 
         assert self.ib_cxt.ibom.method_calls == [
