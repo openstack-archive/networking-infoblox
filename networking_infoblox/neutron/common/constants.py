@@ -76,6 +76,7 @@ EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE = 'Tenant Name Persistence'
 EA_GRID_CONFIG_REPORT_GRID_SYNC_TIME = 'Report Grid Sync Time'
 EA_GRID_CONFIG_ALLOW_SERVICE_RESTART = 'Allow Service Restart'
 EA_GRID_CONFIG_ALLOW_STATIC_ZONE_DELETION = 'Allow Static Zone Deletion'
+EA_GRID_CONFIG_ZONE_CREATION_STRATEGY = 'Zone Creation Strategy'
 
 EA_LAST_GRID_SYNC_TIME = 'Last Grid Sync Time'
 
@@ -184,6 +185,9 @@ NEUTRON_FLOATING_IP_DEVICE_OWNERS = [
 
 NONE_ID = 'NONE'
 EA_RESET_VALUE = 'N/A'
+
+ZONE_CREATION_STRATEGY_FORWARD = 'Forward'
+ZONE_CREATION_STRATEGY_REVERSE = 'Reverse'
 
 REQUIRED_EA_DEFS = [
     # Cloud Property EAs
@@ -398,6 +402,13 @@ REQUIRED_EA_DEFS = [
                      {'value': 'False'}],
      'comment': 'Grid Configuration'},
 
+    {'name': EA_GRID_CONFIG_ZONE_CREATION_STRATEGY,
+     'type': 'ENUM', 'flags': 'V',
+     'allowed_object_types': ['Member'],
+     'list_values': [{'value': ZONE_CREATION_STRATEGY_FORWARD},
+                     {'value': ZONE_CREATION_STRATEGY_REVERSE}],
+     'comment': 'Grid Configuration'},
+
     # Grid Report
     {'name': EA_LAST_GRID_SYNC_TIME,
      'type': 'STRING', 'flags': 'CV',
@@ -491,5 +502,7 @@ GRID_CONFIG_DEFAULTS = {
     EA_GRID_CONFIG_REPORT_GRID_SYNC_TIME: False,
     EA_GRID_CONFIG_ALLOW_SERVICE_RESTART: True,
     EA_GRID_CONFIG_ALLOW_STATIC_ZONE_DELETION: False,
+    EA_GRID_CONFIG_ZONE_CREATION_STRATEGY: [ZONE_CREATION_STRATEGY_FORWARD,
+                                            ZONE_CREATION_STRATEGY_REVERSE],
     EA_LAST_GRID_SYNC_TIME: None
 }
