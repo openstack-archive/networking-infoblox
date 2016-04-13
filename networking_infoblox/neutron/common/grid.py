@@ -193,6 +193,7 @@ class GridConfiguration(object):
         'allow_service_restart': const.EA_GRID_CONFIG_ALLOW_SERVICE_RESTART,
         'allow_static_zone_deletion':
             const.EA_GRID_CONFIG_ALLOW_STATIC_ZONE_DELETION,
+        'zone_creation_strategy': const.EA_GRID_CONFIG_ZONE_CREATION_STRATEGY,
         'tenant_name_persistence': const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE
     }
 
@@ -265,6 +266,8 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_ALLOW_SERVICE_RESTART]
         self.allow_static_zone_deletion = const.GRID_CONFIG_DEFAULTS[
             const.EA_GRID_CONFIG_ALLOW_STATIC_ZONE_DELETION]
+        self.zone_creation_strategy = const.GRID_CONFIG_DEFAULTS[
+            const.EA_GRID_CONFIG_ZONE_CREATION_STRATEGY]
 
     @property
     def wapi_version(self):
@@ -317,7 +320,8 @@ class GridConfiguration(object):
                                  extattr)
 
     def _update_from_ea(self, field, ea_name, extattrs):
-        value = utils.get_ea_value(ea_name, extattrs)
+        value = utils.get_ea_value(ea_name, extattrs,
+                                   ea_name in const.EA_MULTI_VALUES)
         if value:
             setattr(self, field, self._value_to_bool(value))
 

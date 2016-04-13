@@ -20,11 +20,11 @@ from neutron.common import constants as n_const
 
 from infoblox_client import exceptions as ibc_exc
 
+from networking_infoblox.neutron.common import constants
 from networking_infoblox.neutron.common import ea_manager as eam
 from networking_infoblox.neutron.common import pattern
 from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
-
 
 LOG = logging.getLogger(__name__)
 
@@ -55,36 +55,48 @@ class DnsController(object):
 
         grid_primaries, grid_secondaries = self.ib_cxt.get_dns_members()
 
+        need_forward = (constants.ZONE_CREATION_STRATEGY_FORWARD in
+                        self.grid_config.zone_creation_strategy)
+        need_reverse = (constants.ZONE_CREATION_STRATEGY_REVERSE in
+                        self.grid_config.zone_creation_strategy)
         if ns_group:
-            ib_zone = self.ib_cxt.ibom.create_dns_zone(
-                dns_view,
-                self.dns_zone,
-                ns_group=ns_group,
-                extattrs=ea_zone)
-            rollback_list.append(ib_zone)
-            ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
-                dns_view,
-                cidr,
-                prefix=prefix,
-                zone_format=zone_format,
-                extattrs=ea_zone)
-            rollback_list.append(ib_zone_cidr)
+            # create Forward zone
+            if need_forward:
+                ib_zone = self.ib_cxt.ibom.create_dns_zone(
+                    dns_view,
+                    self.dns_zone,
+                    ns_group=ns_group,
+                    extattrs=ea_zone)
+                rollback_list.append(ib_zone)
+            # create Reverse zone
+            if need_reverse:
+                ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
+                    dns_view,
+                    cidr,
+                    prefix=prefix,
+                    zone_format=zone_format,
+                    extattrs=ea_zone)
+                rollback_list.append(ib_zone_cidr)
         else:
-            ib_zone = self.ib_cxt.ibom.create_dns_zone(
-                dns_view,
-                self.dns_zone,
-                grid_primary=grid_primaries,
-                grid_secondaries=grid_secondaries,
-                extattrs=ea_zone)
-            rollback_list.append(ib_zone)
-            ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
-                dns_view,
-                cidr,
-                grid_primary=grid_primaries,
-                prefix=prefix,
-                zone_format=zone_format,
-                extattrs=ea_zone)
-            rollback_list.append(ib_zone_cidr)
+            # create Forward zone
+            if need_forward:
+                ib_zone = self.ib_cxt.ibom.create_dns_zone(
+                    dns_view,
+                    self.dns_zone,
+                    grid_primary=grid_primaries,
+                    grid_secondaries=grid_secondaries,
+                    extattrs=ea_zone)
+                rollback_list.append(ib_zone)
+            # create Reverse zone
+            if need_reverse:
+                ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
+                    dns_view,
+                    cidr,
+                    grid_primary=grid_primaries,
+                    prefix=prefix,
+                    zone_format=zone_format,
+                    extattrs=ea_zone)
+                rollback_list.append(ib_zone_cidr)
 
     def delete_dns_zones(self, dns_zone=None, ib_network=None):
         if self.grid_config.dns_support is False:
