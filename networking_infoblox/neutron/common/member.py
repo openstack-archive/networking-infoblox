@@ -281,8 +281,8 @@ class GridMemberManager(object):
                     member_dns_ip = l2['network_setting'].get('address')
             elif dns_settings.get('use_mgmt_port'):
                 n_info = member.get('node_info')
-                if n_info and n_info.get('mgmt_network_setting'):
-                    member_dns_ip = n_info['mgmt_network_setting'].get(
+                if n_info and n_info[0].get('mgmt_network_setting'):
+                    member_dns_ip = n_info[0]['mgmt_network_setting'].get(
                         'address')
             elif dns_settings.get('additional_ip_list'):
                 for ip in dns_settings.get('additional_ip_list'):
@@ -304,14 +304,19 @@ class GridMemberManager(object):
                         'virtual_ip')
             elif dns_settings.get('use_mgmt_ipv6_port'):
                 n_info = member.get('node_info')
-                if n_info and n_info.get('v6_mgmt_network_setting'):
-                    member_dns_ipv6 = n_info['v6_mgmt_network_setting'].get(
+                if n_info and n_info[0].get('v6_mgmt_network_setting'):
+                    member_dns_ipv6 = n_info[0]['v6_mgmt_network_setting'].get(
                         'virtual_ip')
             elif dns_settings.get('additional_ip_list'):
                 for ip in dns_settings.get('additional_ip_list'):
                     if utils.get_ip_version(ip) == 6:
                         member_dns_ipv6 = ip
                         break
+
+            # If ipv6 is still blank fallback to member ipv6
+            if not member_dns_ipv6:
+                member_dns_ipv6 = member_ipv6
+
         return member_dns_ip, member_dns_ipv6
 
     def _discover_member_licenses(self):

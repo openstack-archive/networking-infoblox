@@ -280,22 +280,24 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
     def _test__get_dns_ips(self, use_lan2_ipv6_port=False,
                            use_lan2_port=False, use_lan_ipv6_port=False,
                            use_lan_port=False, use_mgmt_ipv6_port=False,
-                           use_mgmt_port=False):
+                           use_mgmt_port=False, additional_ips=None):
+        if additional_ips is None:
+            additional_ips = []
         member_mgr = member.GridMemberManager(self.test_grid_config)
         member_dict = {'host_name': 'nios-7.2.0-master.com',
                        'vip_setting': {'address': '172.22.0.10'},
                        'ipv6_setting': {'virtual_ip': '2001::12'},
-                       'node_info':
+                       'node_info': [
                            {'v6_mgmt_network_setting': {
                                'virtual_ip': '2050::55'},
                             'mgmt_network_setting': {
-                                'address': '192.168.1.85'}},
+                                'address': '192.168.1.85'}}],
                        'lan2_port_setting':
                            {'network_setting': {'address': '172.25.0.10'},
                             'v6_network_setting': {'virtual_ip': '2022::25'}}}
         dns_settings = {'nios-7.2.0-master.com':
                         {'host_name': 'nios-7.2.0-master.com',
-                         "additional_ip_list": ['145.22.0.15', '2012::125'],
+                         "additional_ip_list": additional_ips,
                          "use_lan2_ipv6_port": use_lan2_ipv6_port,
                          "use_lan2_port": use_lan2_port,
                          "use_lan_ipv6_port": use_lan_ipv6_port,
@@ -323,9 +325,15 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertEqual('2050::55', ipv6)
 
     def test__get_dns_ips_additional_ips(self):
-        ip, ipv6 = self._test__get_dns_ips()
+        additional_ips = ['145.22.0.15', '2012::125']
+        ip, ipv6 = self._test__get_dns_ips(additional_ips=additional_ips)
         self.assertEqual('145.22.0.15', ip)
         self.assertEqual('2012::125', ipv6)
+
+    def test__get_dns_ips_fallback_to_lan1(self):
+        ip, ipv6 = self._test__get_dns_ips()
+        self.assertEqual('172.22.0.10', ip)
+        self.assertEqual('2001::12', ipv6)
 
     def _test_discover_members(self, wapi_version, return_fields):
         self.test_grid_config.wapi_version = wapi_version
