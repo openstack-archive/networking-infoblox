@@ -49,6 +49,7 @@ class IpamControllerTestHelper(object):
         self.subnet = None
         self.ib_cxt = mock.Mock()
         self.ib_cxt.tenant_id = self.tenant_id
+        self.ib_cxt.tenant_name = 'test_tenant'
         self.ib_cxt.context = self.neutron_cxt
         self.ib_cxt.grid_config.admin_network_deletion = False
         self.ib_cxt.grid_config.network_template = None
@@ -175,41 +176,57 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
     @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
+    @mock.patch('infoblox_client.objects.Tenant')
     @mock.patch('infoblox_client.objects.IPRange')
-    def test_create_subnet_new_network_view(self, ip_range_mock):
+    def test_create_subnet_new_network_view(self, ip_range_mock, tenant_mock):
         test_opts = dict()
         self.helper.prepare_test(test_opts)
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
         ip_range_mock.search = mock.Mock(return_value=None)
+        tenant = mock.Mock()
+        tenant_mock.search = mock.Mock(return_value=tenant)
         with mock.patch.object(ib_objects.Network,
                                'search',
                                return_value=None):
             ipam_controller._register_mapping_member = mock.Mock()
             rollback_list = []
             ipam_controller.create_subnet(rollback_list)
+
+        tenant_mock.search.assert_called_once_with(
+            self.ib_cxt.connector, id=self.ib_cxt.tenant_id)
+        tenant.update.assert_called_once_with()
+        assert tenant.name == self.ib_cxt.tenant_name
 
         self.validate_network_creation(self.helper.options['network_view'],
                                        self.helper.subnet)
 
     @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
+    @mock.patch('infoblox_client.objects.Tenant')
     @mock.patch('infoblox_client.objects.Member')
     @mock.patch('infoblox_client.objects.IPRange')
     def test_create_subnet_existing_network_view(self, ip_range_mock,
-                                                 member_mock):
+                                                 member_mock, tenant_mock):
         test_opts = {'cidr': '12.12.12.0/24', 'network_view_exists': True}
         self.helper.prepare_test(test_opts)
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
         member_mock.search = mock.Mock(return_value=None)
         ip_range_mock.search = mock.Mock(return_value=None)
+        tenant = mock.Mock()
+        tenant_mock.search = mock.Mock(return_value=tenant)
         with mock.patch.object(ib_objects.Network,
                                'search',
                                return_value=None):
             ipam_controller._register_mapping_member = mock.Mock()
             rollback_list = []
             ipam_controller.create_subnet(rollback_list)
+
+        tenant_mock.search.assert_called_once_with(
+            self.ib_cxt.connector, id=self.ib_cxt.tenant_id)
+        tenant.update.assert_called_once_with()
+        assert tenant.name == self.ib_cxt.tenant_name
 
         self.validate_network_creation(self.helper.options['network_view'],
                                        self.helper.subnet)
@@ -234,7 +251,8 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
     @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
-    def test_create_subnet_existing_external_network(self):
+    @mock.patch('infoblox_client.objects.Tenant')
+    def test_create_subnet_existing_external_network(self, tenant_mock):
         test_opts = {'network_name': 'extnet',
                      'subnet_name': 'extsub',
                      'cidr': '172.192.1.0/24',
@@ -244,11 +262,18 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
         ipam_controller._allocate_pools = mock.Mock()
+        tenant = mock.Mock()
+        tenant_mock.search = mock.Mock(return_value=tenant)
         with mock.patch.object(ib_objects.Network,
                                'search',
                                return_value=mock.Mock()):
             rollback_list = []
             ipam_controller.create_subnet(rollback_list)
+
+        tenant_mock.search.assert_called_once_with(
+            self.ib_cxt.connector, id=self.ib_cxt.tenant_id)
+        tenant.update.assert_called_once_with()
+        assert tenant.name == self.ib_cxt.tenant_name
 
         self.ib_cxt.ibom.update_network_options.assert_called_once_with(
             mock.ANY, mock.ANY)
