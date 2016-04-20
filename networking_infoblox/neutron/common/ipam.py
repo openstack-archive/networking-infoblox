@@ -85,6 +85,17 @@ class IpamSyncController(object):
                 rollback_list.append(ib_network)
             self._create_ib_ip_range(rollback_list)
 
+        # tenats available only with wapi 2.0+
+        versions = {'tenants': '2.0'}
+        features = utils.get_features(self.grid_config.wapi_version,
+                                      feature_versions=versions)
+        if features.tenants:
+            ib_tenant = ib_objects.Tenant.search(self.ib_cxt.connector,
+                                                 id=self.ib_cxt.tenant_id)
+            if ib_tenant and ib_tenant.name != self.ib_cxt.tenant_name:
+                ib_tenant.name = self.ib_cxt.tenant_name
+                ib_tenant.update()
+
         # associate the network view to neutron
         dbi.associate_network_view(session,
                                    self.ib_cxt.mapping.network_view_id,
