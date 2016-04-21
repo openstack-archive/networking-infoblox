@@ -204,9 +204,7 @@ class GridMemberManager(object):
     def _discover_dns_settings(self):
         members = {}
         # all this info available only with wapi 2.3+
-        versions = {'dns_settings': '2.3'}
-        features = utils.get_features(self._grid_config.wapi_version,
-                                      feature_versions=versions)
+        features = utils.get_features(self._grid_config.wapi_version)
         if not features.dns_settings:
             return members
 
@@ -223,9 +221,7 @@ class GridMemberManager(object):
     def _discover_dhcp_settings(self):
         members = {}
         # enable_dhcp available only with wapi 2.2.1+
-        versions = {'enable_dhcp': '2.2.1'}
-        features = utils.get_features(self._grid_config.wapi_version,
-                                      feature_versions=versions)
+        features = utils.get_features(self._grid_config.wapi_version)
         if not features.enable_dhcp:
             return members
 

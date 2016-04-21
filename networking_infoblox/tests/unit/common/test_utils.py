@@ -763,3 +763,15 @@ class TestUtils(testlib_api.SqlTestCase):
 
         self._test_get_nameservers(dns_members, 'member_dns_ip', 4)
         self._test_get_nameservers(dns_members, 'member_dns_ipv6', 6)
+
+    def test_get_features(self):
+        feature = utils.get_features('2.3')
+        self.assertTrue(feature.create_ea_def)
+        self.assertTrue(feature.cloud_api)
+        self.assertTrue(feature.member_ipv6_setting)
+        self.assertTrue(feature.member_licenses)
+        self.assertTrue(feature.enable_member_dns)
+        self.assertTrue(feature.enable_member_dhcp)
+        self.assertTrue(feature.dns_settings)
+        self.assertTrue(feature.enable_dhcp)
+        self.assertTrue(feature.tenants)

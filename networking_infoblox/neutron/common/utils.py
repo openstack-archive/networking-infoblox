@@ -518,6 +518,8 @@ def get_ipv4_network_prefix(cidr, subnet_name):
 
 
 def get_features(version, feature_versions=None):
+    if feature_versions is None:
+        feature_versions = const.FEATURE_VERSIONS
     return feature.Feature(version, feature_versions=feature_versions)
 
 

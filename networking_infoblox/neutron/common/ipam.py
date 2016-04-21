@@ -86,9 +86,7 @@ class IpamSyncController(object):
             self._create_ib_ip_range(rollback_list)
 
         # tenats available only with wapi 2.0+
-        versions = {'tenants': '2.0'}
-        features = utils.get_features(self.grid_config.wapi_version,
-                                      feature_versions=versions)
+        features = utils.get_features(self.grid_config.wapi_version)
         if features.tenants:
             ib_tenant = ib_objects.Tenant.search(self.ib_cxt.connector,
                                                  id=self.ib_cxt.tenant_id)

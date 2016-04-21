@@ -511,3 +511,15 @@ GRID_CONFIG_DEFAULTS = {
                                             ZONE_CREATION_STRATEGY_REVERSE],
     EA_LAST_GRID_SYNC_TIME: None
 }
+
+FEATURE_VERSIONS = {
+    'create_ea_def': '2.2',
+    'cloud_api': '2.0',
+    'member_ipv6_setting': '2.2',
+    'member_licenses': '2.0',
+    'enable_member_dns': '2.2.1',
+    'enable_member_dhcp': '2.2.1',
+    'dns_settings': '2.3',
+    'enable_dhcp': '2.2.1',
+    'tenants': '2.0',
+}
