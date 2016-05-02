@@ -128,6 +128,9 @@ class GridMappingManager(object):
                                      if int(gid) == self._grid_id]
                 participated = True if cloud_adapter_ids else False
 
+            if not participated:
+                continue
+
             shared_val = utils.get_ea_value(const.EA_IS_SHARED, netview)
             is_shared = types.Boolean()(shared_val) if shared_val else False
 
@@ -329,7 +332,7 @@ class GridMappingManager(object):
             netview = network['network_view']
             netview_row = utils.find_one_in_list('network_view', netview,
                                                  self.db_network_views)
-            if not netview_row:
+            if not netview_row or not netview_row.participated:
                 continue
 
             netview_id = netview_row.id
