@@ -17,6 +17,7 @@ import mock
 
 from infoblox_client import objects as ib_objects
 
+from networking_infoblox.neutron.common import constants
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import ipam
 from networking_infoblox.neutron.common import notification_handler as handler
@@ -35,6 +36,9 @@ class TestIpamEventHandler(base.TestCase):
         self.grid_manager = mock.Mock()
         self.grid_manager.grid_config.gm_connector = mock.Mock()
         self.grid_manager.grid_config.gm_connector.wapi_version = '2.0'
+        self.grid_manager.grid_config.zone_creation_strategy = (
+            constants.GRID_CONFIG_DEFAULTS[
+                constants.EA_GRID_CONFIG_ZONE_CREATION_STRATEGY])
 
         self.ipam_handler = handler.IpamEventHandler(self.context, self.plugin,
                                                      self.grid_manager)

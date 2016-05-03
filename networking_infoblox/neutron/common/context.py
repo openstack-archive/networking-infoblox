@@ -510,6 +510,9 @@ class InfobloxContext(object):
         if (for_dhcp_port or self.grid_config.ip_allocation_strategy ==
                 const.IP_ALLOCATION_STRATEGY_HOST_RECORD):
             options['use_host_record'] = True
+            if (const.ZONE_CREATION_STRATEGY_FORWARD not in
+                    self.grid_config.zone_creation_strategy):
+                options['configure_for_dns'] = False
             if for_dhcp_port:
                 options['configure_for_dhcp'] = False
         else:

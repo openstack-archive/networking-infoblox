@@ -639,3 +639,42 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                                  name=test_dhcp_member_2.member_name)]
         self.assertEqual(expected_primaries, grid_primaries)
         self.assertEqual(expected_secondaries, grid_secondaries)
+
+    def test_get_ip_allocator_for_hosts(self):
+        user_id = 'test user'
+        tenant_id = '90fbad5a098a4b05524826128d5b40b3'
+
+        # prepare network
+        network_name = 'Test Network'
+        network = self.plugin_stub.create_network(tenant_id, network_name)
+
+        # prepare subnet
+        subnet_name = 'Test Subnet'
+        subnet_cidr = '11.11.1.0/24'
+        subnet = self.plugin_stub.create_subnet(tenant_id, subnet_name,
+                                                network['id'], subnet_cidr)
+
+        self.grid_config.dns_support = True
+        self.grid_config.ip_allocation_strategy = (
+            const.IP_ALLOCATION_STRATEGY_HOST_RECORD)
+        self.grid_config.zone_creation_strategy = (
+            const.GRID_CONFIG_DEFAULTS[
+                const.EA_GRID_CONFIG_ZONE_CREATION_STRATEGY])
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+        ip_allocator = ib_cxt._get_ip_allocator()
+        self.assertEqual(ip_allocator.opts['configure_for_dns'], True)
+
+        self.grid_config.dns_support = False
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+        ip_allocator = ib_cxt._get_ip_allocator()
+        self.assertEqual(ip_allocator.opts['configure_for_dns'], False)
+
+        self.grid_config.dns_support = True
+        self.grid_config.zone_creation_strategy = [
+            const.ZONE_CREATION_STRATEGY_REVERSE]
+        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
+                                            self.grid_config, self.plugin)
+        ip_allocator = ib_cxt._get_ip_allocator()
+        self.assertEqual(ip_allocator.opts['configure_for_dns'], False)
