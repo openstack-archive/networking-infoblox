@@ -409,6 +409,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         instance_name = 'test-vm'
         tenant_id = 'tenant-id'
         port_id = 'port-id'
+        port_name = 'port-name'
         device_id = 'device-id'
         self.ib_cxt.user_id = 'test-id'
         self.ib_cxt.mapping.network_view = 'test-view'
@@ -419,14 +420,16 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.controller.bind_names(ip_address, instance_name, port_id,
                                    port_tenant_id=tenant_id,
                                    device_id=device_id,
-                                   device_owner=None)
+                                   device_owner=None,
+                                   port_name=port_name)
         assert self.ib_cxt.ip_alloc.method_calls == []
 
         device_owner = n_const.DEVICE_OWNER_DHCP
         self.controller.bind_names(ip_address, instance_name, port_id,
                                    port_tenant_id=tenant_id,
                                    device_id=device_id,
-                                   device_owner=device_owner)
+                                   device_owner=device_owner,
+                                   port_name=port_name)
         assert self.ib_cxt.dhcp_port_ip_alloc.method_calls[0] == (
             mock.call.bind_names(self.ib_cxt.mapping.network_view,
                                  self.ib_cxt.mapping.dns_view,
@@ -439,7 +442,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.controller.bind_names(ip_address, instance_name, port_id,
                                    port_tenant_id=tenant_id,
                                    device_id=device_id,
-                                   device_owner=device_owner)
+                                   device_owner=device_owner,
+                                   port_name=port_name)
         assert self.ib_cxt.ip_alloc.method_calls == [
             mock.call.bind_names(self.ib_cxt.mapping.network_view,
                                  self.ib_cxt.mapping.dns_view,
@@ -452,16 +456,18 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ip_address = '11.11.1.2'
         instance_name = 'test-vm'
         port_id = 'port-id'
+        port_name = 'port-name'
 
         fqdn = str.format("{}.{}", instance_name, self.test_dns_zone)
         self.controller.pattern_builder.get_hostname.return_value = fqdn
 
         self.controller.unbind_names(ip_address, instance_name, port_id,
-                                     device_owner=None)
+                                     device_owner=None, port_name=port_name)
         assert self.ib_cxt.ip_alloc.method_calls == []
 
         self.controller.unbind_names(ip_address, instance_name, port_id,
-                                     device_owner=n_const.DEVICE_OWNER_DHCP)
+                                     device_owner=n_const.DEVICE_OWNER_DHCP,
+                                     port_name=port_name)
         assert self.ib_cxt.dhcp_port_ip_alloc.method_calls == [
             mock.call.unbind_names(self.ib_cxt.mapping.network_view,
                                    self.ib_cxt.mapping.dns_view,
@@ -472,7 +478,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         self.controller.unbind_names(
             ip_address, instance_name, port_id,
-            device_owner=n_const.DEVICE_OWNER_ROUTER_GW)
+            device_owner=n_const.DEVICE_OWNER_ROUTER_GW, port_name=port_name)
         assert self.ib_cxt.ip_alloc.method_calls == [
             mock.call.unbind_names(self.ib_cxt.mapping.network_view,
                                    self.ib_cxt.mapping.dns_view,

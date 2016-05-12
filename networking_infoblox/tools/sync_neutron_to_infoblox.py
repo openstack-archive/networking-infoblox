@@ -190,6 +190,7 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
     # sync ports
     for port in ports:
         port_id = port['id']
+        port_name = port['name']
         port_mac_address = port['mac_address']
         tenant_id = port.get('tenant_id') or user_tenant_id
         network_id = port['network_id']
@@ -251,6 +252,7 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
                 db_port = dbi.get_port_by_id(session,
                                              db_floatingip.fixed_port_id)
                 port_id = db_port.id
+                port_name = db_port.name
                 tenant_id = db_port.tenant_id
                 device_id = db_port.device_id
                 device_owner = db_port.device_owner
@@ -273,7 +275,8 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
                         tenant_id,
                         device_id,
                         device_owner,
-                        is_floating_ip)
+                        is_floating_ip,
+                        port_name)
                 except Exception as e:
                     should_exit = True
                     LOG.error("Unable to allocate ip (%s): %s", ip_address, e)

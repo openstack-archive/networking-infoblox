@@ -94,7 +94,8 @@ class TestIpamEventHandler(base.TestCase):
             payload['floatingip']['tenant_id'],
             mock.ANY,
             mock.ANY,
-            True)
+            True,
+            mock.ANY)
 
     @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
     def test_get_instance_name_from_fip(self, ib_cxt_mock):

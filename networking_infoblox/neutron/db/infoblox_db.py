@@ -729,7 +729,8 @@ def get_floatingip_ports(session, floating_ips, floating_network_id):
     q = (session.query(models_v2.Port.id,
                        models_v2.Port.device_id,
                        models_v2.Port.device_owner,
-                       l3_db.FloatingIP.floating_ip_address).
+                       l3_db.FloatingIP.floating_ip_address,
+                       models_v2.Port.name).
          filter(models_v2.Port.id == l3_db.FloatingIP.floating_port_id).
          filter(l3_db.FloatingIP.floating_ip_address.in_(floating_ips)))
     return q.all()

@@ -383,6 +383,9 @@ class InfobloxSubnet(driver.Subnet):
                 address_request.device_id,
                 address_request.device_owner)
 
+        port_name = (address_request.port_name
+                     if hasattr(address_request, 'port_name')
+                     else None)
         if allocated_ip and address_request.device_owner:
             # we can deal with instance name as hostname in the ipam agent.
             instance_name = None
@@ -392,7 +395,8 @@ class InfobloxSubnet(driver.Subnet):
                                           address_request.port_id,
                                           address_request.tenant_id,
                                           address_request.device_id,
-                                          address_request.device_owner)
+                                          address_request.device_owner,
+                                          port_name)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     ipam_controller.deallocate_ip(allocated_ip)
@@ -416,12 +420,16 @@ class InfobloxSubnet(driver.Subnet):
         dns_controller = dns.DnsController(self._ib_cxt)
 
         ipam_controller.deallocate_ip(ip_addr)
+        port_name = (address_request.port_name
+                     if hasattr(address_request, 'port_name')
+                     else None)
         dns_controller.unbind_names(ip_addr,
                                     None,
                                     address_request.port_id,
                                     address_request.tenant_id,
                                     address_request.device_id,
-                                    address_request.device_owner)
+                                    address_request.device_owner,
+                                    port_name)
 
     def _build_address_request_from_ib_address(self, ip_address):
         connector = self._ib_cxt.connector

@@ -49,11 +49,13 @@ class InfobloxAddressRequestFactory(requests.AddressRequestFactory):
     """
     @classmethod
     def get_request(cls, context, port, ip_dict):
+
         request = super(InfobloxAddressRequestFactory, cls).get_request(
             context, port, ip_dict)
         request.mac = port.get('mac_address')
         request.tenant_id = port.get('tenant_id') or context.tenant_id
         request.port_id = port.get('id')
+        request.port_name = port.get('name')
         request.device_id = port.get('device_id')
         request.device_owner = port.get('device_owner')
         return request

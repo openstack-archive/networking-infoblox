@@ -52,6 +52,7 @@ class TestPatternBuilder(base.TestCase):
 
     def _get_test_port(self, device_owner):
         return {'id': 'port-id',
+                'name': 'port-name',
                 'device_owner': device_owner,
                 'port_id': 'port-id',
                 'device_id': 'device-id'}
@@ -113,6 +114,36 @@ class TestPatternBuilder(base.TestCase):
         expected_instance_name = (
             instance_name.replace('.', '-').replace(':', '-'))
         expected_hostname = str.format("host-{}.{}", expected_instance_name,
+                                       self.expected_domain)
+        self.assertEqual(expected_hostname, actual_hostname)
+
+    def test_get_hostname_for_port_name(self):
+        test_port = self._get_test_port('')
+        self.pattern_builder.grid_config.default_host_name_pattern = (
+            'host-{port_name}')
+
+        # test hostname with port_name
+        actual_hostname = self.pattern_builder.get_hostname(
+            self.test_ip, None, test_port['id'], test_port['device_owner'],
+            test_port['device_id'], test_port['name'])
+        expected_hostname = str.format("host-{}.{}", test_port['name'],
+                                       self.expected_domain)
+        self.assertEqual(expected_hostname, actual_hostname)
+
+        # test hostname without port_name but with ip
+        actual_hostname = self.pattern_builder.get_hostname(
+            self.test_ip, None, test_port['id'], test_port['device_owner'],
+            test_port['device_id'])
+        ip_addr = self.test_ip.replace('.', '-').replace(':', '-')
+        expected_hostname = str.format("host-{}.{}", ip_addr,
+                                       self.expected_domain)
+        self.assertEqual(expected_hostname, actual_hostname)
+
+        # test hostname without port_name and ip
+        actual_hostname = self.pattern_builder.get_hostname(
+            None, None, test_port['id'], test_port['device_owner'],
+            test_port['device_id'])
+        expected_hostname = str.format("host-{}.{}", test_port['id'],
                                        self.expected_domain)
         self.assertEqual(expected_hostname, actual_hostname)
 

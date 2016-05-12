@@ -335,7 +335,8 @@ class IpamEventHandler(object):
                                   tenant_id,
                                   db_port.device_id,
                                   db_port.device_owner,
-                                  is_floating_ip)
+                                  is_floating_ip,
+                                  db_port.name)
         LOG.info("Floating ip update sync: floating ip = %s, "
                  "instance name = %s, port id = %s, device id: %s, "
                  "device owner = %s",
@@ -402,7 +403,8 @@ class IpamEventHandler(object):
                                   ports[0]['id'],
                                   ports[0]['tenant_id'],
                                   ports[0]['device_id'],
-                                  ports[0]['device_owner'])
+                                  ports[0]['device_owner'],
+                                  ports[0]['name'])
         LOG.info("Instance creation sync: ip = %s, instance name = %s, "
                  "port id = %s, device id: %s, device owner: %s",
                  ip_addresses[0], instance_name, ports[0]['id'],
@@ -458,9 +460,10 @@ class IpamEventHandler(object):
                 device_id = port[1]
                 device_owner = port[2]
                 floating_ip = port[3]
+                port_name = port[4]
                 dns_controller.bind_names(
                     floating_ip, None, port_id, tenant_id,
-                    device_id, device_owner, False)
+                    device_id, device_owner, False, port_name)
                 LOG.info("Instance deletion sync: instance id = %s, "
                          "floating ip = %s, port id = %s, device owner = %s",
                          instance_id, floating_ip, port_id, device_owner)

@@ -32,7 +32,7 @@ class PatternBuilder(object):
         self.grid_config = self.ib_cxt.grid_config
 
     def get_hostname(self, ip_address, instance_name=None, port_id=None,
-                     device_owner=None, device_id=None):
+                     device_owner=None, device_id=None, port_name=None):
         default_pattern = self.grid_config.default_host_name_pattern
 
         if (device_owner == n_const.DEVICE_OWNER_FLOATINGIP and
@@ -48,14 +48,14 @@ class PatternBuilder(object):
                    self.grid_config.default_domain_name_pattern]
         pattern = '.'.join(el.strip('.') for el in pattern if el)
         return self._build(pattern, ip_address, instance_name, port_id,
-                           device_id)
+                           device_id, port_name=port_name)
 
     def get_zone_name(self, subnet_name=None):
         return self._build(self.grid_config.default_domain_name_pattern,
                            subnet_name=subnet_name)
 
     def _build(self, pattern, ip_address=None, instance_name=None,
-               port_id=None, device_id=None, subnet_name=None):
+               port_id=None, device_id=None, subnet_name=None, port_name=None):
         self._validate_pattern(pattern)
 
         subnet = self.ib_cxt.subnet
@@ -95,6 +95,13 @@ class PatternBuilder(object):
             for i in range(len(octets)):
                 octet_key = 'ip_address_octet{i}'.format(i=(i + 1))
                 pattern_dict[octet_key] = octets[i]
+
+        if port_name:
+            pattern_dict['port_name'] = port_name
+        elif 'ip_address' in pattern_dict:
+            pattern_dict['port_name'] = pattern_dict['ip_address']
+        else:
+            pattern_dict['port_name'] = port_id
 
         try:
             fqdn = pattern.format(**pattern_dict)

@@ -168,7 +168,7 @@ class DnsController(object):
 
     def bind_names(self, ip_address, instance_name=None, port_id=None,
                    port_tenant_id=None, device_id=None, device_owner=None,
-                   is_floating_ip=False):
+                   is_floating_ip=False, port_name=None):
         if not device_owner:
             return
 
@@ -190,14 +190,16 @@ class DnsController(object):
         try:
             self._bind_names(ip_alloc.bind_names, ip_address,
                              instance_name, port_id, port_tenant_id, device_id,
-                             device_owner, ea_ip_address)
+                             device_owner, ea_ip_address, port_name)
         except ibc_exc.InfobloxCannotCreateObject:
             with excutils.save_and_reraise_exception():
                 self.unbind_names(ip_address, instance_name, port_id,
-                                  port_tenant_id, device_id, device_owner)
+                                  port_tenant_id, device_id, device_owner,
+                                  port_name)
 
     def unbind_names(self, ip_address, instance_name=None, port_id=None,
-                     port_tenant_id=None, device_id=None, device_owner=None):
+                     port_tenant_id=None, device_id=None, device_owner=None,
+                     port_name=None):
         if not device_owner:
             return
 
@@ -206,16 +208,16 @@ class DnsController(object):
                     else self.ib_cxt.ip_alloc)
         self._bind_names(ip_alloc.unbind_names, ip_address,
                          instance_name, port_id, port_tenant_id, device_id,
-                         device_owner)
+                         device_owner, port_name)
 
     def _bind_names(self, binding_func, ip_address, instance_name=None,
                     port_id=None, port_tenant_id=None, device_id=None,
-                    device_owner=None, ea_ip_address=None):
+                    device_owner=None, ea_ip_address=None, port_name=None):
         network_view = self.ib_cxt.mapping.network_view
         dns_view = self.ib_cxt.mapping.dns_view
 
         fqdn = self.pattern_builder.get_hostname(ip_address, instance_name,
                                                  port_id, device_owner,
-                                                 device_id)
+                                                 device_id, port_name)
 
         binding_func(network_view, dns_view, ip_address, fqdn, ea_ip_address)
