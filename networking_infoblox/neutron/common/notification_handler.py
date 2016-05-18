@@ -404,7 +404,7 @@ class IpamEventHandler(object):
                                   ports[0]['tenant_id'],
                                   ports[0]['device_id'],
                                   ports[0]['device_owner'],
-                                  ports[0]['name'])
+                                  port_name=ports[0]['name'])
         LOG.info("Instance creation sync: ip = %s, instance name = %s, "
                  "port id = %s, device id: %s, device owner: %s",
                  ip_addresses[0], instance_name, ports[0]['id'],

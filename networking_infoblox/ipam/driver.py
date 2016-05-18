@@ -396,7 +396,7 @@ class InfobloxSubnet(driver.Subnet):
                                           address_request.tenant_id,
                                           address_request.device_id,
                                           address_request.device_owner,
-                                          port_name)
+                                          port_name=port_name)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     ipam_controller.deallocate_ip(allocated_ip)
