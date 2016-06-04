@@ -252,6 +252,9 @@ def participate_network_views(grid_id):
                 if 'Write permission' in e.msg:
                     print("'%s' has no write permission." % nv)
                     continue
+                else:
+                    print("'%s' failed to associate: %s" % (nv, e.msg))
+                    continue
             print("'%s' is now associated." % nv)
         else:
             if ib_netview.extattrs is None:
@@ -275,6 +278,9 @@ def participate_network_views(grid_id):
                     except ib_ex.InfobloxCannotUpdateObject as e:
                         if 'Write permission' in e.msg:
                             print("'%s' has no write permission." % nv)
+                            continue
+                        else:
+                            print("'%s' failed to unassociated: %s" % (nv, e.msg))
                             continue
                     print("'%s' is now unassociated." % nv)
                 else:
