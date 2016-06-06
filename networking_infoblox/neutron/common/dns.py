@@ -13,12 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from infoblox_client import exceptions as ibc_exc
+from neutron.common import constants as n_const
+from neutron.extensions import external_net
 from oslo_log import log as logging
 from oslo_utils import excutils
-
-from neutron.common import constants as n_const
-
-from infoblox_client import exceptions as ibc_exc
 
 from networking_infoblox.neutron.common import constants
 from networking_infoblox.neutron.common import ea_manager as eam
@@ -215,9 +214,11 @@ class DnsController(object):
                     device_owner=None, ea_ip_address=None, port_name=None):
         network_view = self.ib_cxt.mapping.network_view
         dns_view = self.ib_cxt.mapping.dns_view
+        is_external = self.ib_cxt.network.get(external_net.EXTERNAL, False)
 
         fqdn = self.pattern_builder.get_hostname(ip_address, instance_name,
                                                  port_id, device_owner,
-                                                 device_id, port_name)
+                                                 device_id, port_name,
+                                                 external=is_external)
 
         binding_func(network_view, dns_view, ip_address, fqdn, ea_ip_address)

@@ -48,6 +48,8 @@ class TestPatternBuilder(base.TestCase):
         ib_cxt.grid_config.default_host_name_pattern = 'host-{ip_address}'
         ib_cxt.grid_config.default_domain_name_pattern = (
             '{subnet_id}.infoblox.com')
+        ib_cxt.grid_config.external_host_name_pattern = ''
+        ib_cxt.grid_config.external_domain_name_pattern = ''
         return ib_cxt
 
     def _get_test_port(self, device_owner):
