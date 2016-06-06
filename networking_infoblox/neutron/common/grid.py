@@ -220,54 +220,7 @@ class GridConfiguration(object):
         self._is_cloud_wapi = False
 
         # default settings from nios grid master
-        self.grid_sync_support = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_GRID_SYNC_SUPPORT]
-        self.grid_sync_minimum_wait_time = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_GRID_SYNC_MINIMUM_WAIT_TIME]
-        self.grid_sync_maximum_wait_time = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_GRID_SYNC_MAXIMUM_WAIT_TIME]
-        self.default_network_view_scope = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE]
-        self.default_network_view = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW]
-        self.default_host_name_pattern = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN]
-        self.default_domain_name_pattern = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DEFAULT_DOMAIN_NAME_PATTERN]
-        self.ns_group = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_NS_GROUP]
-        self.dns_view = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DNS_VIEW]
-        self.network_template = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_NETWORK_TEMPLATE]
-        self.admin_network_deletion = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_ADMIN_NETWORK_DELETION]
-        self.ip_allocation_strategy = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_IP_ALLOCATION_STRATEGY]
-        self.dns_record_binding_types = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DNS_RECORD_BINDING_TYPES]
-        self.dns_record_unbinding_types = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DNS_RECORD_UNBINDING_TYPES]
-        self.dns_record_removable_types = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DNS_RECORD_REMOVABLE_TYPES]
-        self.dhcp_support = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DHCP_SUPPORT]
-        self.dns_support = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_DNS_SUPPORT]
-        self.relay_support = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_RELAY_SUPPORT]
-        self.use_grid_master_for_dhcp = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_USE_GM_FOR_DHCP]
-        self.report_grid_sync_time = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_REPORT_GRID_SYNC_TIME]
-        self.tenant_name_persistence = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_TENANT_NAME_PERSISTENCE]
-        self.allow_service_restart = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_ALLOW_SERVICE_RESTART]
-        self.allow_static_zone_deletion = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_ALLOW_STATIC_ZONE_DELETION]
-        self.zone_creation_strategy = const.GRID_CONFIG_DEFAULTS[
-            const.EA_GRID_CONFIG_ZONE_CREATION_STRATEGY]
+        self._set_default_values()
 
     @property
     def wapi_version(self):
@@ -312,6 +265,11 @@ class GridConfiguration(object):
         config = self.gm_connector.get_object(
             obj_type, payload=payload, return_fields=return_fields)
         return config[0] if config and config[0].get('extattrs') else None
+
+    def _set_default_values(self):
+        for property, key in self.property_to_ea_mapping.items():
+            if key in const.GRID_CONFIG_DEFAULTS:
+                setattr(self, property, const.GRID_CONFIG_DEFAULTS[key])
 
     def _update_fields(self, extattr):
         for pm in self.property_to_ea_mapping:

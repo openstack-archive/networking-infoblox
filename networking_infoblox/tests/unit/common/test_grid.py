@@ -226,3 +226,9 @@ class GridTestCase(base.TestCase, testlib_api.SqlTestCase):
         sync_info = member_ea[const.EA_LAST_GRID_SYNC_TIME]['value']
         assert isinstance(sync_info, list) and len(sync_info) == 2
         assert grid_mgr.hostname in sync_info[1]
+
+    def test__set_default_values(self):
+        # validate that default values are set as member properties
+        for prop, key in self.test_grid_config.property_to_ea_mapping.items():
+            self.assertEqual(const.GRID_CONFIG_DEFAULTS[key],
+                             getattr(self.test_grid_config, prop))
