@@ -32,20 +32,36 @@ class PatternBuilder(object):
         self.grid_config = self.ib_cxt.grid_config
 
     def get_hostname(self, ip_address, instance_name=None, port_id=None,
-                     device_owner=None, device_id=None, port_name=None):
-        default_pattern = self.grid_config.default_host_name_pattern
+                     device_owner=None, device_id=None, port_name=None,
+                     external=False):
+        """Build fqdn based on patterns for network type and device owner.
+
+        Two types of host and domain patterns exist:
+        - for external network (optional);
+        - for private network (default);
+        If pattern for external network is not set, default one is used.
+        If device owner is a known one (like dhcp_port, routern interface
+        etc.), then per owner patterns are used. Floating ip can be exception
+        from this rule if VM is associated with it and instance name is
+        present int the pattern.
+        """
+        if external:
+            host_pattern = (self.grid_config.external_host_name_pattern or
+                            self.grid_config.default_host_name_pattern)
+            domain_pattern = (self.grid_config.external_domain_name_pattern or
+                              self.grid_config.default_domain_name_pattern)
+        else:
+            host_pattern = self.grid_config.default_host_name_pattern
+            domain_pattern = self.grid_config.external_domain_name_pattern
 
         if (device_owner == n_const.DEVICE_OWNER_FLOATINGIP and
-                instance_name and "{instance_name}" in default_pattern):
-                hostname_pattern = default_pattern
+                instance_name and "{instance_name}" in host_pattern):
+            pass
         elif device_owner in const.NEUTRON_DEVICE_OWNER_TO_PATTERN_MAP.keys():
-            hostname_pattern = (
+            host_pattern = (
                 const.NEUTRON_DEVICE_OWNER_TO_PATTERN_MAP[device_owner])
-        else:
-            hostname_pattern = default_pattern
 
-        pattern = [hostname_pattern,
-                   self.grid_config.default_domain_name_pattern]
+        pattern = [host_pattern, domain_pattern]
         pattern = '.'.join(el.strip('.') for el in pattern if el)
         return self._build(pattern, ip_address, instance_name, port_id,
                            device_id, port_name=port_name)
