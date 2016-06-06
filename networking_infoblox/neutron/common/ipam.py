@@ -142,7 +142,7 @@ class IpamSyncController(object):
                                                network_view=network_view,
                                                cidr=cidr)
         if ib_network:
-            if self.ib_cxt.network_is_shared:
+            if self.ib_cxt.network_is_shared_or_external:
                 self.ib_cxt.reserve_service_members(ib_network)
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
                 LOG.info("ib network already exists so updated options: %s",
@@ -295,7 +295,7 @@ class IpamSyncController(object):
             allocation_pools,
             ip_version)
 
-        is_shared = self.ib_cxt.network_is_shared
+        is_shared = self.ib_cxt.network_is_shared_or_external
         for pool in removed_pool:
             if is_shared:
                 eam.reset_ea_for_range(pool)
@@ -382,7 +382,7 @@ class IpamSyncController(object):
         # subnet delete in db level by the time ipam driver reaches here.
         dbi.dissociate_network_view(session, network_id, subnet_id)
 
-        subnet_deletable = (not self.ib_cxt.network_is_shared or
+        subnet_deletable = (not self.ib_cxt.network_is_shared_or_external or
                             self.grid_config.admin_network_deletion)
         if subnet_deletable:
             ib_ipv4_networks = ib_objects.NetworkV4.search_all(

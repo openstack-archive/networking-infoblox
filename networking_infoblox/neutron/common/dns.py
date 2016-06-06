@@ -13,12 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from infoblox_client import exceptions as ibc_exc
+from neutron.common import constants as n_const
 from oslo_log import log as logging
 from oslo_utils import excutils
-
-from neutron.common import constants as n_const
-
-from infoblox_client import exceptions as ibc_exc
 
 from networking_infoblox.neutron.common import constants
 from networking_infoblox.neutron.common import ea_manager as eam
@@ -36,7 +34,8 @@ class DnsController(object):
         self.grid_config = self.ib_cxt.grid_config
         self.grid_id = self.grid_config.grid_id
         self.pattern_builder = pattern.PatternBuilder(self.ib_cxt)
-        self.dns_zone = self.pattern_builder.get_zone_name()
+        self.dns_zone = self.pattern_builder.get_zone_name(
+            is_external=self.ib_cxt.network_is_external)
 
     def create_dns_zones(self, rollback_list):
         if self.grid_config.dns_support is False:
@@ -116,7 +115,7 @@ class DnsController(object):
                      "removed.")
             return
 
-        zone_removable = (not self.ib_cxt.network_is_shared or
+        zone_removable = (not self.ib_cxt.network_is_shared_or_external or
                           self.grid_config.admin_network_deletion)
         if zone_removable:
             # delete forward zone
@@ -215,9 +214,11 @@ class DnsController(object):
                     device_owner=None, ea_ip_address=None, port_name=None):
         network_view = self.ib_cxt.mapping.network_view
         dns_view = self.ib_cxt.mapping.dns_view
+        is_external = self.ib_cxt.network_is_external
 
         fqdn = self.pattern_builder.get_hostname(ip_address, instance_name,
                                                  port_id, device_owner,
-                                                 device_id, port_name)
+                                                 device_id, port_name,
+                                                 external=is_external)
 
         binding_func(network_view, dns_view, ip_address, fqdn, ea_ip_address)
