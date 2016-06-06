@@ -60,6 +60,8 @@ EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW_SCOPE = 'Default Network View Scope'
 EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW = 'Default Network View'
 EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN = 'Default Host Name Pattern'
 EA_GRID_CONFIG_DEFAULT_DOMAIN_NAME_PATTERN = 'Default Domain Name Pattern'
+EA_GRID_CONFIG_EXTERNAL_HOST_NAME_PATTERN = 'External Host Name Pattern'
+EA_GRID_CONFIG_EXTERNAL_DOMAIN_NAME_PATTERN = 'External Domain Name Pattern'
 EA_GRID_CONFIG_NS_GROUP = 'NS Group'
 EA_GRID_CONFIG_DNS_VIEW = 'DNS View'
 EA_GRID_CONFIG_NETWORK_TEMPLATE = 'Network Template'
@@ -302,6 +304,16 @@ REQUIRED_EA_DEFS = [
      'allowed_object_types': ['Member'],
      'comment': 'Grid Configuration'},
 
+    {'name': EA_GRID_CONFIG_EXTERNAL_HOST_NAME_PATTERN,
+     'type': 'STRING', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
+    {'name': EA_GRID_CONFIG_EXTERNAL_DOMAIN_NAME_PATTERN,
+     'type': 'STRING', 'flags': '',
+     'allowed_object_types': ['Member'],
+     'comment': 'Grid Configuration'},
+
     {'name': EA_GRID_CONFIG_NS_GROUP,
      'type': 'STRING', 'flags': '',
      'allowed_object_types': ['Member'],
@@ -483,6 +495,9 @@ GRID_CONFIG_DEFAULTS = {
     EA_GRID_CONFIG_DEFAULT_NETWORK_VIEW: DEFAULT_NETWORK_VIEW,
     EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN: 'host-{ip_address}',
     EA_GRID_CONFIG_DEFAULT_DOMAIN_NAME_PATTERN: '{subnet_id}.cloud.global.com',
+    EA_GRID_CONFIG_EXTERNAL_HOST_NAME_PATTERN: '{instance_name}',
+    EA_GRID_CONFIG_EXTERNAL_DOMAIN_NAME_PATTERN:
+        '{subnet_id}.external.global.com',
     EA_GRID_CONFIG_NS_GROUP: None,
     EA_GRID_CONFIG_DNS_VIEW: DEFAULT_DNS_VIEW,
     EA_GRID_CONFIG_NETWORK_TEMPLATE: None,

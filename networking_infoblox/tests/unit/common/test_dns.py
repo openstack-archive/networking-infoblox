@@ -35,6 +35,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.test_dns_zone = 'infoblox.com'
         self.ib_cxt = self._get_ib_context()
         self.ib_cxt.context = self.neutron_cxt
+        self.ib_cxt.network_is_external = False
         self.test_zone_format = "IPV%s" % self.ib_cxt.subnet['ip_version']
         self.controller = dns.DnsController(self.ib_cxt)
         self.controller.pattern_builder = mock.Mock()

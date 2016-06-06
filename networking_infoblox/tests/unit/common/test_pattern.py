@@ -48,6 +48,8 @@ class TestPatternBuilder(base.TestCase):
         ib_cxt.grid_config.default_host_name_pattern = 'host-{ip_address}'
         ib_cxt.grid_config.default_domain_name_pattern = (
             '{subnet_id}.infoblox.com')
+        ib_cxt.grid_config.external_host_name_pattern = ''
+        ib_cxt.grid_config.external_domain_name_pattern = ''
         return ib_cxt
 
     def _get_test_port(self, device_owner):
@@ -57,50 +59,77 @@ class TestPatternBuilder(base.TestCase):
                 'port_id': 'port-id',
                 'device_id': 'device-id'}
 
-    def test_get_hostname_for_floating_ip_device_owner(self):
-        test_port = self._get_test_port(n_const.DEVICE_OWNER_FLOATINGIP)
-
-        # test with instance name
-        instance_name = 'test-vm'
+    def _test_get_hostname(self, expected_hostname,
+                           device_owner=n_const.DEVICE_OWNER_FLOATINGIP,
+                           instance_name='test-vm',
+                           external=False,):
+        test_port = self._get_test_port(device_owner)
         actual_hostname = self.pattern_builder.get_hostname(
             self.test_ip, instance_name, test_port['id'],
-            test_port['device_owner'], test_port['device_id'])
-        expected_hostname = str.format("floating-ip-{}.{}", self.expected_ip,
-                                       self.expected_domain)
+            test_port['device_owner'], test_port['device_id'],
+            external=external)
         self.assertEqual(expected_hostname, actual_hostname)
 
-        # test without instance name
+    def test_get_hostname_for_floating_ip_with_instance_name(self):
+        expected_hostname = str.format("floating-ip-{}.{}", self.expected_ip,
+                                       self.expected_domain)
+        self._test_get_hostname(expected_hostname, external=True)
+
+    def test_get_hostname_for_floating_ip_without_instance_name(self):
         instance_name = None
-        actual_hostname = self.pattern_builder.get_hostname(
-            self.test_ip, instance_name, test_port['id'],
-            test_port['device_owner'], test_port['device_id'])
         expected_hostname = str.format("floating-ip-{}.{}", self.expected_ip,
                                        self.expected_domain)
-        self.assertEqual(expected_hostname, actual_hostname)
+        self._test_get_hostname(expected_hostname,
+                                instance_name=instance_name,
+                                external=True)
 
-        # test with instance name pattern
+    def test_get_hostname_for_floating_ip_with_instance_name_pattern(self):
+        instance_name = 'test-vm'
         self.pattern_builder.grid_config.default_host_name_pattern = (
             'host-{instance_name}')
-        instance_name = 'test-vm'
-        actual_hostname = self.pattern_builder.get_hostname(
-            self.test_ip, instance_name, test_port['id'],
-            test_port['device_owner'], test_port['device_id'])
         expected_hostname = str.format("host-{}.{}", instance_name,
                                        self.expected_domain)
-        self.assertEqual(expected_hostname, actual_hostname)
+        self._test_get_hostname(expected_hostname,
+                                instance_name=instance_name,
+                                external=True)
+
+    def test_get_hostname_for_floating_ip_external_pattern(self):
+        self.pattern_builder.grid_config.external_host_name_pattern = (
+            '{instance_name}')
+        self.pattern_builder.grid_config.external_domain_name_pattern = (
+            'external.infoblox.com')
+        instance_name = 'test-vm'
+        expected_hostname = '.'.join([
+            instance_name,
+            self.pattern_builder.grid_config.external_domain_name_pattern])
+        self._test_get_hostname(expected_hostname,
+                                instance_name=instance_name,
+                                external=True)
 
     def test_get_hostname_for_other_device_owners(self):
-        for device in const.NEUTRON_DEVICE_OWNER_TO_PATTERN_MAP:
-            test_port = self._get_test_port(device)
-            device_pattern = const.NEUTRON_DEVICE_OWNER_TO_PATTERN_MAP[device]
-            actual_hostname = self.pattern_builder.get_hostname(
-                self.test_ip, None, test_port['id'],
-                test_port['device_owner'], test_port['device_id'])
+        for dev, patt in const.NEUTRON_DEVICE_OWNER_TO_PATTERN_MAP.items():
             expected_hostname = str.format(
-                "{}.{}", device_pattern.replace('{ip_address}',
-                                                self.expected_ip),
+                "{}.{}", patt.replace('{ip_address}',
+                                      self.expected_ip),
                 self.expected_domain)
-            self.assertEqual(expected_hostname, actual_hostname)
+            self._test_get_hostname(expected_hostname,
+                                    device_owner=dev,
+                                    instance_name='')
+
+    def test_get_hostname_for_other_device_owners_external(self):
+        self.pattern_builder.grid_config.external_host_name_pattern = (
+            '{instance_name}')
+        self.pattern_builder.grid_config.external_domain_name_pattern = (
+            'external.infoblox.com')
+        for dev, patt in const.NEUTRON_DEVICE_OWNER_TO_PATTERN_MAP.items():
+            expected_hostname = str.format(
+                "{}.{}", patt.replace('{ip_address}',
+                                      self.expected_ip),
+                self.pattern_builder.grid_config.external_domain_name_pattern)
+            self._test_get_hostname(expected_hostname,
+                                    device_owner=dev,
+                                    instance_name='',
+                                    external=True)
 
     def test_get_hostname_for_instance_name(self):
         test_port = self._get_test_port('')
