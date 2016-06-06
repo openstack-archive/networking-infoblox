@@ -174,6 +174,10 @@ class GridConfiguration(object):
             const.EA_GRID_CONFIG_DEFAULT_HOST_NAME_PATTERN,
         'default_domain_name_pattern':
             const.EA_GRID_CONFIG_DEFAULT_DOMAIN_NAME_PATTERN,
+        'external_host_name_pattern':
+            const.EA_GRID_CONFIG_EXTERNAL_HOST_NAME_PATTERN,
+        'external_domain_name_pattern':
+            const.EA_GRID_CONFIG_EXTERNAL_DOMAIN_NAME_PATTERN,
         'ns_group': const.EA_GRID_CONFIG_NS_GROUP,
         'dns_view': const.EA_GRID_CONFIG_DNS_VIEW,
         'network_template': const.EA_GRID_CONFIG_NETWORK_TEMPLATE,

@@ -869,5 +869,12 @@ class InfobloxContext(object):
     @property
     def network_is_shared(self):
         return (self.network.get('shared') or
-                self.network.get('router:external') or
                 self.mapping.shared)
+
+    @property
+    def network_is_external(self):
+        return self.network.get('router:external', False)
+
+    @property
+    def network_is_shared_or_external(self):
+        return self.network_is_external or self.network_is_shared

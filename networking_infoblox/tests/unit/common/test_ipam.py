@@ -241,7 +241,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.helper.prepare_test(test_opts)
 
         self.ib_cxt.mapping.shared = False
-        self.ib_cxt.network_is_shared = False
+        self.ib_cxt.network_is_shared_or_external = False
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
         with mock.patch.object(ib_objects.Network,
                                'search',
@@ -285,7 +285,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                      'shared': False}
         self.helper.prepare_test(test_opts)
         self.ib_cxt.mapping.shared = False
-        self.ib_cxt.network_is_shared = False
+        self.ib_cxt.network_is_shared_or_external = False
 
         new_pools = (netaddr.IPRange('11.11.1.25', '11.11.1.30'),
                      netaddr.IPRange('11.11.1.45', '11.11.1.60'))
@@ -325,7 +325,7 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.helper.prepare_test(test_opts)
 
         self.ib_cxt.mapping.shared = False
-        self.ib_cxt.network_is_shared = False
+        self.ib_cxt.network_is_shared_or_external = False
         ipam_controller = ipam.IpamSyncController(self.ib_cxt)
         ipam_controller._release_service_members = mock.Mock()
         with mock.patch.object(ib_objects.Network,
