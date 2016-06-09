@@ -121,7 +121,7 @@ def create_ea_defs(grid_id):
 
     mgr = object_manager.InfobloxObjectManager(conn)
     ea_defs_created = mgr.create_required_ea_definitions(
-        const.REQUIRED_EA_DEFS)
+        const.REQUIRED_EA_DEFS, reraise=True)
     if ea_defs_created:
         print("The following EA Definitions have been created: '%s'" %
               [ea_def['name'] for ea_def in ea_defs_created])
