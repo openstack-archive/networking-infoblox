@@ -423,6 +423,9 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         ipam_controller.allocate_specific_ip(ip_address, mac)
 
+        ipam_controller.pattern_builder.get_zone_name.assert_called_once_with(
+            is_external=self.ib_cxt.network_is_external)
+
         self.ib_cxt.ip_alloc.allocate_given_ip.assert_called_once_with(
             self.helper.options['network_view'], dns_view, zone_auth,
             hostname, mac, ip_address, ea_ip_address)
@@ -446,6 +449,9 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ipam_controller.pattern_builder.get_zone_name.return_value = zone_auth
 
         ipam_controller.allocate_ip_from_pool(subnet_id, allocation_pools, mac)
+
+        ipam_controller.pattern_builder.get_zone_name.assert_called_once_with(
+            is_external=self.ib_cxt.network_is_external)
 
         self.ib_cxt.ip_alloc.allocate_ip_from_range.assert_called_once_with(
             self.helper.options['network_view'], dns_view, zone_auth,
