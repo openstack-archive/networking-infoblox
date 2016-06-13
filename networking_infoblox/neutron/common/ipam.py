@@ -519,7 +519,8 @@ class IpamSyncController(object):
                                           device_id,
                                           device_owner)
         dns_view = self.ib_cxt.mapping.dns_view
-        zone_auth = self.pattern_builder.get_zone_name()
+        zone_auth = self.pattern_builder.get_zone_name(
+            is_external=self.ib_cxt.network_is_external)
 
         ip_alloc = (self.ib_cxt.dhcp_port_ip_alloc
                     if device_owner == n_const.DEVICE_OWNER_DHCP
@@ -556,7 +557,8 @@ class IpamSyncController(object):
                                           device_owner)
 
         dns_view = self.ib_cxt.mapping.dns_view
-        zone_auth = self.pattern_builder.get_zone_name()
+        zone_auth = self.pattern_builder.get_zone_name(
+            is_external=self.ib_cxt.network_is_external)
         allocated_ip = None
 
         ip_alloc = (self.ib_cxt.dhcp_port_ip_alloc
