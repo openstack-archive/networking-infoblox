@@ -114,7 +114,9 @@ Domain and Host Name Patterns
 -----------------------------
 
 `Default Domain Name Pattern`. This EA is used to control how domain names for
-IP address allocations are determined. This EA can be set to a fixed string,
+IP address allocations are determined. Typically this pattern is used for
+private networks (not external), but if `External Domain Name Pattern` is not
+set, it applies to all network types. This EA can be set to a fixed string,
 or can use patterns to generate unique zone names. For example, you may set
 this to ``cloud.example.com`` to have all DNS entries within that domain. Or,
 you can use substitution patterns: ``{tenant_name}.cloud.example.com`` would
@@ -138,6 +140,11 @@ for this to work, the `Tenant Name Persistence` EA must be set to True.
 The DNS zones are created under a DNS View, the name of which is constructed
 using the `DNS View` EA.
 
+`External Domain Name Pattern`. This EA is used to control how domain names for
+IP address allocations are determined for external networks. If this EA is
+not set, then `Default Domain Name Pattern` is used for external networks.
+The same patterns are supported as for `Default Domain Name Pattern`.
+
 `Default Host Name Pattern`. This EA controls host names in a manner similar to
 the way `Default Domain Name Pattern` controls domain names. In addition to the
 patterns supported for domain names, this EA supports these:
@@ -155,6 +162,11 @@ dashes.
 only. For example, if the pattern is
 ``host-{ip_address_octet{2}}-{ip_address_octet{3}}``
 and the IP is 10.1.2.3, then the resulting hostname will be ``host-2-3``.
+
+`External Host Name Pattern`. This EA controls host names in the same way
+as `Default Host Name Pattern`, but applies only to hosts allocated
+in external network. If `External Host Name Pattern` is not set,
+`Default Host Name Pattern` is used for external networks.
 
 `Tenant Name Persistence`. Since Neutron does not have direct access to tenant
 names (they are part of Keystone), the Infoblox IPAM agent can cache those
