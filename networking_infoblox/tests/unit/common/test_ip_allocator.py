@@ -148,3 +148,30 @@ class HostRecordAllocatorTestCase(base.TestCase):
 
         ib_mock.delete_ip_from_host_record.assert_called_once_with(
             host_record_mock, ip_1[0])
+
+    def test_bind_names_for_non_dns(self):
+        ib_mock = mock.MagicMock()
+
+        netview = 'some-test-net-view'
+        dns_view = 'some-dns-view'
+        nondns_view = ' '  # Special name for '.non_DNS_host_root' view
+        hostname = 'host1'
+        ip = '192.168.1.2'
+        extattrs = 'test-extattrs'
+
+        ib_mock.find_hostname.return_value = None
+        options = {'use_host_record': True,
+                   'configure_for_dhcp': True,
+                   'configure_for_dns': True}
+
+        allocator = ip_allocator.IPAllocator(ib_mock, options)
+        # First bind dns host - should be used provided dns view name
+        allocator.bind_names(netview, dns_view, ip, hostname, extattrs)
+        ib_mock.bind_name_with_host_record.assert_called_once_with(
+            dns_view, ip, hostname, extattrs)
+        ib_mock.reset_mock()
+        # Now bind non-dns host - should be used special dns view name
+        allocator.opts['configure_for_dns'] = False
+        allocator.bind_names(netview, dns_view, ip, hostname, extattrs)
+        ib_mock.bind_name_with_host_record.assert_called_once_with(
+            nondns_view, ip, hostname, extattrs)

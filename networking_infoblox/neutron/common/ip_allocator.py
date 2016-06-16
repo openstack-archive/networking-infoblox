@@ -108,6 +108,10 @@ class HostRecordIPAllocator(IPAllocator):
                         reserved_hostname_hr, ip, hr_ip.mac)
                     break
         else:
+            if not self.opts['configure_for_dns']:
+                # Non-dns records placed in special dns view
+                # '.non_DNS_host_root' which has special name ' '
+                dns_view = ' '
             self.manager.bind_name_with_host_record(
                 dns_view, ip, name, extattrs)
 
