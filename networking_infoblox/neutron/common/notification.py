@@ -21,9 +21,9 @@ from oslo_service import service
 from neutron.agent import rpc as agent_rpc
 from neutron.common import topics
 from neutron import context
-from neutron.i18n import _LE
-from neutron.i18n import _LW
 
+from networking_infoblox._i18n import _LE
+from networking_infoblox._i18n import _LW
 from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import grid

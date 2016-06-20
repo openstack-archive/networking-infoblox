@@ -16,7 +16,6 @@
 from collections import Counter
 from oslo_log import log as logging
 
-from neutron.i18n import _LI
 from neutron import manager
 
 from infoblox_client import connector
@@ -24,6 +23,7 @@ from infoblox_client import connector
 from infoblox_client import object_manager as obj_mgr
 from infoblox_client import objects as ib_objects
 
+from networking_infoblox._i18n import _LI
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import ip_allocator

@@ -19,12 +19,12 @@ from oslo_log import log as logging
 from oslo_utils import uuidutils
 
 from neutron.common import constants as n_const
-from neutron.i18n import _LI
 from neutron.ipam import exceptions as ipam_exc
 from neutron.ipam import utils as ipam_utils
 
 from infoblox_client import objects as ib_objects
 
+from networking_infoblox._i18n import _LI
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import ea_manager as eam
 from networking_infoblox.neutron.common import exceptions as exc

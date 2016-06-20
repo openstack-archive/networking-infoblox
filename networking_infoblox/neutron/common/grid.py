@@ -19,11 +19,10 @@ from oslo_log import log as logging
 import six
 import socket
 
-from neutron.i18n import _LI
-
 from infoblox_client import connector
 from infoblox_client import objects as ib_objects
 
+from networking_infoblox._i18n import _LI
 from networking_infoblox.neutron.common import config as cfg
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc
