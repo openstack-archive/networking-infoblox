@@ -20,8 +20,6 @@ import sys
 from oslo_log import log as logging
 from oslo_utils import excutils
 
-from neutron.i18n import _LE
-from neutron.i18n import _LW
 from neutron.ipam import driver
 from neutron.ipam import exceptions as ipam_exc
 from neutron.ipam import requests as ipam_req
@@ -31,6 +29,8 @@ from neutron import manager
 from infoblox_client import exceptions as ib_exc
 from infoblox_client import objects as ib_objects
 
+from networking_infoblox._i18n import _LE
+from networking_infoblox._i18n import _LW
 from networking_infoblox.ipam import requests
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import context as ib_context
