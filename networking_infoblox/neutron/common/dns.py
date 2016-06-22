@@ -171,6 +171,13 @@ class DnsController(object):
         if not device_owner:
             return
 
+        if device_owner in constants.NEUTRON_DEVICE_OWNER_COMPUTE_LIST:
+            if instance_name is None:
+                instance = dbi.get_instance(self.ib_cxt.context.session,
+                                            device_id)
+                if instance is not None:
+                    instance_name = instance.instance_name
+
         tenant_id = port_tenant_id or self.ib_cxt.context.tenant_id
         tenant_name = self.ib_cxt.get_tenant_name(tenant_id)
         ea_ip_address = eam.get_ea_for_ip(self.ib_cxt.user_id,

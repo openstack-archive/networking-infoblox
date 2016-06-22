@@ -368,7 +368,8 @@ class IpamEventHandler(object):
         """Notifies that an instance has been created."""
         instance_id = payload.get('instance_id')
         instance_name = payload.get('hostname')
-
+        dbi.add_or_update_instance(self.context.session,
+                                   instance_id, instance_name)
         if self.traceable:
             LOG.info("Created instance: %s, host: %s",
                      instance_id, instance_name)
@@ -414,6 +415,7 @@ class IpamEventHandler(object):
         """Notifies that an instance has been deleted."""
         instance_id = payload.get('instance_id')
         session = self.context.session
+        dbi.remove_instance(session, instance_id)
         if self.traceable:
             LOG.info("Deleted instance: %s", instance_id)
 

@@ -734,3 +734,38 @@ def get_floatingip_ports(session, floating_ips, floating_network_id):
          filter(models_v2.Port.id == l3_db.FloatingIP.floating_port_id).
          filter(l3_db.FloatingIP.floating_ip_address.in_(floating_ips)))
     return q.all()
+
+
+def add_instance(session, instance_id, instance_name):
+    instance = ib_models.InfobloxInstance(
+        instance_id=instance_id,
+        instance_name=instance_name)
+    session.add(instance)
+    return instance
+
+
+def add_or_update_instance(session, instance_id, instance_name):
+    db_instance = get_instance(session, instance_id)
+    if db_instance is None:
+        add_instance(session, instance_id, instance_name)
+    elif db_instance.instance_name != instance_name:
+        db_instance.instance_name = instance_name
+
+
+def get_instance(session, instance_id):
+    q = session.query(ib_models.InfobloxInstance)
+    return q.filter_by(instance_id=instance_id).first()
+
+
+def remove_instance(session, instance_id):
+    with session.begin(subtransactions=True):
+        q = session.query(ib_models.InfobloxInstance)
+        q = q.filter_by(instance_id=instance_id)
+        q.delete(synchronize_session=False)
+
+
+def get_instances(session, instance_ids=None):
+    q = session.query(ib_models.InfobloxInstance)
+    if instance_ids:
+        q = q.filter(ib_models.InfobloxInstance.instance_id.in_(instance_ids))
+    return q.all()

@@ -21,6 +21,7 @@ from networking_infoblox.neutron.common import constants
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import ipam
 from networking_infoblox.neutron.common import notification_handler as handler
+from networking_infoblox.neutron.db import infoblox_db as dbi
 from networking_infoblox.tests import base
 
 
@@ -155,3 +156,30 @@ class TestIpamEventHandler(base.TestCase):
                         'tenant_id': db_tenant.id}}
         self._prepare_context()
         self.ipam_handler.create_network_sync(payload)
+
+    @mock.patch.object(dbi, 'add_or_update_instance', mock.Mock())
+    def test_create_instance_sync_instance_name_create(self):
+        instance_id = 'instance-id'
+        instance_name = 'test-host'
+        payload = {
+            'instance_id': instance_id,
+            'hostname': instance_name,
+            'fixed_ips': {}
+            }
+        self._prepare_context()
+        self.ipam_handler.create_instance_sync(payload)
+        dbi.add_or_update_instance.assert_called_once_with(
+            self.context.session, instance_id, instance_name)
+
+    @mock.patch.object(dbi, 'remove_instance', mock.Mock())
+    @mock.patch.object(dbi, 'get_external_subnets', mock.Mock())
+    def test_delete_instance_sync_instance_name_delete(self):
+        instance_id = 'instance-id'
+        payload = {
+            'instance_id': instance_id,
+            }
+        self._prepare_context()
+        dbi.get_external_subnets.return_value = ()
+        self.ipam_handler.delete_instance_sync(payload)
+        dbi.remove_instance.assert_called_once_with(
+            self.context.session, instance_id)

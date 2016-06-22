@@ -267,3 +267,13 @@ class InfobloxTenant(model_base.BASEV2):
                           nullable=False,
                           primary_key=True)
     tenant_name = sa.Column(sa.String(64), nullable=False)
+
+
+class InfobloxInstance(model_base.BASEV2):
+    """Tenant id to tenant name mapping."""
+    __tablename__ = 'infoblox_instances'
+
+    instance_id = sa.Column(sa.String(64),
+                            nullable=False,
+                            primary_key=True)
+    instance_name = sa.Column(sa.String(255), nullable=False)
