@@ -19,10 +19,7 @@ eventlet.monkey_patch()
 import mock
 import time
 
-from oslo_config import cfg
-
 from neutron import context
-from neutron.plugins.ml2 import config as ml2_config
 
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import notification
@@ -53,14 +50,8 @@ class NotificationTestCase(base.RpcTestCase):
         self.grid_mgr.last_sync_time = mock.Mock()
         self.grid_mgr.grid_config.gm_connector = mock.Mock()
         self.grid_mgr.grid_config.gm_connector.wapi_version = '2.0'
-        self._setup_config()
         self.event_handler = notification_handler.IpamEventHandler(
-            self.ctx, None, self.grid_mgr)
-
-    def _setup_config(self):
-        cfg.CONF.set_override('core_plugin',
-                              'neutron.plugins.ml2.plugin.Ml2Plugin')
-        ml2_config.cfg.CONF.set_override('type_drivers', 'local', group='ml2')
+            self.ctx, mock.Mock(), self.grid_mgr)
 
     @mock.patch.object(notification_handler, 'IpamEventHandler', mock.Mock())
     def test_notification_endpoint_with_notification_handler(self):
