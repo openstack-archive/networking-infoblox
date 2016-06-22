@@ -868,3 +868,36 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                                                  m2_member.member_id,
                                                  db_service_members)
         self.assertIsNone(m2m_dhcp_member)
+
+    def _create_instances(self, instances):
+        for id, name in instances.items():
+            infoblox_db.add_instance(self.ctx.session, id, name)
+
+    def test_add_and_get_instance(self):
+        instances = {'instance-id': 'instance-name'}
+        self._create_instances(instances)
+        instance = infoblox_db.get_instance(self.ctx.session, 'instance-id')
+        self.assertEqual('instance-name', instance.instance_name)
+
+    def test_get_instances(self):
+        instances = {'instance-one': 'instance-name-1',
+                     'instance-two': 'instance-name-2',
+                     'instance-three': 'instance-name-3'}
+        self._create_instances(instances)
+        instances = infoblox_db.get_instances(
+            self.ctx.session, ['instance-one', 'instance-three'])
+        self.assertEqual(2, len(instances))
+
+    def test_add_or_update_instance(self):
+        instances = {'instance-id1': 'instance-name1'}
+        self._create_instances(instances)
+        new_instance_name = 'instance-name-updated'
+        infoblox_db.add_or_update_instance(self.ctx.session,
+                                           'instance-id1', new_instance_name)
+        instance = infoblox_db.get_instance(self.ctx.session, 'instance-id1')
+        self.assertEqual(new_instance_name, instance.instance_name)
+
+        infoblox_db.add_or_update_instance(self.ctx.session,
+                                           'instance-id2', 'instance-name2')
+        instance = infoblox_db.get_instance(self.ctx.session, 'instance-id2')
+        self.assertEqual('instance-name2', instance.instance_name)

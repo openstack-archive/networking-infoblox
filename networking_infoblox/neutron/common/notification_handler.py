@@ -250,6 +250,12 @@ class IpamEventHandler(object):
             LOG.warning("No port found for port_id: %s" % port_id)
             return None
 
+        if port['device_owner'] in const.NEUTRON_DEVICE_OWNER_COMPUTE_LIST:
+            instance = dbi.get_instance(self.context.session,
+                                        port['device_id'])
+            if instance:
+                return instance.instance_name
+
         subnet_ids = [ip['subnet_id'] for ip in port['fixed_ips']
                       if ip['ip_address'] == fixed_ip]
         if not subnet_ids:
@@ -368,7 +374,8 @@ class IpamEventHandler(object):
         """Notifies that an instance has been created."""
         instance_id = payload.get('instance_id')
         instance_name = payload.get('hostname')
-
+        dbi.add_or_update_instance(self.context.session,
+                                   instance_id, instance_name)
         if self.traceable:
             LOG.info("Created instance: %s, host: %s",
                      instance_id, instance_name)
@@ -414,6 +421,7 @@ class IpamEventHandler(object):
         """Notifies that an instance has been deleted."""
         instance_id = payload.get('instance_id')
         session = self.context.session
+        dbi.remove_instance(session, instance_id)
         if self.traceable:
             LOG.info("Deleted instance: %s", instance_id)
 

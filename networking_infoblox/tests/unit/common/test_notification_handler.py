@@ -21,6 +21,7 @@ from networking_infoblox.neutron.common import constants
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import ipam
 from networking_infoblox.neutron.common import notification_handler as handler
+from networking_infoblox.neutron.db import infoblox_db as dbi
 from networking_infoblox.tests import base
 
 
@@ -97,6 +98,7 @@ class TestIpamEventHandler(base.TestCase):
             True,
             mock.ANY)
 
+    @mock.patch.object(dbi, 'get_instance', mock.Mock())
     @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
     def test_get_instance_name_from_fip(self, ib_cxt_mock):
         floatingip = {'id': 'floatingip-id',
@@ -106,9 +108,12 @@ class TestIpamEventHandler(base.TestCase):
                       'floating_ip_address': '8.8.8.3',
                       'fixed_ip_address': '1.1.1.1'}
         port = {'fixed_ips': [{'subnet_id': 'subnet-id',
-                               'ip_address': floatingip['fixed_ip_address']}]}
+                               'ip_address': floatingip['fixed_ip_address']}],
+                'device_id': 'instance-id1',
+                'device_owner': 'compute:nova'}
         instance_name = 'test-inst'
         extattrs = mock.Mock(extattrs={'VM Name': instance_name})
+        dbi.get_instance.return_value = None
         self.plugin.get_port = mock.Mock(return_value=port)
         self.plugin.get_subnet = mock.Mock()
         with mock.patch.object(ib_objects.FixedAddress,
@@ -121,6 +126,17 @@ class TestIpamEventHandler(base.TestCase):
                                                     floatingip['port_id'])
             self.plugin.get_subnet.assert_called_with(
                 mock.ANY, port['fixed_ips'][0]['subnet_id'])
+            # now check with instance in db
+            dbi.get_instance.return_value = mock.Mock()
+            dbi.get_instance.return_value.instance_name = instance_name
+            self.plugin.get_port.reset_mock()
+            self.plugin.get_subnet.reset_mock()
+            self.assertEqual(
+                self.ipam_handler._get_instance_name_from_fip(floatingip),
+                instance_name)
+            self.plugin.get_port.assert_called_with(mock.ANY,
+                                                    floatingip['port_id'])
+            self.plugin.get_subnet.assert_not_called()
 
     def _prepare_context(self):
         message_context = {'project_name': u'admin',
@@ -155,3 +171,30 @@ class TestIpamEventHandler(base.TestCase):
                         'tenant_id': db_tenant.id}}
         self._prepare_context()
         self.ipam_handler.create_network_sync(payload)
+
+    @mock.patch.object(dbi, 'add_or_update_instance', mock.Mock())
+    def test_create_instance_sync_instance_name_create(self):
+        instance_id = 'instance-id'
+        instance_name = 'test-host'
+        payload = {
+            'instance_id': instance_id,
+            'hostname': instance_name,
+            'fixed_ips': {}
+            }
+        self._prepare_context()
+        self.ipam_handler.create_instance_sync(payload)
+        dbi.add_or_update_instance.assert_called_once_with(
+            self.context.session, instance_id, instance_name)
+
+    @mock.patch.object(dbi, 'remove_instance', mock.Mock())
+    @mock.patch.object(dbi, 'get_external_subnets', mock.Mock())
+    def test_delete_instance_sync_instance_name_delete(self):
+        instance_id = 'instance-id'
+        payload = {
+            'instance_id': instance_id,
+            }
+        self._prepare_context()
+        dbi.get_external_subnets.return_value = ()
+        self.ipam_handler.delete_instance_sync(payload)
+        dbi.remove_instance.assert_called_once_with(
+            self.context.session, instance_id)

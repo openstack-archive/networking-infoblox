@@ -23,6 +23,7 @@ from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import constants
 from networking_infoblox.neutron.common import dns
+from networking_infoblox.neutron.common import ea_manager
 from networking_infoblox.neutron.db import infoblox_db as dbi
 from networking_infoblox.tests import base
 
@@ -405,53 +406,95 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ]
         assert dbi.is_last_subnet_in_address_scope.called
 
+    @mock.patch.object(dbi, 'get_instance', mock.Mock())
+    @mock.patch.object(ea_manager, 'get_ea_for_ip', mock.Mock())
     def test_bind_names(self):
         ip_address = '11.11.1.2'
         instance_name = 'test-vm'
         tenant_id = 'tenant-id'
+        tenant_name = 'tenant-name'
         port_id = 'port-id'
         port_name = 'port-name'
         device_id = 'device-id'
         self.ib_cxt.user_id = 'test-id'
         self.ib_cxt.mapping.network_view = 'test-view'
+        self.ib_cxt.get_tenant_name.return_value = tenant_name
+        instance = mock.MagicMock()
+        instance.instance_name = instance_name
+        dbi.get_instance.return_value = instance
 
         fqdn = str.format("{}.{}", instance_name, self.test_dns_zone)
         self.controller.pattern_builder.get_hostname.return_value = fqdn
 
-        self.controller.bind_names(ip_address, instance_name, port_id,
-                                   port_tenant_id=tenant_id,
-                                   device_id=device_id,
-                                   device_owner=None,
-                                   port_name=port_name)
-        assert self.ib_cxt.ip_alloc.method_calls == []
-
-        device_owner = n_const.DEVICE_OWNER_DHCP
-        self.controller.bind_names(ip_address, instance_name, port_id,
-                                   port_tenant_id=tenant_id,
-                                   device_id=device_id,
-                                   device_owner=device_owner,
-                                   port_name=port_name)
-        assert self.ib_cxt.dhcp_port_ip_alloc.method_calls[0] == (
-            mock.call.bind_names(self.ib_cxt.mapping.network_view,
-                                 self.ib_cxt.mapping.dns_view,
-                                 ip_address,
-                                 fqdn,
-                                 mock.ANY)
-        )
-
-        device_owner = n_const.DEVICE_OWNER_ROUTER_GW
-        self.controller.bind_names(ip_address, instance_name, port_id,
-                                   port_tenant_id=tenant_id,
-                                   device_id=device_id,
-                                   device_owner=device_owner,
-                                   port_name=port_name)
-        assert self.ib_cxt.ip_alloc.method_calls == [
+        ip_alloc_method_calls = [
             mock.call.bind_names(self.ib_cxt.mapping.network_view,
                                  self.ib_cxt.mapping.dns_view,
                                  ip_address,
                                  fqdn,
                                  mock.ANY)
         ]
+        ea_call_params = [
+            self.ib_cxt.user_id, tenant_id, tenant_name, self.ib_cxt.network,
+            port_id, device_id, 'device_owner', False, instance_name]
+        test_data = [
+            {
+                'device_owner': None,
+                'instance_name': instance_name,
+                'ip_alloc': self.ib_cxt.ip_alloc,
+                'ip_alloc_calls': [],
+                'dbi_call_params': None,
+            },
+            {
+                'device_owner': n_const.DEVICE_OWNER_DHCP,
+                'instance_name': instance_name,
+                'ip_alloc': self.ib_cxt.dhcp_port_ip_alloc,
+                'ip_alloc_calls': ip_alloc_method_calls,
+                'dbi_call_params': None,
+            },
+            {
+                'device_owner': n_const.DEVICE_OWNER_ROUTER_GW,
+                'instance_name': instance_name,
+                'ip_alloc': self.ib_cxt.ip_alloc,
+                'ip_alloc_calls': ip_alloc_method_calls,
+                'dbi_call_params': None,
+            },
+            {
+                'device_owner': constants.NEUTRON_DEVICE_OWNER_COMPUTE_NOVA,
+                'instance_name': instance_name,
+                'ip_alloc': self.ib_cxt.ip_alloc,
+                'ip_alloc_calls': ip_alloc_method_calls,
+                'dbi_call_params': None,
+            },
+            {
+                'device_owner': constants.NEUTRON_DEVICE_OWNER_COMPUTE_NOVA,
+                'instance_name': None,
+                'ip_alloc': self.ib_cxt.ip_alloc,
+                'ip_alloc_calls': ip_alloc_method_calls,
+                'dbi_call_params': [self.ib_cxt.context.session, device_id],
+            },
+        ]
+
+        for data in test_data:
+            self.controller.bind_names(
+                ip_address, data['instance_name'], port_id,
+                port_tenant_id=tenant_id, device_id=device_id,
+                device_owner=data['device_owner'], port_name=port_name)
+            ip_alloc = data['ip_alloc']
+            assert ip_alloc.method_calls == data['ip_alloc_calls']
+            ip_alloc.reset_mock()
+            if data['device_owner'] is None:
+                ea_manager.get_ea_for_ip.assert_not_called()
+            else:
+                ea_call_params[6] = data['device_owner']
+                ea_manager.get_ea_for_ip.assert_called_once_with(
+                    *ea_call_params)
+                ea_manager.get_ea_for_ip.reset_mock()
+            dbi_call_params = data['dbi_call_params']
+            if dbi_call_params is None:
+                dbi.get_instance.assert_not_called()
+            else:
+                dbi.get_instance.assert_called_once_with(*dbi_call_params)
+                ea_manager.get_ea_for_ip.reset_mock()
 
     def test_unbind_names(self):
         ip_address = '11.11.1.2'
