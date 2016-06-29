@@ -18,6 +18,7 @@ import mock
 from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import constants
+from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import ipam
 from networking_infoblox.neutron.common import notification_handler as handler
@@ -198,3 +199,64 @@ class TestIpamEventHandler(base.TestCase):
         self.ipam_handler.delete_instance_sync(payload)
         dbi.remove_instance.assert_called_once_with(
             self.context.session, instance_id)
+
+    @mock.patch.object(dbi, 'add_or_update_instance', mock.Mock())
+    @mock.patch.object(context, 'InfobloxContext', mock.Mock())
+    @mock.patch.object(dns, 'DnsController', mock.Mock())
+    def test_create_instance_bind_names(self):
+        instance_id = 'instance-id'
+        instance_name = 'test-host'
+        dns_controller = mock.MagicMock()
+        dns.DnsController.return_value = dns_controller
+        payload = {
+            'instance_id': instance_id,
+            'hostname': instance_name,
+            'fixed_ips': [
+                {'address': 'adr-1', 'subnet_id': 'subnet-1'},
+                {'address': 'adr-2', 'subnet_id': 'subnet-2'},
+                {'address': 'adr-3', 'subnet_id': 'subnet-3'},
+                {'address': 'adr-4', 'subnet_id': 'subnet-4'},
+            ]
+        }
+        self._prepare_context()
+        ports = [
+            {
+                'id': 'port-id-1',
+                'name': 'port-name-1',
+                'tenant_id': 'tenant-id-1',
+                'device_id': 'device-id-1',
+                'device_owner': 'device-owner-1',
+                'fixed_ips': [
+                    {'ip_address': 'adr-1', 'subnet_id': 'subnet-1'},
+                    {'ip_address': 'adr-2', 'subnet_id': 'subnet-2'},
+                ]
+            },
+            {
+                'id': 'port-id-2',
+                'name': 'port-name-2',
+                'tenant_id': 'tenant-id-2',
+                'device_id': 'device-id-2',
+                'device_owner': 'device-owner-2',
+                'fixed_ips': [
+                    {'ip_address': 'adr-3', 'subnet_id': 'subnet-3'},
+                    {'ip_address': 'adr-4', 'subnet_id': 'subnet-4'},
+                ]
+            },
+        ]
+        with mock.patch.object(self.ipam_handler, 'plugin'):
+            self.ipam_handler.plugin.get_ports.return_value = ports
+            self.ipam_handler.create_instance_sync(payload)
+            assert dns_controller.method_calls == [
+                mock.call.bind_names(
+                    'adr-1', 'test-host', 'port-id-1', 'tenant-id-1',
+                    'device-id-1', 'device-owner-1', port_name='port-name-1'),
+                mock.call.bind_names(
+                    'adr-2', 'test-host', 'port-id-1', 'tenant-id-1',
+                    'device-id-1', 'device-owner-1', port_name='port-name-1'),
+                mock.call.bind_names(
+                    'adr-3', 'test-host', 'port-id-2', 'tenant-id-2',
+                    'device-id-2', 'device-owner-2', port_name='port-name-2'),
+                mock.call.bind_names(
+                    'adr-4', 'test-host', 'port-id-2', 'tenant-id-2',
+                    'device-id-2', 'device-owner-2', port_name='port-name-2')
+            ]

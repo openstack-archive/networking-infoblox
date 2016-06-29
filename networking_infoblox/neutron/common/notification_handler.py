@@ -389,33 +389,35 @@ class IpamEventHandler(object):
         port_filter = {'mac_address': macs,
                        'fixed_ips': {'ip_address': ip_addresses}}
         ports = self.plugin.get_ports(self.context, filters=port_filter)
-        subnet_ids = [ip['subnet_id'] for ip in ports[0]['fixed_ips']
-                      if ip['ip_address'] in ip_addresses]
-        subnet = self.plugin.get_subnet(self.context, subnet_ids[0])
-        if not subnet:
-            LOG.warning("No subnet was found for mac: %s, ip: %s",
-                        macs, ip_addresses)
-            return
+        for port in ports:
+            for fixed_ip in port['fixed_ips']:
+                subnet_id = fixed_ip['subnet_id']
+                subnet = self.plugin.get_subnet(self.context, subnet_id)
+                if not subnet:
+                    LOG.warning("No subnet was found for subnet_id=%s",
+                                subnet_id)
+                    continue
 
-        ib_context = context.InfobloxContext(self.context, self.user_id,
-                                             None, subnet, self.grid_config,
-                                             self.plugin,
-                                             self._cached_grid_members,
-                                             self._cached_network_views,
-                                             self._cached_mapping_conditions)
+                ib_context = context.InfobloxContext(
+                    self.context, self.user_id, None, subnet, self.grid_config,
+                    self.plugin, self._cached_grid_members,
+                    self._cached_network_views,
+                    self._cached_mapping_conditions)
 
-        dns_controller = dns.DnsController(ib_context)
-        dns_controller.bind_names(ip_addresses[0],
-                                  instance_name,
-                                  ports[0]['id'],
-                                  ports[0]['tenant_id'],
-                                  ports[0]['device_id'],
-                                  ports[0]['device_owner'],
-                                  port_name=ports[0]['name'])
-        LOG.info("Instance creation sync: ip = %s, instance name = %s, "
-                 "port id = %s, device id: %s, device owner: %s",
-                 ip_addresses[0], instance_name, ports[0]['id'],
-                 ports[0]['device_id'], ports[0]['device_owner'])
+                dns_controller = dns.DnsController(ib_context)
+
+                dns_controller.bind_names(fixed_ip['ip_address'],
+                                          instance_name,
+                                          port['id'],
+                                          port['tenant_id'],
+                                          port['device_id'],
+                                          port['device_owner'],
+                                          port_name=port['name'])
+                LOG.info(
+                    "Instance creation sync: ip = %s, instance name = %s, "
+                    "port id = %s, device id: %s, device owner: %s",
+                    fixed_ip['ip_address'], instance_name, port['id'],
+                    port['device_id'], port['device_owner'])
 
     def delete_instance_sync(self, payload):
         """Notifies that an instance has been deleted."""
