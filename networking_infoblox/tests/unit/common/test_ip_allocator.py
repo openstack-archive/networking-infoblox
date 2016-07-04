@@ -149,9 +149,19 @@ class HostRecordAllocatorTestCase(base.TestCase):
         ib_mock.delete_ip_from_host_record.assert_called_once_with(
             host_record_mock, ip_1[0])
 
-    def test_bind_names_for_non_dns(self):
+    def _check_bind_names_calls(self, opts, params, expected_find,
+                                expected_get_host, expected_bind):
         ib_mock = mock.MagicMock()
+        ib_mock.find_hostname.return_value = None
+        ib_mock.get_host_record.return_value = None
+        allocator = ip_allocator.IPAllocator(ib_mock, opts)
+        allocator.bind_names(*params)
+        ib_mock.find_hostname.assert_called_once_with(*expected_find)
+        ib_mock.get_host_record.assert_called_once_with(*expected_get_host)
+        ib_mock.bind_name_with_host_record.assert_called_once_with(
+            *expected_bind)
 
+    def test_bind_names_for_non_dns(self):
         netview = 'some-test-net-view'
         dns_view = 'some-dns-view'
         nondns_view = ' '  # Special name for '.non_DNS_host_root' view
@@ -159,19 +169,33 @@ class HostRecordAllocatorTestCase(base.TestCase):
         ip = '192.168.1.2'
         extattrs = 'test-extattrs'
 
-        ib_mock.find_hostname.return_value = None
         options = {'use_host_record': True,
                    'configure_for_dhcp': True,
                    'configure_for_dns': True}
 
-        allocator = ip_allocator.IPAllocator(ib_mock, options)
         # First bind dns host - should be used provided dns view name
-        allocator.bind_names(netview, dns_view, ip, hostname, extattrs)
-        ib_mock.bind_name_with_host_record.assert_called_once_with(
-            dns_view, ip, hostname, extattrs)
-        ib_mock.reset_mock()
-        # Now bind non-dns host - should be used special dns view name
-        allocator.opts['configure_for_dns'] = False
-        allocator.bind_names(netview, dns_view, ip, hostname, extattrs)
-        ib_mock.bind_name_with_host_record.assert_called_once_with(
-            nondns_view, ip, hostname, extattrs)
+        self._check_bind_names_calls(
+            options,
+            [netview, dns_view, ip, hostname, extattrs],
+            [dns_view, hostname, ip, None],  # expected find_hostname params
+            [dns_view, ip, None],  # expected get_host_record params
+            [dns_view, ip, hostname, extattrs, None])  # expected for bind_name
+
+        # Now bind non-dns host in default network view - special dns view
+        # name should be used
+        options['configure_for_dns'] = False
+        self._check_bind_names_calls(
+            options,
+            ['default', dns_view, ip, hostname, extattrs],
+            [nondns_view, hostname, ip, None],  # expected find_hostname params
+            [nondns_view, ip, None],  # expected get_host_record params
+            [nondns_view, ip, hostname, extattrs, None])  # bind_name expects
+
+        # Now bind non-dns host in non-default network view - network view
+        # name should be used, dns view name should be not used
+        self._check_bind_names_calls(
+            options,
+            [netview, dns_view, ip, hostname, extattrs],
+            [None, hostname, ip, netview],  # expected find_hostname params
+            [None, ip, netview],  # expected get_host_record params
+            [None, ip, hostname, extattrs, netview])  # expected for bind_name
