@@ -87,11 +87,28 @@ class IPAllocator(object):
 class HostRecordIPAllocator(IPAllocator):
 
     def bind_names(self, network_view, dns_view, ip, name, extattrs):
+        # Not use network view for DNS hosts
+        net_view = None
+        if not self.opts['configure_for_dns']:
+            if network_view == 'default':
+                # Non-dns records placed in special dns view
+                # '.non_DNS_host_root' which has special name ' '
+                dns_view = ' '
+            else:
+                # Each network_view has separate non_DNS_host_root
+                # Unfortunatelly all non_DNS_host_root except for 'default'
+                # network view has same display name - '  ' whicj is broke Wapi
+                # code. So network view should be use instead dns view for
+                # non-dn hosts which is belongs to non-default network view
+                dns_view = None
+                net_view = network_view
         # See OPENSTACK-181. In case hostname already exists on NIOS, update
         # host record which contains that hostname with the new IP address
         # rather than creating a separate host record object
-        reserved_hostname_hr = self.manager.find_hostname(dns_view, name, ip)
-        reserved_ip_hr = self.manager.get_host_record(dns_view, ip)
+        reserved_hostname_hr = self.manager.find_hostname(
+            dns_view, name, ip, net_view)
+        reserved_ip_hr = self.manager.get_host_record(
+            dns_view, ip, net_view)
 
         if (reserved_hostname_hr and reserved_ip_hr and
                 reserved_hostname_hr.ref == reserved_ip_hr.ref):
@@ -108,12 +125,8 @@ class HostRecordIPAllocator(IPAllocator):
                         reserved_hostname_hr, ip, hr_ip.mac)
                     break
         else:
-            if not self.opts['configure_for_dns']:
-                # Non-dns records placed in special dns view
-                # '.non_DNS_host_root' which has special name ' '
-                dns_view = ' '
             self.manager.bind_name_with_host_record(
-                dns_view, ip, name, extattrs)
+                dns_view, ip, name, extattrs, net_view)
 
     def unbind_names(self, network_view, dns_view, ip, name, extattrs):
         # Nothing to delete, all will be deleted together with host record.
