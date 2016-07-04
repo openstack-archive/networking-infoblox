@@ -3,5 +3,5 @@
 # process, which may cause wedges in the gate later.
 
 Babel>=1.3
-infoblox-client>=0.4.5
+infoblox-client>=0.4.6
 oslo.i18n>=2.1.0
