@@ -98,7 +98,7 @@ def get_credentias():
         print("privilege, just hit <ENTER> when prompted for user name.\n")
         print("Otherwise, please enter user name and password of a user that "
               "has superuser privilege.\n")
-        username = raw_input("Enter user name: ")
+        username = six.moves.input("Enter user name: ")
         if len(username) > 0:
             password = getpass.getpass("Enter password: ")
             credentials = {'username': username, 'password': password}
@@ -178,7 +178,7 @@ def participate_network_views(grid_id):
         return
 
     netview_names = [ib_netview.name for ib_netview in ib_netviews]
-    print ("Found %s network views from the grid.\n" % len(netview_names))
+    print("Found %s network views from the grid.\n" % len(netview_names))
 
     operation = 'ASSOCIATION'
     if not netview_input and not cfg.CONF.script:
@@ -193,10 +193,10 @@ def participate_network_views(grid_id):
         question = "Do you want to list network views?"
         choice = ask_question(question, expected_answers_yes_no)
         if choice == 'y':
-            print (', '.join(netview_names))
+            print(', '.join(netview_names))
             print("")
         question = "Please provide a comma separated list of network views: "
-        netview_input = raw_input(question)
+        netview_input = six.moves.input(question)
 
     if (not netview_input or
             not isinstance(netview_input, six.string_types)):
@@ -297,13 +297,13 @@ def ask_question(question, expected_answers):
     prompt_choice = " or ".join(prompt_choice)
 
     while True:
-        choice = raw_input("%s Enter %s: " % (question, prompt_choice))
+        choice = six.moves.input("%s Enter %s: " % (question, prompt_choice))
         if choice not in expected_answers:
-            print ("Enter a valid choice. Please try again.\n")
+            print("Enter a valid choice. Please try again.\n")
             continue
         else:
             break
-    print ("")
+    print("")
     return choice
 
 
