@@ -214,18 +214,25 @@ class DnsController(object):
                     else self.ib_cxt.ip_alloc)
         self._bind_names(ip_alloc.unbind_names, ip_address,
                          instance_name, port_id, port_tenant_id, device_id,
-                         device_owner, port_name)
+                         device_owner, port_name=port_name, unbind=True)
 
     def _bind_names(self, binding_func, ip_address, instance_name=None,
                     port_id=None, port_tenant_id=None, device_id=None,
-                    device_owner=None, ea_ip_address=None, port_name=None):
+                    device_owner=None, ea_ip_address=None, port_name=None,
+                    unbind=False):
         network_view = self.ib_cxt.mapping.network_view
         dns_view = self.ib_cxt.mapping.dns_view
         is_external = self.ib_cxt.network_is_external
 
-        fqdn = self.pattern_builder.get_hostname(ip_address, instance_name,
-                                                 port_id, device_owner,
-                                                 device_id, port_name,
-                                                 external=is_external)
+        fqdn = None
+        try:
+            fqdn = self.pattern_builder.get_hostname(ip_address, instance_name,
+                                                     port_id, device_owner,
+                                                     device_id, port_name,
+                                                     external=is_external)
+        except ibc_exc.InfobloxConfigException:
+            # if unbind - just use fqdn=None to search by ip
+            if not unbind:
+                raise
 
         binding_func(network_view, dns_view, ip_address, fqdn, ea_ip_address)
