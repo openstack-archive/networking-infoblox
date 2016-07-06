@@ -260,3 +260,64 @@ class TestIpamEventHandler(base.TestCase):
                     'adr-4', 'test-host', 'port-id-2', 'tenant-id-2',
                     'device-id-2', 'device-owner-2', port_name='port-name-2')
             ]
+
+    @mock.patch.object(dbi, 'get_instance', mock.Mock())
+    @mock.patch.object(context, 'InfobloxContext', mock.Mock())
+    @mock.patch.object(dns, 'DnsController', mock.Mock())
+    def test_update_port_sync(self):
+        subnet_id = 'test-subnet'
+        port_name = 'test-port'
+        port_id = 'test-port-id'
+        ip_address = '192.168.126.4'
+        instance_id = 'test-instance-id'
+        instance_name = 'test-instance'
+        network_id = 'test-network-id'
+        tenant_id = 'test-tenant-id'
+        nova = constants.NEUTRON_DEVICE_OWNER_COMPUTE_NOVA
+        payload_attach = {
+            'port': {
+                'device_owner': nova,
+                'fixed_ips': [{'subnet_id': subnet_id,
+                               'ip_address': ip_address}],
+                'id': port_id,
+                'binding:vif_type': 'ovs',
+                'device_id': instance_id,
+                'name': port_name,
+                'network_id': network_id,
+                'tenant_id': tenant_id,
+            }
+        }
+        payload_detach = {
+            'port': {
+                'device_owner': '',
+                'fixed_ips': [{'subnet_id': subnet_id,
+                               'ip_address': ip_address}],
+                'id': port_id,
+                'binding:vif_type': 'unbound',
+                'device_id': '',
+                'name': port_name,
+                'network_id': network_id,
+                'tenant_id': tenant_id,
+            }
+        }
+        dns_controller = mock.MagicMock()
+        dns.DnsController.return_value = dns_controller
+        instance = mock.MagicMock()
+        instance.instance_name = instance_name
+        dbi.get_instance.return_value = instance
+        # Attach port and ensure that bind_names called
+        self.ipam_handler.update_port_sync(payload_attach)
+        dns_controller.method_calls == [
+            mock.call.bind_names(
+                ip_address, instance_name, port_id, tenant_id, instance_id,
+                nova, port_name=port_name)]
+        # now detach port and ensure that unbind_names called
+        self.ipam_handler.update_port_sync(payload_detach)
+        dns_controller.method_calls == [
+            mock.call.bind_names(
+                ip_address, instance_name, port_id, tenant_id, instance_id,
+                nova, port_name=port_name),
+            mock.call.unbind_names(
+                ip_address, None, port_id, tenant_id, None, 'compute:nova',
+                port_name=port_name)
+        ]
