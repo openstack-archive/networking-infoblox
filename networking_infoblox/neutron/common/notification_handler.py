@@ -202,9 +202,59 @@ class IpamEventHandler(object):
             if self.traceable:
                 LOG.info("Created port: %s", port)
 
+    def _process_port(self, port, event, instance_name=None):
+        for fixed_ip in port['fixed_ips']:
+            subnet_id = fixed_ip['subnet_id']
+            subnet = self.plugin.get_subnet(self.context, subnet_id)
+            if not subnet:
+                LOG.warning("No subnet was found for subnet_id=%s",
+                            subnet_id)
+                continue
+
+            ib_context = context.InfobloxContext(
+                self.context, self.user_id, None, subnet, self.grid_config,
+                self.plugin, self._cached_grid_members,
+                self._cached_network_views,
+                self._cached_mapping_conditions)
+
+            dns_controller = dns.DnsController(ib_context)
+
+            if instance_name is not None:
+                dns_controller.bind_names(fixed_ip['ip_address'],
+                                          instance_name,
+                                          port['id'],
+                                          port['tenant_id'],
+                                          port['device_id'],
+                                          port['device_owner'],
+                                          port_name=port['name'])
+                LOG.info(
+                    "%s sync: ip = %s, instance name = %s, "
+                    "port id = %s, device id: %s, device owner: %s", event,
+                    fixed_ip['ip_address'], instance_name, port['id'],
+                    port['device_id'], port['device_owner'])
+            else:
+                dns_controller.unbind_names(
+                    fixed_ip['ip_address'], None, port['id'],
+                    port['tenant_id'], None,
+                    const.NEUTRON_DEVICE_OWNER_COMPUTE_NOVA,
+                    port_name=port['name'])
+
     def update_port_sync(self, payload):
         """Notifies that the port has been updated."""
         port = payload.get('port')
+
+        if 'binding:vif_type' in port:
+            instance_name = None
+            if port['device_owner'] in const.NEUTRON_DEVICE_OWNER_COMPUTE_LIST:
+                instance = dbi.get_instance(self.context.session,
+                                            port['device_id'])
+                if instance:
+                    instance_name = instance.instance_name
+            event = 'Port update'
+            if port['binding:vif_type'] == 'unbound':
+                self._process_port(port, event, None)
+            elif instance_name is not None:
+                self._process_port(port, event, instance_name)
 
         if self.traceable:
             LOG.info("Updated port: %s", port)
@@ -390,34 +440,7 @@ class IpamEventHandler(object):
                        'fixed_ips': {'ip_address': ip_addresses}}
         ports = self.plugin.get_ports(self.context, filters=port_filter)
         for port in ports:
-            for fixed_ip in port['fixed_ips']:
-                subnet_id = fixed_ip['subnet_id']
-                subnet = self.plugin.get_subnet(self.context, subnet_id)
-                if not subnet:
-                    LOG.warning("No subnet was found for subnet_id=%s",
-                                subnet_id)
-                    continue
-
-                ib_context = context.InfobloxContext(
-                    self.context, self.user_id, None, subnet, self.grid_config,
-                    self.plugin, self._cached_grid_members,
-                    self._cached_network_views,
-                    self._cached_mapping_conditions)
-
-                dns_controller = dns.DnsController(ib_context)
-
-                dns_controller.bind_names(fixed_ip['ip_address'],
-                                          instance_name,
-                                          port['id'],
-                                          port['tenant_id'],
-                                          port['device_id'],
-                                          port['device_owner'],
-                                          port_name=port['name'])
-                LOG.info(
-                    "Instance creation sync: ip = %s, instance name = %s, "
-                    "port id = %s, device id: %s, device owner: %s",
-                    fixed_ip['ip_address'], instance_name, port['id'],
-                    port['device_id'], port['device_owner'])
+            self._process_port(port, 'Instance creation', instance_name)
 
     def delete_instance_sync(self, payload):
         """Notifies that an instance has been deleted."""
