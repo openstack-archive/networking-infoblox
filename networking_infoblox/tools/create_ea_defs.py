@@ -178,7 +178,7 @@ def participate_network_views(grid_id):
         return
 
     netview_names = [ib_netview.name for ib_netview in ib_netviews]
-    print ("Found %s network views from the grid.\n" % len(netview_names))
+    print("Found %s network views from the grid.\n" % len(netview_names))
 
     operation = 'ASSOCIATION'
     if not netview_input and not cfg.CONF.script:
@@ -193,7 +193,7 @@ def participate_network_views(grid_id):
         question = "Do you want to list network views?"
         choice = ask_question(question, expected_answers_yes_no)
         if choice == 'y':
-            print (', '.join(netview_names))
+            print(', '.join(netview_names))
             print("")
         question = "Please provide a comma separated list of network views: "
         netview_input = raw_input(question)
@@ -299,11 +299,11 @@ def ask_question(question, expected_answers):
     while True:
         choice = raw_input("%s Enter %s: " % (question, prompt_choice))
         if choice not in expected_answers:
-            print ("Enter a valid choice. Please try again.\n")
+            print("Enter a valid choice. Please try again.\n")
             continue
         else:
             break
-    print ("")
+    print("")
     return choice
 
 
