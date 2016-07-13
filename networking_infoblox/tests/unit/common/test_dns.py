@@ -61,6 +61,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                          'ip_version': 4}
         ib_cxt.tenant_id = ib_cxt.network['tenant_id']
         ib_cxt.mapping.dns_view = 'test-dns-view'
+        ib_cxt.mapping.network_view = 'test-network-view'
         ib_cxt.get_dns_members.return_value = ([mock.ANY], None)
         ib_cxt.grid_config.ns_group = None
         ib_cxt.grid_config.default_domain_name_pattern = self.test_dns_zone
@@ -517,7 +518,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                    self.ib_cxt.mapping.dns_view,
                                    ip_address,
                                    fqdn,
-                                   mock.ANY)
+                                   None)
         ]
 
         self.controller.unbind_names(
@@ -528,5 +529,20 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                    self.ib_cxt.mapping.dns_view,
                                    ip_address,
                                    fqdn,
-                                   mock.ANY)
+                                   None)
         ]
+
+    def test_unbind_names_without_name(self):
+        ip_address = '11.11.1.2'
+        port_id = 'port-id'
+        port_name = 'port-name'
+        self.ib_cxt.grid_config.default_host_name_pattern = '{instance_name}'
+        self.ib_cxt.grid_config.default_domain_name_pattern = '{subnet_id}.com'
+        controller = dns.DnsController(self.ib_cxt)
+        controller.unbind_names(ip_address, None, port_id,
+                                device_owner='compute:nova',
+                                port_name=port_name)
+        assert self.ib_cxt.ip_alloc.method_calls == [
+            mock.call.unbind_names(
+                self.ib_cxt.mapping.network_view, self.ib_cxt.mapping.dns_view,
+                ip_address, None, None)]
