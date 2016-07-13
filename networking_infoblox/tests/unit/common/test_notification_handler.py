@@ -121,8 +121,8 @@ class TestIpamEventHandler(base.TestCase):
                                'search',
                                return_value=extattrs):
             self.assertEqual(
-                self.ipam_handler._get_instance_name_from_fip(floatingip),
-                instance_name)
+                instance_name,
+                self.ipam_handler._get_instance_name_from_fip(floatingip))
             self.plugin.get_port.assert_called_with(mock.ANY,
                                                     floatingip['port_id'])
             self.plugin.get_subnet.assert_called_with(
@@ -133,8 +133,8 @@ class TestIpamEventHandler(base.TestCase):
             self.plugin.get_port.reset_mock()
             self.plugin.get_subnet.reset_mock()
             self.assertEqual(
-                self.ipam_handler._get_instance_name_from_fip(floatingip),
-                instance_name)
+                instance_name,
+                self.ipam_handler._get_instance_name_from_fip(floatingip))
             self.plugin.get_port.assert_called_with(mock.ANY,
                                                     floatingip['port_id'])
             self.plugin.get_subnet.assert_not_called()

@@ -106,4 +106,4 @@ class NotificationTestCase(base.RpcTestCase):
         service.stop()
 
         for i in range(test_msg_count):
-            self.assertEqual(endpoint.received_payload[i], test_msg_payload[i])
+            self.assertEqual(test_msg_payload[i], endpoint.received_payload[i])

@@ -663,13 +663,13 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
         ip_allocator = ib_cxt._get_ip_allocator()
-        self.assertEqual(ip_allocator.opts['configure_for_dns'], True)
+        self.assertEqual(True, ip_allocator.opts['configure_for_dns'])
 
         self.grid_config.dns_support = False
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
         ip_allocator = ib_cxt._get_ip_allocator()
-        self.assertEqual(ip_allocator.opts['configure_for_dns'], False)
+        self.assertEqual(False, ip_allocator.opts['configure_for_dns'])
 
         self.grid_config.dns_support = True
         self.grid_config.zone_creation_strategy = [
@@ -677,4 +677,4 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
         ip_allocator = ib_cxt._get_ip_allocator()
-        self.assertEqual(ip_allocator.opts['configure_for_dns'], False)
+        self.assertEqual(False, ip_allocator.opts['configure_for_dns'])
