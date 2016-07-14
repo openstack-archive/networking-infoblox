@@ -55,6 +55,9 @@ class IpamControllerTestHelper(object):
         self.ib_cxt.grid_config.network_template = None
         self.ib_cxt.grid_config.dhcp_relay_management_network = None
         self.ib_cxt.grid_config.wapi_version = '2.3'
+        self.ib_cxt.grid_config.default_domain_name_pattern = 'int.test.com'
+        self.ib_cxt.grid_config.external_domain_name_pattern = 'ext.test.com'
+        self.ib_cxt.grid_config.zone_creation_strategy = []
 
     def prepare_test(self, options):
         self.options = self._get_options(options)
@@ -500,7 +503,8 @@ class IpamAsyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         with mock.patch.object(dbi,
                                'get_subnets_by_network_id',
                                return_value=[{'id': 'subnet-id',
-                                              'cidr': '11.11.1.0/24'}]):
+                                              'cidr': '11.11.1.0/24',
+                                              'network_id': 'test_net'}]):
             ipam_controller.update_network_sync()
             assert not self.ib_cxt.ibom.get_network.called
             assert not self.ib_cxt.ibom.update_network_options.called
@@ -525,10 +529,28 @@ class IpamAsyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         with mock.patch.object(dbi,
                                'get_subnets_by_network_id',
                                return_value=[{'id': 'subnet-id',
-                                              'cidr': '11.11.1.0/24'}]):
+                                              'cidr': '11.11.1.0/24',
+                                              'network_id': 'test_net'}]):
             ipam_controller.update_network_sync()
             assert self.ib_cxt.ibom.get_network.called
             assert self.ib_cxt.ibom.update_network_options.called
+
+    @mock.patch('networking_infoblox.neutron.common.dns.DnsController')
+    @mock.patch.object(dbi, 'get_network_view_mappings', return_value=[])
+    def test_update_network_update_zone(self, dbi_mock, dns_mock):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+
+        dns_controller = mock.Mock()
+        dns_mock.return_value = dns_controller
+        ipam_controller = ipam.IpamAsyncController(self.ib_cxt)
+        with mock.patch.object(dbi,
+                               'get_subnets_by_network_id',
+                               return_value=[{'id': 'subnet-id',
+                                              'cidr': '11.11.1.0/24',
+                                              'network_id': 'test_net'}]):
+            ipam_controller.update_network_sync()
+            dns_controller.update_dns_zones.assert_called_once_with()
 
 
 class IpamSyncControllerUnitTestCase(base.TestCase):

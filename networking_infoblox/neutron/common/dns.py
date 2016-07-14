@@ -97,6 +97,27 @@ class DnsController(object):
                     extattrs=ea_zone)
                 rollback_list.append(ib_zone_cidr)
 
+    def update_dns_zones(self):
+        if self.grid_config.dns_support is False:
+            return
+
+        ea_zone = eam.get_ea_for_zone(self.ib_cxt.user_id,
+                                      self.ib_cxt.tenant_id,
+                                      self.ib_cxt.tenant_name,
+                                      self.ib_cxt.network)
+        dns_view = self.ib_cxt.mapping.dns_view
+
+        # update Forward zone
+        if (constants.ZONE_CREATION_STRATEGY_FORWARD in
+                self.grid_config.zone_creation_strategy):
+            self.ib_cxt.ibom.update_dns_zone_attrs(
+                dns_view, self.dns_zone, ea_zone)
+        # update Reverse zone
+        if (constants.ZONE_CREATION_STRATEGY_REVERSE in
+                self.grid_config.zone_creation_strategy):
+            self.ib_cxt.ibom.update_dns_zone_attrs(
+                dns_view, self.ib_cxt.subnet['cidr'], ea_zone)
+
     def delete_dns_zones(self, dns_zone=None, ib_network=None):
         if self.grid_config.dns_support is False:
             return
