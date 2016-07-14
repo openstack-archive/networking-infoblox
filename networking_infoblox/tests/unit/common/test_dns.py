@@ -546,3 +546,46 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             mock.call.unbind_names(
                 self.ib_cxt.mapping.network_view, self.ib_cxt.mapping.dns_view,
                 ip_address, None, None)]
+
+    def _test_update_calls(self, strategy, calls):
+        self.ib_cxt.grid_config.zone_creation_strategy = strategy
+        self.controller.update_dns_zones()
+        assert self.ib_cxt.ibom.method_calls == calls
+        self.ib_cxt.ibom.reset_mock()
+
+    def test_update_dns_zones_all(self):
+        self._test_update_calls(
+            self._get_default_zone_creation_strategy(),
+            [
+                mock.call.update_dns_zone_attrs(
+                    self.ib_cxt.mapping.dns_view,
+                    self.test_dns_zone,
+                    mock.ANY),
+                mock.call.update_dns_zone_attrs(
+                    self.ib_cxt.mapping.dns_view,
+                    self.ib_cxt.subnet['cidr'],
+                    mock.ANY)
+            ])
+
+    def test_update_dns_zones_forward(self):
+        self._test_update_calls(
+            [constants.ZONE_CREATION_STRATEGY_FORWARD],
+            [
+                mock.call.update_dns_zone_attrs(
+                    self.ib_cxt.mapping.dns_view,
+                    self.test_dns_zone,
+                    mock.ANY),
+            ])
+
+    def test_update_dns_zones_reverse(self):
+        self._test_update_calls(
+            [constants.ZONE_CREATION_STRATEGY_REVERSE],
+            [
+                mock.call.update_dns_zone_attrs(
+                    self.ib_cxt.mapping.dns_view,
+                    self.ib_cxt.subnet['cidr'],
+                    mock.ANY)
+            ])
+
+    def test_update_dns_zones_empty(self):
+        self._test_update_calls([], [])

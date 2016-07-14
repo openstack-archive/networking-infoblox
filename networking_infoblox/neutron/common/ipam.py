@@ -26,6 +26,7 @@ from infoblox_client import objects as ib_objects
 
 from networking_infoblox._i18n import _LI
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import ea_manager as eam
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.common import pattern
@@ -638,6 +639,9 @@ class IpamAsyncController(object):
                                                     network,
                                                     subnet)
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
+            self.ib_cxt.subnet = subnet
+            dns_controller = dns.DnsController(self.ib_cxt)
+            dns_controller.update_dns_zones()
 
     def update_port_sync(self, port):
         if not port or not port.get('fixed_ips'):
