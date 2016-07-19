@@ -235,6 +235,7 @@ class IpamSyncController(object):
                                         self.ib_cxt.tenant_id,
                                         self.ib_cxt.tenant_name,
                                         self.ib_cxt.network)
+        is_shared = self.ib_cxt.network_is_shared_or_external
 
         for pool in pools:
             disable = True
@@ -259,15 +260,19 @@ class IpamSyncController(object):
                     start_addr=start_ip,
                     end_addr=end_ip)
                 if ib_ip_range:
-                    eas = ib_ip_range.extattrs
-                    if eas:
-                        ea_dict = ib_ip_range.extattrs.ea_dict
-                        ea_dict.update(ea_range.ea_dict)
-                        ib_ip_range.extattrs = ib_objects.EA(ea_dict)
-                    else:
-                        ib_ip_range.extattrs = ea_range
-                    ib_ip_range.update()
-                    LOG.info("ip range already existed: %s", ib_ip_range)
+                    managed = "Unmanaged"  # Not managed by OpenStack
+                    if not is_shared or self._range_is_managed(ib_ip_range):
+                        managed = "Managed"  # Managed by OpenStack
+                        eas = ib_ip_range.extattrs
+                        if eas:
+                            ea_dict = ib_ip_range.extattrs.ea_dict
+                            ea_dict.update(ea_range.ea_dict)
+                            ib_ip_range.extattrs = ib_objects.EA(ea_dict)
+                        else:
+                            ib_ip_range.extattrs = ea_range
+                        ib_ip_range.update()
+                    LOG.info("%s ip range already existed: %s" %
+                             (managed, ib_ip_range))
                     continue
 
             ib_ip_range = self.ib_cxt.ibom.create_ip_range(
@@ -298,10 +303,12 @@ class IpamSyncController(object):
 
         is_shared = self.ib_cxt.network_is_shared_or_external
         for pool in removed_pool:
-            if is_shared:
-                eam.reset_ea_for_range(pool)
-            else:
+            if not is_shared or self._range_is_managed(pool):
                 pool.delete()
+            else:
+                LOG.warning(("Allocation range %s-%s is not managed by " +
+                             "OpenStack and is therefore not removed from " +
+                             "Infoblox") % (pool.start_addr, pool.end_addr))
 
         self._allocate_pools(rollback_list, added_pool, cidr, ip_version)
         self._restart_services()
@@ -602,6 +609,13 @@ class IpamSyncController(object):
         self.ib_cxt.ip_alloc.deallocate_ip(self.ib_cxt.mapping.network_view,
                                            dns_view,
                                            ip_address)
+
+    @staticmethod
+    def _range_is_managed(ib_range):
+        """Determine if an ib_range is managed by OpenStack"""
+        return (ib_range and ib_range.extattrs and
+                ib_range.extattrs.get(const.EA_CMP_TYPE, "") ==
+                const.CLOUD_PLATFORM_NAME)
 
 
 class IpamAsyncController(object):
