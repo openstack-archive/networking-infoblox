@@ -91,7 +91,8 @@ class IpamSyncController(object):
         if features.tenants:
             ib_tenant = ib_objects.Tenant.search(self.ib_cxt.connector,
                                                  id=self.ib_cxt.tenant_id)
-            if ib_tenant and ib_tenant.name != self.ib_cxt.tenant_name:
+            if (ib_tenant and self.ib_cxt.tenant_name and
+                    ib_tenant.name != self.ib_cxt.tenant_name):
                 ib_tenant.name = self.ib_cxt.tenant_name
                 ib_tenant.update()
 

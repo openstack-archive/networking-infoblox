@@ -17,6 +17,8 @@
 import os
 import sys
 
+from keystoneclient.v2_0 import client as ksclient
+
 from oslo_config import cfg
 from oslo_log import log as logging
 
@@ -52,6 +54,7 @@ def main():
     config.register_infoblox_ipam_opts(cfg.CONF)
     grid_id = cfg.CONF.infoblox.cloud_data_center_id
     config.register_infoblox_grid_opts(cfg.CONF, grid_id)
+    register_keystone_opts(cfg.CONF)
 
     credentials = get_credentials()
     if not credentials:
@@ -62,11 +65,25 @@ def main():
         return
 
     context = neutron_context.get_admin_context()
+    context.auth_token = get_auth_token(credentials)
 
     grid_manager = grid.GridManager(context)
     grid_manager.sync(force_sync=True)
 
     sync_neutron_to_infoblox(context, credentials, grid_manager)
+
+
+def register_keystone_opts(conf):
+    ka_opts = [
+        cfg.StrOpt('auth_uri',
+                   default='',
+                   help=_('Keystone Authtoken URI')),
+    ]
+
+    conf.register_group(cfg.OptGroup(
+        name='keystone_authtoken',
+        title='Keystone Authtoken'))
+    conf.register_opts(ka_opts, group='keystone_authtoken')
 
 
 def get_credentials():
@@ -82,6 +99,12 @@ def get_credentials():
         d['tenant_name'] = os.environ['OS_TENANT_NAME']
         d['region_name'] = os.environ['OS_REGION_NAME']
     return d
+
+
+def get_auth_token(credentials):
+    keystone = ksclient.Client(**credentials)
+
+    return keystone.auth_ref['token']['id']
 
 
 def sync_neutron_to_infoblox(context, credentials, grid_manager):
@@ -113,12 +136,12 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
 
     payload = neutron_api.list_ports()
     ports = payload['ports']
-
     nova_api = nova_client.Client(NOVA_API_VERSION,
                                   credentials['username'],
                                   credentials['password'],
                                   credentials['tenant_name'],
                                   credentials['auth_url'])
+
     instance_names_by_instance_id = dict()
     instance_names_by_floating_ip = dict()
     for server in nova_api.servers.list(search_opts={'all_tenants': 1}):
