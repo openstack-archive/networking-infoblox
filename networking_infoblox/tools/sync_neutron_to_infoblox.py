@@ -31,6 +31,7 @@ from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
 
 from infoblox_client import exceptions as ib_exc
+from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import context as ib_context
@@ -42,6 +43,20 @@ from networking_infoblox.neutron.db import infoblox_db as dbi
 
 
 LOG = logging.getLogger(__name__)
+
+cli_opts = [
+    cfg.BoolOpt('delete-unknown-ips',
+                short='dui',
+                default=False,
+                help=('Delete IP from Infoblox that are '
+                      'unknown to OpenStack. '
+                      'NOTE: only unknown IP in private network '
+                      'will be deleted by this tool. '
+                      'Unknown IP in shared/external network need '
+                      'to be deleted manually.'))
+]
+
+cfg.CONF.register_cli_opts(cli_opts)
 
 NOVA_API_VERSION = '2'
 DEFAULT_CONFIG_FILES = ['/etc/neutron/neutron.conf']
@@ -117,6 +132,8 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
     """
     LOG.info("Starting migration...\n")
 
+    delete_unknown_ips = cfg.CONF.delete_unknown_ips
+
     grid_config = grid_manager.grid_config
     grid_id = grid_config.grid_id
     session = context.session
@@ -156,6 +173,7 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
     user_id = context.user_id or neutron_api.httpclient.auth_ref['user']['id']
     user_tenant_id = context.tenant_id or neutron_api.httpclient.auth_tenant_id
 
+    ib_networks = []
     should_exit = False
 
     # sync subnets
@@ -170,6 +188,10 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
             continue
 
         network_name = network['name']
+        ib_cxt = ib_context.InfobloxContext(context, user_id,
+                                            network, subnet,
+                                            grid_config,
+                                            plugin=neutron_api)
         db_mapped_netview = dbi.get_network_view_by_mapping(
             session,
             grid_id=grid_id,
@@ -178,12 +200,16 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
         if db_mapped_netview:
             LOG.info("Mapping found for network (%s), subnet (%s)",
                      network_name, subnet_name)
+            if len(db_mapped_netview) > 1:
+                LOG.warning("More that one db_mapped_netview returned")
+            if delete_unknown_ips:
+                ib_network = ib_objects.Network.search(
+                    ib_cxt.connector,
+                    network_view=db_mapped_netview[0].network_view,
+                    cidr=subnet.get('cidr'))
+                ib_networks.append(ib_network)
             continue
 
-        ib_cxt = ib_context.InfobloxContext(context, user_id,
-                                            network, subnet,
-                                            grid_config,
-                                            plugin=neutron_api)
         ipam_controller = ipam.IpamSyncController(ib_cxt)
         dns_controller = dns.DnsController(ib_cxt)
 
@@ -191,6 +217,8 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
         try:
             ib_network = ipam_controller.create_subnet(rollback_list)
             if ib_network:
+                if delete_unknown_ips:
+                    ib_networks.append(ib_network)
                 dns_controller.create_dns_zones(rollback_list)
             LOG.info("Created network (%s), subnet (%s)",
                      network_name, subnet_name)
@@ -311,6 +339,44 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
         if should_exit:
             LOG.info("Existing due to error in port creation...")
             break
+
+    if delete_unknown_ips:
+        LOG.info("Start deleting unknown Fixed IP's from Infoblox...")
+        for ib_network in ib_networks:
+
+            nw_ea = ib_network.extattrs
+            # Skip network if it doesn't have EA or if EA indicates it's
+            # shared or external.
+            if (not nw_ea or
+                    nw_ea.get('Is External') or nw_ea.get('Is Shared')):
+                continue
+
+            LOG.info("Searching for Fixed IP: network_view='%s', cidr='%s'" %
+                     (ib_network.network_view, ib_network.network))
+            fixed_ips = ib_objects.FixedAddress.search_all(
+                ib_cxt.connector,
+                network_view=ib_network.network_view,
+                network=ib_network.network)
+
+            if not fixed_ips:
+                LOG.info("No FixedIP found: network_view='%s', cidr='%s'" %
+                         (ib_network.network_view, ib_network.network))
+                continue
+
+            for fixed_ip in fixed_ips:
+                ea = fixed_ip.extattrs
+                port_id = None
+                if ea:
+                    port_id = ea.get('Port ID')
+
+                # Delete Fixed IP if:
+                #   - Fixed IP does not have 'Port ID' EA, or
+                #   - No port_id in neutron matches 'Port ID' EA value
+                if not (port_id and
+                        utils.find_one_in_list('id', port_id, ports)):
+                    LOG.info("Deleting Fixed IP from Infoblox: '%s'" %
+                             fixed_ip)
+                    fixed_ip.delete()
 
     LOG.info("Ending migration...")
 
