@@ -26,6 +26,7 @@ from infoblox_client import objects as ib_objects
 
 from networking_infoblox._i18n import _LI
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import ea_manager as eam
 from networking_infoblox.neutron.common import exceptions as exc
@@ -626,7 +627,7 @@ class IpamAsyncController(object):
         self.grid_config = self.ib_cxt.grid_config
         self.grid_id = self.grid_config.grid_id
 
-    def update_network_sync(self):
+    def update_network_sync(self, need_new_zones=False):
         """Updates EAs for each subnet that belongs to the updated network."""
         session = self.ib_cxt.context.session
         network = self.ib_cxt.network
@@ -646,6 +647,7 @@ class IpamAsyncController(object):
                     self.ib_cxt.discovered_network_views)
                 network_view = netview_row.network_view
 
+            ib_network = None
             if network_view:
                 ib_network = self.ib_cxt.ibom.get_network(network_view, cidr)
                 ea_network = eam.get_ea_for_network(self.ib_cxt.user_id,
@@ -654,9 +656,20 @@ class IpamAsyncController(object):
                                                     network,
                                                     subnet)
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
-            self.ib_cxt.subnet = subnet
-            dns_controller = dns.DnsController(self.ib_cxt)
-            dns_controller.update_dns_zones()
+
+            if need_new_zones:
+                # Need context with ib_network to create zones
+                ib_cxt = context.InfobloxContext(
+                    self.ib_cxt.context, self.ib_cxt.user_id,
+                    network, subnet, self.grid_config,
+                    self.ib_cxt.plugin, ib_network=ib_network)
+                dns_controller = dns.DnsController(ib_cxt)
+                rollback_list = []
+                dns_controller.create_dns_zones(rollback_list)
+            else:
+                self.ib_cxt.subnet = subnet
+                dns_controller = dns.DnsController(self.ib_cxt)
+                dns_controller.update_dns_zones()
 
     def update_port_sync(self, port):
         if not port or not port.get('fixed_ips'):
