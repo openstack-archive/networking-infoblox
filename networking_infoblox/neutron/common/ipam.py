@@ -626,7 +626,7 @@ class IpamAsyncController(object):
         self.grid_config = self.ib_cxt.grid_config
         self.grid_id = self.grid_config.grid_id
 
-    def update_network_sync(self):
+    def update_network_sync(self, need_new_zones=False):
         """Updates EAs for each subnet that belongs to the updated network."""
         session = self.ib_cxt.context.session
         network = self.ib_cxt.network
@@ -656,7 +656,12 @@ class IpamAsyncController(object):
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
             self.ib_cxt.subnet = subnet
             dns_controller = dns.DnsController(self.ib_cxt)
-            dns_controller.update_dns_zones()
+            if need_new_zones:
+                rollback_list = []
+                dns_controller.ib_cxt._update()
+                dns_controller.create_dns_zones(rollback_list)
+            else:
+                dns_controller.update_dns_zones()
 
     def update_port_sync(self, port):
         if not port or not port.get('fixed_ips'):

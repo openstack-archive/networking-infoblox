@@ -804,7 +804,14 @@ class InfobloxContext(object):
 
     def _update_service_member_mapping(self):
         if not self.ib_network:
-            return
+            if self.ibom is None:
+                return
+            cidr = self.subnet['cidr']
+            ib_network = self.ibom.get_network(self.mapping.network_view, cidr)
+            if ib_network is not None:
+                self.ib_network = ib_network
+            else:
+                return
 
         if not self.grid_config.dhcp_support:
             return
