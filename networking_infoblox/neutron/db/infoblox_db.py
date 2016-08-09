@@ -769,3 +769,31 @@ def get_instances(session, instance_ids=None):
     if instance_ids:
         q = q.filter(ib_models.InfobloxInstance.instance_id.in_(instance_ids))
     return q.all()
+
+
+def add_network(session, network_id, network_name):
+    network = ib_models.InfobloxNetwork(
+        network_id=network_id,
+        network_name=network_name)
+    session.add(network)
+    return network
+
+
+def add_or_update_network(session, network_id, network_name):
+    db_network = get_network(session, network_id)
+    if db_network is None:
+        add_network(session, network_id, network_name)
+    elif db_network.network_name != network_name:
+        db_network.network_name = network_name
+
+
+def get_network(session, network_id):
+    q = session.query(ib_models.InfobloxNetwork)
+    return q.filter_by(network_id=network_id).first()
+
+
+def remove_network(session, network_id):
+    with session.begin(subtransactions=True):
+        q = session.query(ib_models.InfobloxNetwork)
+        q = q.filter_by(network_id=network_id)
+        q.delete(synchronize_session=False)
