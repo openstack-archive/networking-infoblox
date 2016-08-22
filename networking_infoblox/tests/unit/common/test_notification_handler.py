@@ -62,7 +62,50 @@ class TestIpamEventHandler(base.TestCase):
         with mock.patch.object(ipam.IpamAsyncController,
                                'update_network_sync') as controller_mock:
             self.ipam_handler.update_network_sync(payload)
-        controller_mock.assert_called_once_with()
+        controller_mock.assert_called_once_with(False)
+
+    @mock.patch.object(dbi, 'get_network', mock.Mock())
+    @mock.patch.object(dbi, 'add_or_update_network', mock.Mock())
+    def test_update_network_sync_name_not_changed(self):
+        net_id = 'net_id'
+        net_name = 'new_name'
+        payload = {'network': {'name': net_name, 'id': net_id}}
+        old_network = mock.Mock()
+        old_network.network_name = net_name
+        dbi.get_network.return_value = old_network
+        with mock.patch.object(ipam.IpamAsyncController,
+                               'update_network_sync') as controller_mock:
+            self.ipam_handler.update_network_sync(payload)
+        controller_mock.assert_called_once_with(False)
+        dbi.get_network.assert_called_once_with(mock.ANY, net_id)
+        dbi.add_or_update_network.assert_not_called()
+
+    @mock.patch.object(dbi, 'get_network')
+    @mock.patch.object(dbi, 'add_or_update_network')
+    def _test_update_network_name(self, pattern, need_zones,
+                                  add_or_update_network_mock,
+                                  get_network_mock):
+        net_id = 'net_id'
+        net_name = 'new_name'
+        payload = {'network': {'name': net_name, 'id': net_id}}
+        old_network = mock.Mock()
+        old_network.network_name = 'old_name'
+        get_network_mock.return_value = old_network
+        grid_config = self.grid_manager.grid_config
+        grid_config.default_domain_name_pattern = pattern
+        with mock.patch.object(ipam.IpamAsyncController,
+                               'update_network_sync') as controller_mock:
+            self.ipam_handler.update_network_sync(payload)
+        controller_mock.assert_called_once_with(need_zones)
+        get_network_mock.assert_called_once_with(mock.ANY, net_id)
+        add_or_update_network_mock.assert_called_once_with(
+            mock.ANY, net_id, net_name)
+
+    def test_network_name_changed_zones_needed(self):
+        self._test_update_network_name('{network_name}', True)
+
+    def test_network_name_changed_zones_not_needed(self):
+        self._test_update_network_name('{subnet_name}', False)
 
     def test_create_subnet_sync_should_call_resync(self):
         payload = {'subnet': {}}
