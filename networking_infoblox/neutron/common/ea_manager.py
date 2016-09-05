@@ -42,6 +42,32 @@ def get_ea_for_network_view(tenant_id, tenant_name, cloud_adapter_id):
     return ib_objects.EA(attributes)
 
 
+def get_net_specific_eas(network):
+    """Generates Network specific EAs
+
+    :param network: neutron network object
+    :return: dict with network specific extensible attributes
+    """
+    network_type = network.get(providernet.NETWORK_TYPE)
+    physical_network = network.get(providernet.PHYSICAL_NETWORK)
+    segmentation_id = network.get(providernet.SEGMENTATION_ID)
+    return {const.EA_NETWORK_ID: network.get('id'),
+            const.EA_NETWORK_NAME: network.get('name'),
+            const.EA_NETWORK_ENCAP: network_type,
+            const.EA_SEGMENTATION_ID: segmentation_id,
+            const.EA_PHYSICAL_NETWORK_NAME: physical_network}
+
+
+def get_subnet_specific_eas(subnet):
+    """Generates subnet specific EAs
+
+    :param subnet: neutron network object
+    :return: dict with subnet specific extensible attributes
+    """
+    return {const.EA_SUBNET_ID: subnet.get('id'),
+            const.EA_SUBNET_NAME: subnet.get('name')}
+
+
 def get_ea_for_network(user_id, tenant_id, tenant_name, network, subnet):
     """Generates EAs for Network.
 
@@ -55,17 +81,8 @@ def get_ea_for_network(user_id, tenant_id, tenant_name, network, subnet):
     subnet = {} if subnet is None else subnet
     network = {} if network is None else network
 
-    network_type = network.get(providernet.NETWORK_TYPE)
-    physical_network = network.get(providernet.PHYSICAL_NETWORK)
-    segmentation_id = network.get(providernet.SEGMENTATION_ID)
-
-    attributes = {const.EA_SUBNET_ID: subnet.get('id'),
-                  const.EA_SUBNET_NAME: subnet.get('name'),
-                  const.EA_NETWORK_ID: network.get('id'),
-                  const.EA_NETWORK_NAME: network.get('name'),
-                  const.EA_NETWORK_ENCAP: network_type,
-                  const.EA_SEGMENTATION_ID: segmentation_id,
-                  const.EA_PHYSICAL_NETWORK_NAME: physical_network}
+    attributes = get_subnet_specific_eas(subnet)
+    attributes.update(get_net_specific_eas(network))
 
     common_ea = get_common_ea(network, user_id, tenant_id,
                               tenant_name, for_network=True)
@@ -136,9 +153,22 @@ def get_ea_for_ip(user_id, tenant_id, tenant_name, network, port_id, device_id,
     return ib_objects.EA(common_ea)
 
 
-def get_ea_for_zone(user_id, tenant_id, tenant_name, network=None):
-    return ib_objects.EA(get_common_ea(network, user_id, tenant_id,
-                                       tenant_name))
+def get_ea_for_reverse_zone(user_id, tenant_id, tenant_name, network, subnet):
+    ea_dict = get_common_ea(network, user_id, tenant_id, tenant_name)
+    ea_dict.update(get_net_specific_eas(network))
+    ea_dict.update(get_subnet_specific_eas(subnet))
+    return ib_objects.EA(ea_dict)
+
+
+def get_ea_for_forward_zone(user_id, tenant_id, tenant_name, network, subnet,
+                            name_template):
+    ea_dict = get_common_ea(network, user_id, tenant_id, tenant_name)
+    if '{subnet_id}' in name_template or '{subnet_name}' in name_template:
+        ea_dict.update(get_subnet_specific_eas(subnet))
+        ea_dict.update(get_net_specific_eas(network))
+    elif '{network_id}' in name_template or '{network_name}' in name_template:
+        ea_dict.update(get_net_specific_eas(network))
+    return ib_objects.EA(ea_dict)
 
 
 def reset_ea_for_zone(ib_zone):
