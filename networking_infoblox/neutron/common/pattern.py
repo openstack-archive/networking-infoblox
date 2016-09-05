@@ -65,10 +65,14 @@ class PatternBuilder(object):
         return self._build(pattern, ip_address, instance_name, port_id,
                            device_id, port_name=port_name)
 
-    def get_zone_name(self, subnet_name=None, is_external=False):
+    def get_zone_name_pattern(self, subnet_name=None, is_external=False):
         pattern = self.grid_config.default_domain_name_pattern
         if is_external and self.grid_config.external_domain_name_pattern:
             pattern = self.grid_config.external_domain_name_pattern
+        return pattern
+
+    def get_zone_name(self, subnet_name=None, is_external=False):
+        pattern = self.get_zone_name_pattern(subnet_name, is_external)
         return self._build(pattern, subnet_name=subnet_name)
 
     def _build(self, pattern, ip_address=None, instance_name=None,
