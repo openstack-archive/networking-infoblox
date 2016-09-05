@@ -209,3 +209,17 @@ class TestPatternBuilder(base.TestCase):
         actual_zone = self.pattern_builder.get_zone_name(is_external=True)
         # external pattern should be used
         self.assertEqual(external_pattern, actual_zone)
+
+    def test_get_zone_name_pattern(self):
+        # test get_zone_name pattern
+        self.assertEqual(
+            self.pattern_builder.get_zone_name_pattern(is_external=False),
+            self.ib_cxt.grid_config.default_domain_name_pattern)
+
+    def test_get_zone_name_pattern_for_external(self):
+        # test get_zone_name pattern for external zone
+        self.pattern_builder.grid_config.external_domain_name_pattern = (
+            'external.infoblox.com')
+        self.assertEqual(
+            self.pattern_builder.get_zone_name_pattern(is_external=True),
+            self.ib_cxt.grid_config.external_domain_name_pattern)
