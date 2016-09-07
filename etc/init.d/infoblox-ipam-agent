@@ -1,0 +1,69 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          infoblox-ipam-agent
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: infoblox-ipam-agent
+# Description:       Provides the Infoblox IPAM service
+### END INIT INFO
+
+set -e
+
+PIDFILE=/var/run/neutron/infoblox-ipam-agent.pid
+LOGFILE=/var/log/neutron/infoblox-ipam-agent.log
+
+DAEMON=infoblox-ipam-agent
+DAEMON_ARGS="--log-file=$LOGFILE --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini"
+DAEMON_DIR=/var/run
+
+ENABLED=true
+
+if test -f /etc/default/infoblox-ipam-agent; then
+  . /etc/default/infoblox-ipam-agent
+fi
+
+mkdir -p /var/run/neutron
+mkdir -p /var/log/neutron
+
+. /lib/lsb/init-functions
+
+export PATH="${PATH:+$PATH:}/usr/sbin:/sbin:/usr/local/bin"
+export TMPDIR=/var/lib/neutron/tmp
+
+DAEMON=`which ${DAEMON}`
+if [ ! -x ${DAEMON} ] ; then
+    exit 0
+fi
+
+case "$1" in
+  start)
+    test "$ENABLED" = "true" || exit 0
+    log_daemon_msg "Starting Infoblox IPAM Agent " "infoblox-ipam-agent"
+    start-stop-daemon -Sbmv --pidfile $PIDFILE --chdir $DAEMON_DIR --exec $DAEMON -- $DAEMON_ARGS
+    log_end_msg $?
+    ;;
+  stop)
+    test "$ENABLED" = "true" || exit 0
+    log_daemon_msg "Stopping Infoblox IPAM Agent" "infoblox-ipam-agent"
+    start-stop-daemon --stop --oknodo --pidfile ${PIDFILE}
+    log_end_msg $?
+    ;;
+  restart|force-reload)
+    test "$ENABLED" = "true" || exit 1
+    $0 stop
+    sleep 1
+    $0 start
+    ;;
+  status)
+    test "$ENABLED" = "true" || exit 0
+    status_of_proc -p $PIDFILE $DAEMON infoblox-ipam-agent && exit 0 || exit $?
+    ;;
+  *)
+    log_action_msg "Usage: /etc/init.d/infoblox-ipam-agent {start|stop|restart|force-reload|status}"
+    exit 1
+    ;;
+esac
+
+exit 0

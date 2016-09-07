@@ -20,11 +20,15 @@ import netaddr
 import random
 import re
 import six
+import time
 import urllib
 
-from infoblox_client import connector as conn
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
+
+from infoblox_client import connector as conn
+from infoblox_client import feature
+from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import config as cfg
 from networking_infoblox.neutron.common import constants as const
@@ -119,17 +123,6 @@ def db_records_to_json(records):
     return jsonutils.loads(json_str)
 
 
-def construct_ea(attributes):
-    ea = {}
-    for name, value in six.iteritems(attributes):
-        str_val = get_string_or_none(value)
-        if str_val:
-            ea[name] = {'value': str_val}
-
-    ea[const.EA_CLOUD_MGMT_PLATFORM_TYPE] = {'value': 'OpenStack'}
-    return ea
-
-
 def get_string_or_none(value):
     ret_val = None
     if isinstance(value, six.string_types):
@@ -149,18 +142,30 @@ def get_ea_value(name, extattrs, should_return_list_value=False):
     value = None
     if extattrs:
         root = extattrs.get("extattrs")
-        name_attr = root.get(name)
-        if name_attr:
-            value = name_attr.get('value')
-            if should_return_list_value and not isinstance(value, list):
-                value = [value]
+        if root:
+            name_attr = root.get(name)
+            if name_attr:
+                value = name_attr.get('value')
+                if should_return_list_value and not isinstance(value, list):
+                    value = [value]
     return value
+
+
+def reset_required_eas(ib_obj):
+    if not ib_obj or not ib_obj.extattrs or not ib_obj.extattrs.to_dict():
+        return
+
+    for ea in const.REQUIRED_EA_LIST:
+        if ea == const.EA_CLOUD_API_OWNED:
+            ib_obj.extattrs.set(ea, 'False')
+        else:
+            ib_obj.extattrs.set(ea, const.EA_RESET_VALUE)
 
 
 def get_ip_version(ip_address):
     valid = ip_address and isinstance(ip_address, six.string_types)
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if type(ip_address) is dict:
         ip = ip_address['ip_address']
@@ -189,57 +194,12 @@ def generate_duid(mac):
     """
     valid = mac and isinstance(mac, six.string_types)
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
     duid = [0x00,
             random.randint(0x00, 0x7f),
             random.randint(0x00, 0xff),
             random.randint(0x00, 0xff)]
     return ':'.join(map(lambda x: "%02x" % x, duid)) + ':' + mac
-
-
-def get_prefix_for_dns_zone(subnet_name, cidr):
-    valid = cidr and isinstance(cidr, six.string_types)
-    if not valid:
-        raise ValueError("Invalid argument was passed")
-
-    subnet_name = subnet_name if subnet_name else ''
-    try:
-        ip_version = get_ip_version(cidr)
-    except netaddr.core.AddrFormatError:
-        raise ValueError("Invalid cidr")
-
-    # add prefix only for classless networks (ipv4) mask greater than
-    # 24 needs prefix; use meaningful prefix if used
-    prefix = None
-    if ip_version == 4:
-        m = re.search(r'/\d+', cidr)
-        mask = m.group().replace("/", "")
-        if int(mask) > 24:
-            if len(subnet_name) > 0:
-                prefix = subnet_name
-            else:
-                prefix = '-'.join(
-                    filter(None,
-                           re.split(r'[.:/]', cidr))
-                )
-    return prefix
-
-
-def get_physical_network_meta(network):
-    if not isinstance(network, dict):
-        raise ValueError("Invalid argument was passed")
-
-    if not network:
-        return {}
-
-    network = network if network else {}
-    provider_network_type = network.get('provider:network_type')
-    provider_physical_network = network.get('provider:physical_network')
-    provider_segmentation_id = network.get('provider:segmentation_id')
-    network_meta = {'network_type': provider_network_type,
-                    'physical_network': provider_physical_network,
-                    'segmentation_id': provider_segmentation_id}
-    return network_meta
 
 
 def get_list_from_string(data_string, delimiter_list):
@@ -248,7 +208,7 @@ def get_list_from_string(data_string, delimiter_list):
              delimiter_list and
              isinstance(delimiter_list, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     list_data = remove_any_space(data_string)
     if isinstance(delimiter_list, six.string_types):
@@ -277,14 +237,14 @@ def get_list_from_string(data_string, delimiter_list):
         result_list[1] = [m for m in result_list[1] if m]
         return result_list
 
-    raise ValueError("Unsupported delimiter list type")
+    raise ValueError("Unsupported delimiter list type.")
 
 
 def exists_in_sequence(sub_sequence_to_find, full_list_in_sequence):
     valid = (isinstance(sub_sequence_to_find, list) and
              isinstance(full_list_in_sequence, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not sub_sequence_to_find or not full_list_in_sequence:
         return False
@@ -299,7 +259,7 @@ def exists_in_sequence(sub_sequence_to_find, full_list_in_sequence):
 def exists_in_list(list_to_find, full_list):
     valid = isinstance(list_to_find, list) and isinstance(full_list, list)
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not list_to_find or not full_list:
         return False
@@ -311,10 +271,9 @@ def exists_in_list(list_to_find, full_list):
 def find_one_in_list(search_key, search_value, search_list):
     """Find one item that match searching one key and value."""
     valid = (isinstance(search_key, six.string_types) and
-             isinstance(search_value, six.string_types) and
              isinstance(search_list, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not search_key or not search_value or not search_list:
         return None
@@ -334,7 +293,7 @@ def find_in_list_by_condition(search_key_value_pairs, search_list):
     valid = (isinstance(search_key_value_pairs, dict) and
              isinstance(search_list, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not search_key_value_pairs or not search_list:
         return None
@@ -363,12 +322,33 @@ def find_in_list(search_key, search_values, search_list):
              isinstance(search_values, list) and
              isinstance(search_list, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not search_key or not search_values or not search_list:
         return None
 
     found_list = [m for m in search_list if m.get(search_key) in search_values]
+    return found_list
+
+
+def find_in_list_by_value(search_value, search_list,
+                          first_occurrence_only=True):
+    """Find item(s) that match(es) the search value from the search list."""
+    valid = isinstance(search_list, list)
+    if not valid:
+        raise ValueError("Invalid argument was passed.")
+
+    if not search_value or not search_list:
+        return None
+
+    if isinstance(search_list[0], dict):
+        found_list = [m for m in search_list if search_value in m.values()]
+    else:
+        found_list = [m for m in search_list
+                      if search_value in m.__dict__.values()]
+
+    if first_occurrence_only:
+        return found_list[0] if found_list else None
     return found_list
 
 
@@ -382,7 +362,7 @@ def find_key_from_list(search_key, search_list):
     valid = (isinstance(search_key, six.string_types) and
              isinstance(search_list, list))
     if not valid:
-        raise ValueError("Invalid argument was passed")
+        raise ValueError("Invalid argument was passed.")
 
     if not search_key or not search_list:
         return None
@@ -396,7 +376,7 @@ def merge_list(*list_args):
     merge_lsit = []
     for lst in list_args:
         if not isinstance(lst, list):
-            raise ValueError("Invalid argument was passed")
+            raise ValueError("Invalid argument was passed.")
         merge_lsit += lst
     return list(set(merge_lsit))
 
@@ -407,18 +387,26 @@ def remove_any_space(text):
     return text
 
 
-def get_hash(text):
+def get_hash(text=None):
     if text and isinstance(text, six.string_types):
         text = text.encode('utf-8')
         return hashlib.md5(text).hexdigest()
-    return None
+    return hashlib.md5(str(time.time())).hexdigest()
 
 
 def get_oid_from_nios_ref(obj_ref):
-    if obj_ref and len(obj_ref) > 0:
+    if obj_ref and isinstance(obj_ref, six.string_types) and len(obj_ref) > 0:
         match = re.search('\S+\/(\S+):(\S+)', obj_ref)
         if match:
             return match.group(1)
+    return None
+
+
+def get_network_view_id(grid_id, obj_ref):
+    if grid_id and obj_ref:
+        obj_id = get_oid_from_nios_ref(obj_ref)
+        if obj_id:
+            return "%s:%s" % (grid_id, obj_id)
     return None
 
 
@@ -460,17 +448,14 @@ def get_notification_handler_name(event_type):
     return handler_name
 
 
-def get_major_version(wapi_version):
-    valid = wapi_version and isinstance(wapi_version, six.string_types)
-    if not valid:
-        raise ValueError("Invalid argument was passed")
-    version_match = re.search('(\d+)\.(\d+)', wapi_version)
-    if version_match:
-        return int(version_match.group(1))
-    return None
-
-
 def generate_network_view_name(object_id, object_name=None):
+    """Generates Network View name by id and name.
+
+    Truncates generated network view to do not exceed allowed length of 64
+    characters for network_view. dns_view can be generated from network_view
+    by prepending 'default.', so limit max allowed length for network view
+    by 64 - len('default.') = 56.
+    """
     if not object_id or not isinstance(object_id, six.string_types):
         raise ValueError("object_id cannot be empty and must a string.")
 
@@ -479,13 +464,16 @@ def generate_network_view_name(object_id, object_name=None):
 
     netview_name = ("{}-{}".format(object_name, object_id)
                     if object_name else object_id)
+
+    if len(netview_name) > const.NETVIEW_MAX_LEN:
+        return netview_name[:const.NETVIEW_MAX_LEN]
     return netview_name
 
 
-def get_connector():
+def get_connector(credentials=None):
     grid_id = cfg.CONF.infoblox.cloud_data_center_id
     grid_opts = cfg.get_infoblox_grid_opts(grid_id)
-    # map connector opions to config
+    # map connector options to config
     # None as value means no name change needed
     mapping = {'host': 'grid_master_host',
                'username': 'admin_user_name',
@@ -498,4 +486,142 @@ def get_connector():
     opts = {field: grid_opts[mapping[field]]
             if mapping[field] else grid_opts[field]
             for field in mapping}
+    if opts['ssl_verify'] == 'False':
+        opts['silent_ssl_warnings'] = True
+    if credentials:
+        opts['username'] = credentials['username']
+        opts['password'] = credentials['password']
     return conn.Connector(opts)
+
+
+def get_ipv4_network_prefix(cidr, subnet_name):
+    """Add prefix for an ipv4 classless network mask greater than 24."""
+    valid = cidr and isinstance(cidr, six.string_types)
+    if not valid:
+        raise ValueError("Invalid argument was passed.")
+
+    try:
+        ip_net = netaddr.IPNetwork(cidr)
+    except netaddr.core.AddrFormatError:
+        raise ValueError("Invalid cidr")
+
+    if ip_net.version != 4:
+        return None
+
+    prefix = None
+    if ip_net.prefixlen > 24:
+        if subnet_name and len(subnet_name) > 0:
+            prefix = subnet_name
+        else:
+            prefix = '-'.join(filter(None, re.split(r'[.:/]', cidr)))
+    return prefix
+
+
+def get_features(version, feature_versions=None):
+    if feature_versions is None:
+        feature_versions = const.FEATURE_VERSIONS
+    return feature.Feature(version, feature_versions=feature_versions)
+
+
+def get_dhcp_member_ips(ib_network):
+    """Get dhcp member ips from network json or ib network object."""
+    member_ips = []
+    if (not ib_network or not (isinstance(ib_network, dict) or
+                               isinstance(ib_network, ib_objects.Network))):
+        return member_ips
+
+    if isinstance(ib_network, dict):
+        if ib_network.get('members'):
+            for member in ib_network['members']:
+                if member.get('_struct') == 'dhcpmember':
+                    member_ip = (member.get('ipv4addr') or
+                                 member.get('ipv6addr'))
+                    if member_ip:
+                        member_ips.append(member_ip)
+    else:
+        if ib_network.members:
+            for member in ib_network.members:
+                if member._struct == 'dhcpmember':
+                    member_ip = member.ipv4addr or member.ipv6addr
+                    if member_ip:
+                        member_ips.append(member_ip)
+    return member_ips
+
+
+def get_dns_member_ips(ib_network):
+    """Get dns member ips from network json or ib network object."""
+    member_ips = []
+    if (not ib_network or not (isinstance(ib_network, dict) or
+                               isinstance(ib_network, ib_objects.Network))):
+        return member_ips
+
+    if isinstance(ib_network, dict):
+        if ib_network.get('options'):
+            for option in ib_network['options']:
+                if option.get('name') == 'domain-name-servers':
+                    option_values = option.get('value')
+                    if option_values:
+                        member_ips = option_values.split(',')
+                    break
+    else:
+        for option in ib_network.options:
+            if option.name == 'domain-name-servers':
+                if option.value:
+                    member_ips = option.value.split(',')
+                break
+    return member_ips
+
+
+def get_router_ips(ib_network):
+    """Get gateway ips (routers) from network json or ib network object."""
+    router_ips = []
+    if (not ib_network or not (isinstance(ib_network, dict) or
+                               isinstance(ib_network, ib_objects.Network))):
+        return router_ips
+
+    if isinstance(ib_network, dict):
+        if ib_network.get('options'):
+            for option in ib_network['options']:
+                if option.get('name') == 'routers':
+                    option_values = option.get('value')
+                    if option_values:
+                        router_ips = option_values.split(',')
+                    break
+    else:
+        for option in ib_network.options:
+            if option.name == 'routers':
+                if option.value:
+                    router_ips = option.value.split(',')
+                break
+    return router_ips
+
+
+def find_member_by_ip_from_list(member_ip, members):
+    """Find a member by ip which could be either ipv4 or ip6."""
+    ip_ver = get_ip_version(member_ip)
+    if ip_ver == 4:
+        member = find_one_in_list('member_ip', member_ip, members)
+    else:
+        member = find_one_in_list('member_ipv6', member_ip, members)
+    return member
+
+
+def get_nameservers(ib_dns_members, ip_version):
+    if (not isinstance(ib_dns_members, list) or
+            ip_version not in [4, 6]):
+        raise ValueError("Invalid argument was passed.")
+
+    # Prefer member_dns_ipX and fallback to member_ipX if dns one not set
+    nameservers = [n for n in [m.member_dns_ipv6 or m.member_ipv6
+                               if ip_version == 6
+                               else m.member_dns_ip or m.member_ip
+                               for m in ib_dns_members] if n]
+    return nameservers
+
+
+def get_mapping_relation(member_type):
+    if member_type == const.MEMBER_TYPE_CP_MEMBER:
+        return const.MAPPING_RELATION_DELEGATED
+    if member_type == const.MEMBER_TYPE_GRID_MASTER:
+        return const.MAPPING_RELATION_GM_OWNED
+    return None

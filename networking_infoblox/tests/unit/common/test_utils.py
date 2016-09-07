@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
 import netaddr
 import six
 
@@ -20,6 +21,8 @@ from oslo_serialization import jsonutils
 
 from neutron import context
 from neutron.tests.unit import testlib_api
+
+from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import utils
@@ -49,18 +52,18 @@ class TestUtils(testlib_api.SqlTestCase):
     def test_get_values_from_records(self):
         grid_1_id = 100
         grid_2_id = 200
-        dbi.add_grid(self.ctx.session, grid_1_id, 'test grid 1', '{}', 'ON')
-        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'OFF')
+        dbi.add_grid(self.ctx.session, grid_1_id, 'test grid 1', '{}', 'ON',
+                     'gm-id-1')
+        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'OFF',
+                     'gm-id-2')
 
         grids = dbi.get_grids(self.ctx.session)
         grid_ids = utils.get_values_from_records('grid_id', grids)
 
-        self.assertEqual(2, len(grid_ids))
         self.assertEqual(grid_1_id, grid_ids[0])
         self.assertEqual(grid_2_id, grid_ids[1])
 
         grid_names = utils.get_values_from_records('grid_name', grids)
-        self.assertEqual(2, len(grid_ids))
         self.assertEqual('test grid 1', grid_names[0])
         self.assertEqual('test grid 2', grid_names[1])
 
@@ -70,8 +73,10 @@ class TestUtils(testlib_api.SqlTestCase):
         grid_2_id = 200
         grid_2_name = 'test grid 2'
         dbi.remove_grids(self.ctx.session, [grid_1_id, grid_2_id])
-        dbi.add_grid(self.ctx.session, grid_1_id, grid_1_name, '{}', 'ON')
-        dbi.add_grid(self.ctx.session, grid_2_id, grid_2_name, '{}', 'OFF')
+        dbi.add_grid(self.ctx.session, grid_1_id, grid_1_name, '{}', 'ON',
+                     'gm-id-1')
+        dbi.add_grid(self.ctx.session, grid_2_id, grid_2_name, '{}', 'OFF',
+                     'gm-id-2')
 
         grids = dbi.get_grids(self.ctx.session)
         composite_keys = ['grid_id', 'grid_name']
@@ -90,8 +95,10 @@ class TestUtils(testlib_api.SqlTestCase):
                      '{"wapi_version": "2.0",'
                      '"wapi_admin_user": '
                      '{ "name": "admin", "password": "infoblox" }}',
-                     'ON')
-        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'OFF')
+                     'ON',
+                     'gm-id-1')
+        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'OFF',
+                     'gm-id-2')
 
         grids = dbi.get_grids(self.ctx.session)
 
@@ -124,8 +131,10 @@ class TestUtils(testlib_api.SqlTestCase):
                      '{"wapi_version": "2.0",'
                      '"wapi_admin_user": '
                      '{ "name": "admin", "password": "infoblox" }}',
-                     'ON')
-        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'ON')
+                     'ON',
+                     'gm-id-1')
+        dbi.add_grid(self.ctx.session, grid_2_id, 'test grid 2', '{}', 'ON',
+                     'gm-id-2')
 
         grids = dbi.get_grids(self.ctx.session)
         grid_obj = utils.db_records_to_obj('Grid', grids)
@@ -139,17 +148,6 @@ class TestUtils(testlib_api.SqlTestCase):
 
         grid_connection = jsonutils.loads(grid_obj[0].grid_connection)
         self.assertEqual('admin', grid_connection["wapi_admin_user"]["name"])
-
-    def test_construct_ea(self):
-        attributes = {"key1": "value1", "key2": "value2"}
-        ea = utils.construct_ea(attributes)
-        self.assertEqual({'value': 'value1'}, ea['key1'])
-        self.assertEqual({'value': 'value2'}, ea['key2'])
-        self.assertEqual({'value': 'OpenStack'}, ea['CMP Type'])
-
-        attributes = dict()
-        ea = utils.construct_ea(attributes)
-        self.assertEqual({'CMP Type': {'value': 'OpenStack'}}, ea)
 
     def test_get_string_or_none(self):
         value = ""
@@ -217,6 +215,30 @@ class TestUtils(testlib_api.SqlTestCase):
         invalid_ea = utils.get_ea_value(None, None)
         self.assertEqual(None, invalid_ea)
 
+    def test_reset_required_eas(self):
+        network_ea = {'CMP Type': {'value': 'OpenStack'},
+                      'Cloud API Owned': {'value': 'True'},
+                      'Tenant ID': {'value': 'test-id'},
+                      'Tenant Name': {'value': 'tenant-name'},
+                      'Account': {'value': 'admin'},
+                      'Network View ID': {'value': 'default'},
+                      'Is External': {'value': 'False'},
+                      'Is Shared': {'value': 'True'},
+                      'Network ID': {'value': 'True'},
+                      'Network Name': {'value': 'True'},
+                      'Subnet ID': {'value': 'True'}}
+        ib_network_ea = ib_objects.EA.from_dict(network_ea)
+        ib_network_mock = mock.Mock(extattrs=ib_network_ea)
+
+        utils.reset_required_eas(ib_network_mock)
+
+        for ea in const.REQUIRED_EA_LIST:
+            ea_value = ib_network_mock.extattrs.get(ea)
+            if ea == const.EA_CLOUD_API_OWNED:
+                assert ea_value == 'False'
+            else:
+                assert ea_value == const.EA_RESET_VALUE
+
     def test_get_ip_version(self):
         ips = ('10.10.0.1', '8.8.8.8')
         for ip in ips:
@@ -269,49 +291,6 @@ class TestUtils(testlib_api.SqlTestCase):
                     if e.find(mac) == duid_mac_start_point]
         self.assertEqual(len({}.fromkeys(duids)), len(duids))
         self.assertEqual(duid_count, len(matching))
-
-    def test_get_prefix_for_dns_zone(self):
-        subnet_name = None
-        cidr = None
-        self.assertRaises(ValueError, utils.get_prefix_for_dns_zone,
-                          subnet_name, cidr)
-
-        subnet_name = "subnet 1"
-        cidr = ""
-        self.assertRaises(ValueError, utils.get_prefix_for_dns_zone,
-                          subnet_name, cidr)
-
-        subnet_name = "subnet 1"
-        cidr = "10.10.10.10/23"
-        prefix = utils.get_prefix_for_dns_zone(subnet_name, cidr)
-        self.assertEqual(None, prefix)
-
-        subnet_name = "subnet 1"
-        cidr = "10.10.10.10/25"
-        prefix = utils.get_prefix_for_dns_zone(subnet_name, cidr)
-        self.assertEqual(subnet_name, prefix)
-
-        subnet_name = "subnet 1"
-        cidr = "fe80::8cfc:63ff:fe97:2240/64"
-        prefix = utils.get_prefix_for_dns_zone(subnet_name, cidr)
-        self.assertEqual(None, prefix)
-
-    def test_get_physical_network_meta(self):
-        self.assertRaises(ValueError, utils.get_physical_network_meta, None)
-        self.assertRaises(ValueError, utils.get_physical_network_meta, '')
-        self.assertEqual({}, utils.get_physical_network_meta({}))
-
-        physical_network_json = {
-            'provider:physical_network': None,
-            'provider:network_type': 'vxlan'
-        }
-        actual = utils.get_physical_network_meta(physical_network_json)
-        expected = {
-            'network_type': 'vxlan',
-            'physical_network': None,
-            'segmentation_id': None
-        }
-        self.assertEqual(expected, actual)
 
     def test_get_list_from_string(self):
         self.assertRaises(ValueError, utils.get_list_from_string, None, None)
@@ -374,17 +353,17 @@ class TestUtils(testlib_api.SqlTestCase):
 
     def test_find_one_in_list(self):
         self.assertRaises(ValueError, utils.find_one_in_list, None, None, None)
-        self.assertRaises(ValueError, utils.find_one_in_list, 'key', None, [])
+        self.assertEqual(None, utils.find_one_in_list('key', None, []))
         self.assertEqual(None, utils.find_one_in_list('key', 'val', []))
 
-        search_list = [{'key1': 'val1', 'key2': 'val2', 'key3': 'val3'},
-                       {'key1': 'val11', 'key2': 'val22', 'key3': 'val33'}]
+        search_list = [{'key1': 'val1', 'key2': 'val2', 'key3': True},
+                       {'key1': 'val11', 'key2': 'val22', 'key3': False}]
 
         expected = None
         actual = utils.find_one_in_list('key2', 'val33', search_list)
         self.assertEqual(expected, actual)
 
-        expected = {'key1': 'val11', 'key2': 'val22', 'key3': 'val33'}
+        expected = {'key1': 'val11', 'key2': 'val22', 'key3': False}
         actual = utils.find_one_in_list('key2', 'val22', search_list)
         self.assertEqual(expected, actual)
 
@@ -489,16 +468,19 @@ class TestUtils(testlib_api.SqlTestCase):
 
     def test_get_hash(self):
         hash_str = utils.get_hash("")
-        self.assertEqual(None, hash_str)
+        self.assertEqual(32, len(hash_str))
 
         hash_str = utils.get_hash(None)
-        self.assertEqual(None, hash_str)
+        self.assertEqual(32, len(hash_str))
 
         hash_str = utils.get_hash([])
-        self.assertEqual(None, hash_str)
+        self.assertEqual(32, len(hash_str))
+
+        hash_str = utils.get_hash()
+        self.assertEqual(32, len(hash_str))
 
         hash_str = utils.get_hash(['abc'])
-        self.assertEqual(None, hash_str)
+        self.assertEqual(32, len(hash_str))
 
         hash_str = utils.get_hash('I need a hash string!!!')
         self.assertEqual(32, len(hash_str))
@@ -509,6 +491,10 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual(None, oid)
 
         ref = ""
+        oid = utils.get_oid_from_nios_ref(ref)
+        self.assertEqual(None, oid)
+
+        ref = 123344
         oid = utils.get_oid_from_nios_ref(ref)
         self.assertEqual(None, oid)
 
@@ -590,15 +576,6 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual(expected,
                          utils.get_notification_handler_name(event_type))
 
-    def test_get_major_version(self):
-        self.assertRaises(ValueError, utils.get_major_version, None)
-        self.assertRaises(ValueError, utils.get_major_version, [])
-        self.assertRaises(ValueError, utils.get_major_version, '')
-        self.assertEqual(1, utils.get_major_version('1.2'))
-        self.assertEqual(1, utils.get_major_version('1.4.1'))
-        self.assertEqual(2, utils.get_major_version('2.2'))
-        self.assertIsNone(utils.get_major_version('2.'))
-
     def test_generate_network_view_name(self):
         self.assertRaises(ValueError, utils.generate_network_view_name, None)
         self.assertRaises(ValueError, utils.generate_network_view_name, [])
@@ -609,3 +586,192 @@ class TestUtils(testlib_api.SqlTestCase):
         self.assertEqual('1234', utils.generate_network_view_name('1234', ''))
         self.assertEqual('1234', utils.generate_network_view_name('1234'))
         self.assertEqual('hi-23', utils.generate_network_view_name('23', 'hi'))
+
+    def test_generate_network_view_name_max_len(self):
+        name = 'tempest-NetworksTest'
+        id = '279909910-24625c5053c7483ab6273628423989'
+        netview_name = utils.generate_network_view_name(id, name)
+        self.assertEqual(const.NETVIEW_MAX_LEN, len(netview_name))
+        expected_name = '-'.join([name, id])[:const.NETVIEW_MAX_LEN]
+        self.assertEqual(expected_name, netview_name)
+
+    def test_get_ipv4_network_prefix(self):
+        self.assertEqual(None,
+                         utils.get_ipv4_network_prefix('2001:db8:85a3::/64',
+                                                       ''))
+        self.assertEqual(None,
+                         utils.get_ipv4_network_prefix('11.11.1.1/24', ''))
+        self.assertEqual(None,
+                         utils.get_ipv4_network_prefix('11.11.1.1/24', ''))
+        self.assertEqual('11-11-1-1-25',
+                         utils.get_ipv4_network_prefix('11.11.1.1/25', ''))
+        self.assertEqual('sub1',
+                         utils.get_ipv4_network_prefix('11.11.1.1/25', 'sub1'))
+        self.assertEqual('11-11-1-1-29',
+                         utils.get_ipv4_network_prefix('11.11.1.1/29', None))
+
+    def test_get_dhcp_member_ips_from_network_json(self):
+        network_json = {
+            "members": [
+                {
+                    "_struct": "dhcpmember",
+                    "ipv4addr": "192.168.1.10",
+                    "ipv6addr": None,
+                    "name": "nios-7.2.0-member3.com"
+                }
+            ]
+        }
+        member_ips = utils.get_dhcp_member_ips(network_json)
+        self.assertEqual("192.168.1.10", member_ips[0])
+
+    def test_get_dhcp_member_ips_from_ib_network(self):
+        connector = mock.Mock()
+        test_ib_network = ib_objects.NetworkV4(connector,
+                                               network_view='test-view',
+                                               cidr='12.12.1.0/24')
+        test_ib_network.members = [
+            ib_objects.AnyMember(_struct='dhcpmember',
+                                 name='nios-7.2.0-member3.com',
+                                 ipv4addr='192.168.1.10')]
+
+        member_ips = utils.get_dhcp_member_ips(test_ib_network)
+        self.assertEqual("192.168.1.10", member_ips[0])
+
+    def test_get_dns_member_ips_from_network_json(self):
+        network_json = {
+            "options": [
+                {
+                    "name": "domain-name-servers",
+                    "num": 6,
+                    "use_option": True,
+                    "value": "192.168.1.10,192.168.1.13",
+                    "vendor_class": "DHCP"
+                }
+            ]
+        }
+        member_ips = utils.get_dns_member_ips(network_json)
+        self.assertEqual("192.168.1.10", member_ips[0])
+        self.assertEqual("192.168.1.13", member_ips[1])
+
+    def test_get_dns_member_ips_from_ib_network(self):
+        connector = mock.Mock()
+        test_ib_network = ib_objects.NetworkV4(connector,
+                                               network_view='test-view',
+                                               cidr='12.12.1.0/24')
+        test_ib_network.options = [
+            ib_objects.DhcpOption(name='domain-name-servers',
+                                  value='192.168.1.10,192.168.1.13')]
+        member_ips = utils.get_dns_member_ips(test_ib_network)
+        self.assertEqual("192.168.1.10", member_ips[0])
+        self.assertEqual("192.168.1.13", member_ips[1])
+
+    def test_get_router_ips_from_network_json(self):
+        network_json = {
+            "options": [
+                {
+                    "name": "routers",
+                    "num": 3,
+                    "use_option": True,
+                    "value": "192.168.1.1,192.168.1.2",
+                    "vendor_class": "DHCP"
+                }
+            ]
+        }
+        member_ips = utils.get_router_ips(network_json)
+        self.assertEqual("192.168.1.1", member_ips[0])
+        self.assertEqual("192.168.1.2", member_ips[1])
+
+    def test_get_router_ips_from_ib_network(self):
+        connector = mock.Mock()
+        test_ib_network = ib_objects.NetworkV4(connector,
+                                               network_view='test-view',
+                                               cidr='12.12.1.0/24')
+        test_ib_network.options = [
+            ib_objects.DhcpOption(name='routers',
+                                  value='192.168.1.1,192.168.1.2')]
+        member_ips = utils.get_router_ips(test_ib_network)
+        self.assertEqual("192.168.1.1", member_ips[0])
+        self.assertEqual("192.168.1.2", member_ips[1])
+
+    def test_find_member_by_ip_from_list(self):
+        self.assertRaises(ValueError,
+                          utils.find_member_by_ip_from_list, None, None)
+        self.assertRaises(ValueError,
+                          utils.find_member_by_ip_from_list, None, [])
+        self.assertRaises(netaddr.core.AddrFormatError,
+                          utils.find_member_by_ip_from_list, '1.0.1.555', [])
+        self.assertEqual(None,
+                         utils.find_member_by_ip_from_list('11.1.1.1', []))
+
+        search_list = [{'member_ip': '11.1.1.1', 'member_ipv6': '2001::1'},
+                       {'member_ip': '11.1.1.2', 'member_ipv6': None}]
+
+        search_ip = '11.1.1.2'
+        actual = utils.find_member_by_ip_from_list(search_ip, search_list)
+        self.assertEqual(search_ip, actual['member_ip'])
+
+        search_ip = '2001::1'
+        actual = utils.find_member_by_ip_from_list(search_ip, search_list)
+        self.assertEqual(search_ip, actual['member_ipv6'])
+
+    def test_get_nameservers_raises_exception(self):
+        self.assertRaises(ValueError, utils.get_nameservers, None, None)
+        self.assertRaises(ValueError, utils.get_nameservers, [], None)
+        self.assertRaises(ValueError, utils.get_nameservers, [], 5)
+
+    def _test_get_nameservers(self, dns_members, expected_field, ip_version):
+        nameservers = utils.get_nameservers(dns_members, ip_version)
+        expected = [getattr(m, expected_field) for m in dns_members]
+        self.assertEqual(expected, nameservers)
+
+    def test_get_nameservers(self):
+        test_dhcp_member_1 = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'REGULAR',
+             'member_ip': '11.11.1.12', 'member_ipv6': '2001::1',
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
+             'member_dns_ip': None, 'member_dns_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON'})
+        test_dhcp_member_2 = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'CPM',
+             'member_ip': '11.11.1.13', 'member_ipv6': '2001::2',
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
+             'member_dns_ip': None, 'member_dns_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON'})
+        dns_members = [test_dhcp_member_1, test_dhcp_member_2]
+
+        self._test_get_nameservers(dns_members, 'member_ip', 4)
+        self._test_get_nameservers(dns_members, 'member_ipv6', 6)
+
+    def test_get_nameservers_dns_fields(self):
+        test_dhcp_member_1 = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'REGULAR',
+             'member_ip': '11.11.1.12', 'member_ipv6': '2001::1',
+             'member_dhcp_ip': '12.12.1.12', 'member_dhcp_ipv6': '2009::1',
+             'member_dns_ip': '15.10.1.2', 'member_dns_ipv6': '2016::1',
+             'member_name': 'm1', 'member_status': 'ON'})
+        test_dhcp_member_2 = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'CPM',
+             'member_ip': '11.11.1.13', 'member_ipv6': '2001::2',
+             'member_dhcp_ip': '12.12.1.13', 'member_dhcp_ipv6': '2009::2',
+             'member_dns_ip': '15.10.1.3', 'member_dns_ipv6': '2016::2',
+             'member_name': 'm1', 'member_status': 'ON'})
+        dns_members = [test_dhcp_member_1, test_dhcp_member_2]
+
+        self._test_get_nameservers(dns_members, 'member_dns_ip', 4)
+        self._test_get_nameservers(dns_members, 'member_dns_ipv6', 6)
+
+    def test_get_features(self):
+        feature = utils.get_features('2.3')
+        self.assertTrue(feature.create_ea_def)
+        self.assertTrue(feature.cloud_api)
+        self.assertTrue(feature.member_ipv6_setting)
+        self.assertTrue(feature.member_licenses)
+        self.assertTrue(feature.enable_member_dns)
+        self.assertTrue(feature.enable_member_dhcp)
+        self.assertTrue(feature.dns_settings)
+        self.assertTrue(feature.enable_dhcp)
+        self.assertTrue(feature.tenants)

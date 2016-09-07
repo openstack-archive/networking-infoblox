@@ -21,11 +21,12 @@ from oslo_service import service
 from neutron.agent import rpc as agent_rpc
 from neutron.common import topics
 from neutron import context
-from neutron.i18n import _LE
-from neutron.i18n import _LW
 
+from networking_infoblox._i18n import _LE
+from networking_infoblox._i18n import _LW
 from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import notification_handler
 
 
@@ -52,15 +53,18 @@ class NotificationEndpoint(object):
         'floatingip.update.end',
         'floatingip.delete.end',
         # nova instance event
-        'compute.instance.create.end']
+        'compute.instance.create.end',
+        'compute.instance.delete.end']
 
-    def __init__(self, context):
+    def __init__(self, context, grid_manager):
         self.context = context
-
-        self.filter_rule = oslo_messaging.NotificationFilter(
-            publisher_id='^(network|compute).*',
-            event_type='|'.join(self.event_subscription_list))
-        self.handler = notification_handler.IpamEventHandler(self.context)
+        # Using filter in oslo_messaing 4.1.1 did not work for some reason
+        # so commenting filter out
+        # self.filter_rule = oslo_messaging.NotificationFilter(
+        #    publisher_id='^(network|compute).*',
+        #    event_type='|'.join(self.event_subscription_list))
+        self.handler = notification_handler.IpamEventHandler(
+            self.context, grid_manager=grid_manager)
 
     def info(self, ctxt, publisher_id, event_type, payload, metadata):
         if event_type in self.event_subscription_list:
@@ -72,6 +76,7 @@ class NotificationService(service.Service):
     """Listener for notification service."""
 
     NOTIFICATION_TOPIC = 'notifications'
+    RESYNC_TRY_INTERVAL = 30
 
     def __init__(self, report_interval=None):
         super(NotificationService, self).__init__()
@@ -82,15 +87,46 @@ class NotificationService(service.Service):
         else:
             self.report_interval = config.CONF.AGENT.report_interval
         self.context = context.get_admin_context()
+        # Make sure config is in sync before using grid_sync_maximum_wait_time
+        self.grid_manager = grid.GridManager(self.context)
+        self.grid_manager.sync(True)
         self._init_agent_report_thread()
         self._init_notification_listener()
+        self._init_periodic_resync()
 
     def _init_notification_listener(self):
         self.transport = oslo_messaging.get_transport(config.CONF)
         self.event_targets = [
-            oslo_messaging.Target(topic=self.NOTIFICATION_TOPIC)
+            oslo_messaging.Target(exchange=const.NOTIFICATION_EXCHANGE_NEUTRON,
+                                  topic=self.NOTIFICATION_TOPIC),
+            oslo_messaging.Target(exchange=const.NOTIFICATION_EXCHANGE_NOVA,
+                                  topic=self.NOTIFICATION_TOPIC)
         ]
-        self.event_endpoints = [NotificationEndpoint(self.context)]
+        self.event_endpoints = [NotificationEndpoint(self.context,
+                                                     self.grid_manager)]
+
+    def _get_resync_interval(self):
+        conf = self.grid_manager.grid_config
+        try:
+            return int(conf.grid_sync_maximum_wait_time)
+        except TypeError:
+            LOG.warning(_LE("Invalid resync interval set: %s"),
+                        conf.grid_sync_maximum_wait_time)
+            return self.RESYNC_TRY_INTERVAL
+
+    def _init_periodic_resync(self):
+        self.resync_thread = loopingcall.FixedIntervalLoopingCall(
+            self._periodic_resync)
+        self.resync_thread.start(interval=self.RESYNC_TRY_INTERVAL)
+
+    def _periodic_resync(self):
+        try:
+            interval = self._get_resync_interval()
+            if self.grid_manager.is_sync_needed(interval):
+                LOG.info(_LE("Initiating resync."))
+                self.grid_manager.sync(True)
+        except Exception as e:
+            LOG.exception(_LE("Resync failed due to error: %s"), e)
 
     def _init_agent_report_thread(self):
         self.state_rpc = agent_rpc.PluginReportStateAPI(topics.PLUGIN)
@@ -115,8 +151,9 @@ class NotificationService(service.Service):
             self.use_call = False
         except AttributeError:
             # This means the server does not support report_state
-            LOG.warn(_LW("The agent does not support state report."
-                         " State report for this agent will be disabled."))
+            LOG.warning(_LW("infoblox-ipam-agent does not support state "
+                            "report. State report for this agent will be "
+                            "disabled."))
             self.report_thread.stop()
             return
         except Exception:
@@ -128,7 +165,8 @@ class NotificationService(service.Service):
         self.event_listener = get_notification_listener(
             self.transport,
             self.event_targets,
-            self.event_endpoints
+            self.event_endpoints,
+            pool=const.AGENT_NOTIFICATION_POOL
         )
         self.event_listener.start()
 
@@ -142,8 +180,8 @@ class NotificationService(service.Service):
 
 
 def get_notification_listener(transport, targets, endpoints,
-                              allow_requeue=False):
+                              allow_requeue=False, pool=None):
     """Return a configured oslo_messaging notification listener."""
     return oslo_messaging.get_notification_listener(
         transport, targets, endpoints, executor='eventlet',
-        allow_requeue=allow_requeue)
+        allow_requeue=allow_requeue, pool=pool)

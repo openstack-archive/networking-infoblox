@@ -2,6 +2,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQw:nios-7.2.0-master.com",
         "host_name": "nios-7.2.0-master.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "ipv6_setting": {
             "auto_router_config_enabled": false,
             "cidr_prefix": 64,
@@ -118,6 +123,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQ0:nios-7.2.0-member1.com",
         "host_name": "nios-7.2.0-member1.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "ipv6_setting": {
             "auto_router_config_enabled": false,
             "enabled": false
@@ -236,6 +246,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQ1:nios-7.2.0-member2.com",
         "host_name": "nios-7.2.0-member2.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "ipv6_setting": {
             "auto_router_config_enabled": false,
             "enabled": false
@@ -354,6 +369,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQ2:nios-7.2.0-member3.com",
         "host_name": "nios-7.2.0-member3.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "ipv6_setting": {
             "auto_router_config_enabled": false,
             "enabled": false
@@ -472,6 +492,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQ3:nios-7.2.0-member4.com",
         "host_name": "nios-7.2.0-member4.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "ipv6_setting": {
             "auto_router_config_enabled": false,
             "enabled": false
@@ -590,6 +615,11 @@
     {
         "_ref": "member/c25lLnZpcnR1YWxfbm9kZSQ0:nios-7.2.0-member5.com",
         "host_name": "nios-7.2.0-member5.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "ipv6_setting": {
             "auto_router_config_enabled": false,
             "enabled": false
@@ -708,6 +738,11 @@
     {
         "_ref": "member/b25lLnZpcnR1YWxfbm9kZSQ3:nios-7.2.0-member6.com",
         "host_name": "nios-7.2.0-member6.com",
+        "extattrs": {
+            "Is Cloud Member": {
+                "value": "True"
+            }
+        },
         "ipv6_setting": {
             "auto_router_config_enabled": false,
             "enabled": false

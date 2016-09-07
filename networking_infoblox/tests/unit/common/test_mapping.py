@@ -43,6 +43,7 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.test_grid_config.grid_id = 100
         self.test_grid_config.grid_name = "Test Grid 1"
         self.test_grid_config.grid_master_host = '192.168.1.7'
+        self.test_grid_config.grid_master_name = 'nios-7.2.0-master.com'
         self.test_grid_config.admin_user_name = 'admin'
         self.test_grid_config.admin_password = 'infoblox'
         self.test_grid_config.wapi_version = '2.2'
@@ -51,16 +52,15 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
     def _create_members_with_cloud(self):
         member_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_MEMBERS_WITH_CLOUD)
-
-        member_json = self.connector_fixture.get_object(
-            base.FixtureResourceMap.FAKE_MEMBERS_WITH_CLOUD)
-        self.member_mgr._discover_members = mock.Mock()
-        self.member_mgr._discover_members.return_value = member_json
-
         license_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_MEMBER_LICENSES)
-        self.member_mgr._discover_member_licenses = mock.Mock()
-        self.member_mgr._discover_member_licenses.return_value = license_json
+
+        self.member_mgr._discover_members = mock.Mock(return_value=member_json)
+        self.member_mgr._discover_member_licenses = mock.Mock(
+            return_value=license_json)
+
+        self.member_mgr._discover_dns_settings = mock.Mock(return_value=[])
+        self.member_mgr._discover_dhcp_settings = mock.Mock(return_value=[])
 
         self.member_mgr.sync()
 
@@ -96,6 +96,8 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
                                                  db_network_views)
             netview_id = netview_row.id
             for condition_name in expected_conditions[netview]:
+                if 'Mapping' not in condition_name:
+                    continue
                 values = expected_conditions[netview][condition_name]['value']
                 if not isinstance(values, list):
                     expected_condition_rows.append(netview_id + DELIMITER +
@@ -113,11 +115,13 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertEqual(set(expected_condition_rows),
                          set(actual_condition_rows))
 
-    def _validate_mapping_members(self, network_view_json, network_json):
+    def _validate_member_mapping(self, network_view_json, network_json):
         db_members = dbi.get_members(self.ctx.session,
                                      grid_id=self.test_grid_config.grid_id)
         db_network_views = dbi.get_network_views(self.ctx.session)
         db_mapping_members = dbi.get_mapping_members(self.ctx.session)
+        db_service_members = dbi.get_service_members(self.ctx.session)
+
         gm_row = utils.find_one_in_list('member_type',
                                         const.MEMBER_TYPE_GRID_MASTER,
                                         db_members)
@@ -136,6 +140,8 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
                     delegated_member.member_id)
 
         expected_mapping_members = []
+        expected_service_members = []
+
         # get delegated authority members from network views
         for netview in dedicated_delegation_members:
             netview_row = utils.find_one_in_list('network_view', netview,
@@ -173,16 +179,51 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
             if mapping_row_info not in expected_mapping_members:
                 expected_mapping_members.append(mapping_row_info)
 
+            if network.get('members'):
+                for m in network['members']:
+                    if m['_struct'] == 'dhcpmember':
+                        dhcp_member = utils.find_one_in_list(
+                            'member_name', m['name'], db_members)
+                        mapping_row_info = (netview_id + DELIMITER +
+                                            dhcp_member.member_id + DELIMITER +
+                                            const.SERVICE_TYPE_DHCP)
+                        if mapping_row_info not in expected_service_members:
+                            expected_service_members.append(mapping_row_info)
+
+            if network.get('options'):
+                dns_membe_ips = []
+                for option in network['options']:
+                    if option.get('name') == 'domain-name-servers':
+                        option_values = option.get('value')
+                        if option_values:
+                            dns_membe_ips = option_values.split(',')
+                            break
+                for membe_ip in dns_membe_ips:
+                    dns_member = utils.find_one_in_list(
+                        'member_ip', membe_ip, db_members)
+                    mapping_row_info = (netview_id + DELIMITER +
+                                        dns_member.member_id + DELIMITER +
+                                        const.SERVICE_TYPE_DNS)
+                    if mapping_row_info not in expected_service_members:
+                        expected_service_members.append(mapping_row_info)
+
         actual_mapping_members = utils.get_composite_values_from_records(
             ['network_view_id', 'member_id', 'mapping_relation'],
             db_mapping_members)
         self.assertEqual(set(expected_mapping_members),
                          set(actual_mapping_members))
 
+        actual_service_members = utils.get_composite_values_from_records(
+            ['network_view_id', 'member_id', 'service'],
+            db_service_members)
+        self.assertEqual(set(expected_service_members),
+                         set(actual_service_members))
+
     def test_sync_for_cloud(self):
         self._create_members_with_cloud()
 
         mapping_mgr = mapping.GridMappingManager(self.test_grid_config)
+        mapping_mgr._sync_nios_for_network_view = mock.Mock()
 
         network_view_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_NETWORKVIEW_WITH_CLOUD)
@@ -194,17 +235,23 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
         mapping_mgr._discover_networks = mock.Mock()
         mapping_mgr._discover_networks.return_value = network_json
 
+        dnsview_json = self.connector_fixture.get_object(
+            base.FixtureResourceMap.FAKE_DNS_VIEW)
+        mapping_mgr._discover_dns_views = mock.Mock()
+        mapping_mgr._discover_dns_views.return_value = dnsview_json
+
         mapping_mgr.sync()
 
         # validate network views, mapping conditions, mapping members
         self._validate_network_views(network_view_json)
         self._validate_mapping_conditions(network_view_json)
-        self._validate_mapping_members(network_view_json, network_json)
+        self._validate_member_mapping(network_view_json, network_json)
 
     def test_sync_for_without_cloud(self):
         self._create_members_with_cloud()
 
         mapping_mgr = mapping.GridMappingManager(self.test_grid_config)
+        mapping_mgr._sync_nios_for_network_view = mock.Mock()
 
         network_view_json = self.connector_fixture.get_object(
             base.FixtureResourceMap.FAKE_NETWORKVIEW_WITHOUT_CLOUD)
@@ -216,9 +263,14 @@ class GridMappingTestCase(base.TestCase, testlib_api.SqlTestCase):
         mapping_mgr._discover_networks = mock.Mock()
         mapping_mgr._discover_networks.return_value = network_json
 
+        dnsview_json = self.connector_fixture.get_object(
+            base.FixtureResourceMap.FAKE_DNS_VIEW)
+        mapping_mgr._discover_dns_views = mock.Mock()
+        mapping_mgr._discover_dns_views.return_value = dnsview_json
+
         mapping_mgr.sync()
 
         # validate network views, mapping conditions, mapping members
         self._validate_network_views(network_view_json)
         self._validate_mapping_conditions(network_view_json)
-        self._validate_mapping_members(network_view_json, network_json)
+        self._validate_member_mapping(network_view_json, network_json)

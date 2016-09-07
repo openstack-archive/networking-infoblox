@@ -15,7 +15,7 @@
 
 """add_infoblox_ipam_driver
 
-Revision ID: 256b90dd9824
+Revision ID: 172ace2194db
 Revises: None
 Create Date: 2015-09-10 13:43:13.135126
 
@@ -83,6 +83,7 @@ def upgrade():
         sa.Column('network_view', sa.String(length=255), nullable=False),
         sa.Column('grid_id', sa.Integer(), nullable=False),
         sa.Column('authority_member_id', sa.String(length=32), nullable=False),
+        sa.Column('shared', sa.Boolean(), default=False, nullable=False),
         sa.ForeignKeyConstraint(['authority_member_id'],
                                 ['infoblox_grid_members.member_id'],
                                 ondelete='CASCADE'),
@@ -103,9 +104,6 @@ def upgrade():
         sa.Column('subnet_id', sa.String(length=36), nullable=False),
         sa.ForeignKeyConstraint(['network_id'],
                                 ['networks.id'],
-                                ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['subnet_id'],
-                                ['subnets.id'],
                                 ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['network_view_id'],
                                 ['infoblox_network_views.id'],
@@ -142,29 +140,24 @@ def upgrade():
 
     op.create_table(
         'infoblox_service_members',
+        sa.Column('network_view_id', sa.String(length=36), nullable=False),
         sa.Column('member_id', sa.String(length=48), nullable=False),
         sa.Column('service', sa.String(length=12), nullable=False),
-        sa.Column('network_id', sa.String(length=36), nullable=False),
+        sa.ForeignKeyConstraint(['network_view_id'],
+                                ['infoblox_network_views.id'],
+                                ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['member_id'],
                                 ['infoblox_grid_members.member_id'],
                                 ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['network_id'],
-                                ['networks.id'],
-                                ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('member_id', 'service', 'network_id'),
-        sa.Index(
-            'ix_infoblox_service_members_network_id',
-            'network_id')
+        sa.PrimaryKeyConstraint('network_view_id', 'member_id', 'service'),
+        sa.UniqueConstraint(
+            'member_id', 'service',
+            name='uniq_infoblox_service_members_member_id_service')
     )
 
     op.create_table(
-        'infoblox_management_networks',
-        sa.Column('network_id', sa.String(length=36), nullable=False),
-        sa.Column('ip_address', sa.String(length=64), nullable=False),
-        sa.Column('ip_version', sa.Integer(), default=4, nullable=False),
-        sa.Column('ip_address_ref', sa.String(length=255), nullable=False),
-        sa.ForeignKeyConstraint(['network_id'],
-                                ['networks.id'],
-                                ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('network_id', 'ip_address')
+        'infoblox_tenants',
+        sa.Column('tenant_id', sa.String(64),
+                  nullable=False, primary_key=True),
+        sa.Column('tenant_name', sa.String(64), nullable=False),
     )

@@ -16,8 +16,10 @@
 import abc
 import six
 
-from neutron.common import constants as n_const
 from oslo_log import log as logging
+
+from networking_infoblox.neutron.common import constants as const
+
 
 LOG = logging.getLogger(__name__)
 
@@ -28,6 +30,8 @@ class IPAllocator(object):
 
     DEFAULT_OPTIONS = {
         'use_host_record': True,
+        'configure_for_dhcp': True,
+        'configure_for_dns': True,
         'dns_record_binding_types': [],
         'dns_record_unbinding_types': [],
         'dns_record_removable_types': []}
@@ -83,25 +87,46 @@ class IPAllocator(object):
 class HostRecordIPAllocator(IPAllocator):
 
     def bind_names(self, network_view, dns_view, ip, name, extattrs):
+        # Don't use network view for DNS hosts
+        net_view = None
+        if not self.opts['configure_for_dns']:
+            if network_view == 'default':
+                # Non-dns records placed in special dns view
+                # '.non_DNS_host_root' which has special name ' '
+                dns_view = ' '
+            else:
+                # Each network_view has separate non_DNS_host_root dns view
+                # Unfortunatelly all non_DNS_host_root except the 'default'
+                # network view has same display name - '  ' which brakes WAPI
+                # code. So network view should be used instead of dns view for
+                # non-DNS hosts which is belongs to non-default network views
+                dns_view = None
+                net_view = network_view
         # See OPENSTACK-181. In case hostname already exists on NIOS, update
         # host record which contains that hostname with the new IP address
         # rather than creating a separate host record object
-        reserved_hostname_hr = self.manager.find_hostname(dns_view, name, ip)
-        reserved_ip_hr = self.manager.get_host_record(dns_view, ip)
+        reserved_hostname_hr = self.manager.find_hostname(
+            dns_view, name, ip, net_view)
+        reserved_ip_hr = self.manager.get_host_record(
+            dns_view, ip, net_view)
 
-        if reserved_hostname_hr == reserved_ip_hr:
+        if (reserved_hostname_hr and reserved_ip_hr and
+                reserved_hostname_hr.ref == reserved_ip_hr.ref):
+            reserved_hostname_hr.extattrs = extattrs
+            reserved_hostname_hr.update()
             return
 
         if reserved_hostname_hr:
             for hr_ip in reserved_ip_hr.ips:
                 if hr_ip == ip:
-                    self.manager.delete_host_record(dns_view, ip)
+                    reserved_ip_hr.delete()
+                    reserved_hostname_hr.extattrs = extattrs
                     self.manager.add_ip_to_record(
                         reserved_hostname_hr, ip, hr_ip.mac)
                     break
         else:
             self.manager.bind_name_with_host_record(
-                dns_view, ip, name, extattrs)
+                dns_view, ip, name, extattrs, net_view)
 
     def unbind_names(self, network_view, dns_view, ip, name, extattrs):
         # Nothing to delete, all will be deleted together with host record.
@@ -109,7 +134,9 @@ class HostRecordIPAllocator(IPAllocator):
 
     def allocate_ip_from_range(self, network_view, dns_view,
                                zone_auth, hostname, mac, first_ip, last_ip,
-                               extattrs=None, use_dhcp=True):
+                               extattrs=None):
+        use_dhcp = self.opts['configure_for_dhcp']
+        use_dns = self.opts['configure_for_dns']
         fqdn = hostname + '.' + zone_auth
         host_record = self.manager.find_hostname(
             dns_view, fqdn, first_ip)
@@ -119,40 +146,43 @@ class HostRecordIPAllocator(IPAllocator):
         else:
             hr = self.manager.create_host_record_from_range(
                 dns_view, network_view, zone_auth, hostname, mac,
-                first_ip, last_ip, extattrs, use_dhcp)
-        return hr.ips[-1].ip
+                first_ip, last_ip, extattrs, use_dhcp, use_dns)
+        return hr.ip[-1].ip
 
     def allocate_given_ip(self, network_view, dns_view, zone_auth,
-                          hostname, mac, ip, extattrs=None, use_dhcp=True):
+                          hostname, mac, ip, extattrs=None):
+        use_dhcp = self.opts['configure_for_dhcp']
+        use_dns = self.opts['configure_for_dns']
         hr = self.manager.create_host_record_for_given_ip(
-            dns_view, zone_auth, hostname, mac, ip, extattrs, use_dhcp)
-        return hr.ips[-1].ip
+            dns_view, zone_auth, hostname, mac, ip, extattrs, use_dhcp,
+            use_dns)
+        return hr.ip[-1].ip
 
     def deallocate_ip(self, network_view, dns_view_name, ip):
         host_record = self.manager.get_host_record(dns_view_name, ip)
-        if host_record and len(host_record.ips) > 1:
-            self.manager.delete_ip_from_host_record(host_record, ip)
-        else:
-            self.manager.delete_host_record(dns_view_name, ip)
+        if host_record:
+            if len(host_record.ip) > 1:
+                self.manager.delete_ip_from_host_record(host_record, ip)
+            else:
+                host_record.delete()
 
 
 class FixedAddressIPAllocator(IPAllocator):
 
     def bind_names(self, network_view, dns_view, ip, name, extattrs):
         bind_cfg = self.opts['dns_record_binding_types']
-        if extattrs.get('Port Attached Device - Device Owner').\
-                get('value') == n_const.DEVICE_OWNER_FLOATINGIP:
-            self.manager.update_fixed_address_eas(
-                network_view, ip, extattrs)
-            self.manager.update_dns_record_eas(
-                dns_view, ip, extattrs)
-        if bind_cfg:
+        device_owner = extattrs.get(const.EA_PORT_DEVICE_OWNER)
+        if device_owner in const.NEUTRON_FLOATING_IP_DEVICE_OWNERS:
+            self.manager.update_fixed_address_eas(network_view, ip, extattrs)
+            if self.opts['configure_for_dns']:
+                self.manager.update_dns_record_eas(dns_view, ip, extattrs)
+        if bind_cfg and self.opts['configure_for_dns']:
             self.manager.bind_name_with_record_a(
                 dns_view, ip, name, bind_cfg, extattrs)
 
     def unbind_names(self, network_view, dns_view, ip, name, extattrs):
         unbind_cfg = self.opts['dns_record_unbinding_types']
-        if unbind_cfg:
+        if unbind_cfg and self.opts['configure_for_dns']:
             self.manager.unbind_name_from_record_a(
                 dns_view, ip, name, unbind_cfg)
 
@@ -171,7 +201,7 @@ class FixedAddressIPAllocator(IPAllocator):
 
     def deallocate_ip(self, network_view, dns_view_name, ip):
         delete_cfg = self.opts['dns_record_removable_types']
-        if delete_cfg:
-            self.manager.delete_all_associated_objects(network_view, ip,
-                                                       delete_cfg)
+        if delete_cfg and self.opts['configure_for_dns']:
+            self.manager.unbind_name_from_record_a(dns_view_name, ip,
+                                                   None, delete_cfg)
         self.manager.delete_fixed_address(network_view, ip)

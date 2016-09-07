@@ -16,174 +16,306 @@
 import mock
 import netaddr
 
-from neutron.ipam import requests
+from infoblox_client import exceptions as ib_exc
+from neutron import context
+from neutron.ipam import utils as ipam_utils
+from neutron.plugins.ml2 import config as ml2_config
+from neutron.tests.unit import testlib_api
+from oslo_config import cfg
 
 from networking_infoblox.ipam import driver as drv
+from networking_infoblox.neutron.common import grid
 from networking_infoblox.tests import base
+from networking_infoblox.tests.unit import grid_sync_stub
 
 
-class TestDriver(base.TestCase):
+class TestDriver(base.TestCase, testlib_api.SqlTestCase):
 
-    @mock.patch('infoblox_client.connector.Connector')
-    def test_driver_initialized(self, connector):
-        self.assertIsInstance(drv.InfobloxPool(mock.Mock(), mock.Mock()),
-                              drv.InfobloxPool)
+    def setUp(self):
+        super(TestDriver, self).setUp()
+        self.ctx = context.get_admin_context()
+        self._setup_config()
+        self.grid_stub = grid_sync_stub.GridSyncStub(self.ctx,
+                                                     self.connector_fixture)
+        self.grid_stub.prepare_grid_manager(wapi_version='2.0')
+        self.grid_mgr = self.grid_stub.get_grid_manager()
+        self.grid_mgr._report_sync_time = mock.Mock()
+        self.grid_mgr.mapping._sync_nios_for_network_view = mock.Mock()
+        self.grid_mgr.member._discover_dns_settings = mock.Mock(
+            return_value={})
+        self.grid_mgr.member._discover_dhcp_settings = mock.Mock(
+            return_value={})
+        self.grid_mgr.sync()
+        self.grid_mgr.get_config = mock.Mock()
 
-    def _mock_driver(self, subnet_pool=None, cidr='192.168.10.0/24',
-                     gateway='192.168.10.1'):
-        driver = drv.InfobloxPool(subnet_pool, mock.Mock())
-        driver._fetch_subnet = mock.Mock(return_value={
+    def _setup_config(self):
+        cfg.CONF.set_override('core_plugin',
+                              'neutron.plugins.ml2.plugin.Ml2Plugin')
+        ml2_config.cfg.CONF.set_override('type_drivers', 'local', group='ml2')
+
+    def _mock_subnet(self, subnet_pool, requested_pools, cidr, gateway):
+        ip_version = 4
+        subnetpool_id = subnet_pool['id]'] if subnet_pool else None
+        # if pools is passed, then allocation_pools should be a request format
+        # which is IPRange type, but if not passed, then subnet format is
+        # subnet dict.
+        if requested_pools is None:
+            requested_pools = ipam_utils.generate_pools(cidr, gateway)
+            allocation_pools = [
+                {'start': str(netaddr.IPAddress(p.first, ip_version)),
+                 'end': str(netaddr.IPAddress(p.last, ip_version))}
+                for p in requested_pools]
+        else:
+            allocation_pools = requested_pools
+
+        return {
             'id': 'subnet-id',
             'cidr': cidr,
             'tenant_id': 'tenant-id',
-            'gateway_ip': '192.168.10.1'})
+            'gateway_ip': gateway,
+            'name': 'subnet-name',
+            'network_id': 'network-id',
+            'subnetpool_id': subnetpool_id,
+            'allocation_pools': allocation_pools,
+            'ip_version': ip_version,
+            'enable_dhcp': True}
+
+    @mock.patch.object(grid, 'GridManager', mock.Mock())
+    def _mock_driver(self, subnet_pool=None, requested_pools=None,
+                     cidr='192.168.10.0/24', gateway='192.168.10.1'):
+        driver = drv.InfobloxPool(subnet_pool, self.ctx)
+        driver._grid_manager = self.grid_mgr
+
+        driver._subnetpool = subnet_pool if subnet_pool else None
+        subnet = self._mock_subnet(subnet_pool, requested_pools, cidr, gateway)
+        driver._fetch_subnet = mock.Mock(return_value=subnet)
         return driver
 
-    @mock.patch('infoblox_client.connector.Connector')
-    @mock.patch('infoblox_client.objects.EA')
-    @mock.patch('infoblox_client.objects.Network')
-    def test_get_subnet(self, net, ea_mock, connector):
+    @mock.patch('networking_infoblox.neutron.common.ipam.IpamSyncController')
+    @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
+    def test_get_subnet(self, ib_cxt_mock, ipam_mock):
         driver = self._mock_driver()
         subnet_id = 'subnet-id'
-
         ipam_subnet = driver.get_subnet(subnet_id)
 
-        ea_mock.assert_called_with({'Subnet ID': subnet_id})
-        self.assertTrue(connector.called)
-        net.search.assert_called_with(connector(),
-                                      network_view='default',
-                                      network='192.168.10.0/24',
-                                      search_extattrs=ea_mock())
-
+        ipam_mock.IpamSyncController.get_subnet.called_once_with()
         self.assertIsInstance(ipam_subnet, drv.InfobloxSubnet)
 
-    @mock.patch('infoblox_client.objects.IPRange')
-    @mock.patch('infoblox_client.connector.Connector')
-    @mock.patch('infoblox_client.objects.EA')
-    @mock.patch('infoblox_client.objects.Network')
-    def test_allocate_subnet(self, net, ea_mock, connector, range_mock):
-        driver = self._mock_driver(None)
+    @mock.patch('networking_infoblox.neutron.common.dns.DnsController')
+    @mock.patch('networking_infoblox.neutron.common.ipam.IpamSyncController')
+    @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
+    def test_allocate_subnet(self, ib_cxt_mock, ipam_mock, dns_mock):
         pools = [netaddr.ip.IPRange('192.168.10.3', '192.168.10.25')]
+        driver = self._mock_driver(requested_pools=pools)
+        subnet_factory = driver.get_subnet_request_factory()
+        subnet_request = subnet_factory.get_request(self.ctx,
+                                                    driver._fetch_subnet(),
+                                                    None)
 
-        request = requests.SpecificSubnetRequest(
-            'tenant_id', 'subnet_id', '192.168.10.0/24',
-            '192.168.10.1', pools)
-        ipam_subnet = driver.allocate_subnet(request)
+        ipam_subnet = driver.allocate_subnet(subnet_request)
 
-        ea_mock.assert_called_with({'Subnet ID': 'subnet_id'})
-        net.create.assert_called_with(connector(),
-                                      network_view='default',
-                                      network='192.168.10.0/24',
-                                      extattrs=ea_mock())
-        range_mock.create.assert_called_with(connector(),
-                                             network_view='default',
-                                             network='192.168.10.0/24',
-                                             start_addr='192.168.10.3',
-                                             end_addr='192.168.10.25')
+        ipam_mock.IpamSyncController.create_subnet.called_once_with()
+        dns_mock.DnsController.create_dns_zones.called_once_with()
         self.assertIsInstance(ipam_subnet, drv.InfobloxSubnet)
 
-    @mock.patch('infoblox_client.connector.Connector')
-    @mock.patch('infoblox_client.objects.EA')
-    @mock.patch('infoblox_client.objects.Network')
-    def test_remove_subnet(self, net, ea_mock, connector):
-        nios_net = mock.Mock()
-        net.search = mock.Mock(return_value=nios_net)
+    @mock.patch('networking_infoblox.neutron.common.dns.DnsController')
+    @mock.patch('networking_infoblox.neutron.common.ipam.IpamSyncController')
+    @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
+    def test_update_subnet_no_zone_change(self, ib_cxt_mock, ipam_mock,
+                                          dns_mock):
+        pools = [netaddr.ip.IPRange('192.168.10.3', '192.168.10.25')]
+        driver = self._mock_driver(requested_pools=pools)
+        driver._grid_config.default_domain_name_pattern = (
+            '{subnet_id}.cloud.global.com')
+        driver._get_ib_network = mock.Mock(return_value=mock.Mock())
+        subnet_factory = driver.get_subnet_request_factory()
+        subnet_request = subnet_factory.get_request(self.ctx,
+                                                    driver._fetch_subnet(),
+                                                    None)
+
+        driver.update_subnet(subnet_request)
+
+        ipam_mock.IpamSyncController.update_subnet_allocation_pools.\
+            called_once_with()
+        assert not ipam_mock.IpamSyncController.create_dns_zones.called
+        ipam_mock.IpamSyncController.get_subnet.called_once_with()
+        ipam_mock.IpamSyncController.update_subnet_eas.called_once_with()
+
+    @mock.patch('networking_infoblox.neutron.common.dns.DnsController')
+    @mock.patch('networking_infoblox.neutron.common.ipam.IpamSyncController')
+    @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
+    def test_update_subnet_zone_change(self, ib_cxt_mock, ipam_mock, dns_mock):
+        pools = [netaddr.ip.IPRange('192.168.10.3', '192.168.10.25')]
+        driver = self._mock_driver(requested_pools=pools)
+        subnet_factory = driver.get_subnet_request_factory()
+        driver._grid_config.default_domain_name_pattern = (
+            '{subnet_name}.cloud.global.com')
+        driver._get_ib_network = mock.Mock(return_value=mock.Mock())
+        test_subnet = driver._fetch_subnet()
+        test_subnet['name'] = 'subnet-name-new'
+        subnet_request = subnet_factory.get_request(self.ctx,
+                                                    test_subnet,
+                                                    None)
+
+        driver.update_subnet(subnet_request)
+
+        ipam_mock.IpamSyncController.update_subnet_allocation_pools.\
+            called_once_with()
+        ipam_mock.IpamSyncController.create_dns_zones.called_once_with()
+        dns_mock.DnsController.create_dns_zones.called_once_with()
+        ipam_mock.IpamSyncController.update_subnet_eas.called_once_with()
+
+    @mock.patch('networking_infoblox.neutron.common.dns.DnsController')
+    @mock.patch('networking_infoblox.neutron.common.ipam.IpamSyncController')
+    @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
+    def test_remove_subnet(self, ib_cxt_mock, ipam_mock, dns_mock):
         driver = self._mock_driver()
+        subnet_id = 'subnet-id'
+        driver._get_ib_network = mock.Mock(return_value=mock.Mock())
 
-        driver.remove_subnet('subnet-id')
+        driver.remove_subnet(subnet_id)
 
-        ea_mock.assert_called_with({'Subnet ID': 'subnet-id'})
-        self.assertTrue(connector.called)
-        net.search.assert_called_with(connector(),
-                                      network_view='default',
-                                      search_extattrs=ea_mock())
+        ipam_mock.IpamSyncController.delete_subnet.called_once_with()
+        dns_mock.DnsController.delete_dns_zones.called_once_with()
 
-        nios_net.delete.assert_called_with()
+    def _mock_port(self, device_owner=None):
+        return {'id': 'port-id',
+                'name': 'port-name',
+                'mac_address': 'mac-address',
+                'tenant_id': 'tenant-id',
+                'device_id': 'device-id',
+                'device_owner': device_owner}
 
-    @mock.patch('infoblox_client.connector.Connector')
-    def test_get_connector(self, conn_mock):
-        expected_opts = {'host': '',
-                         'username': '',
-                         'password': '',
-                         'wapi_version': '',
-                         'ssl_verify': False,
-                         'http_pool_connections': 100,
-                         'http_pool_maxsize': 100,
-                         'http_request_timeout': 120}
-        conn_mock._parse_options = mock.Mock()
-        driver = drv.InfobloxPool(mock.Mock(), mock.Mock())
-        conn_mock.assert_called_with(expected_opts)
-        self.assertEqual(conn_mock(), driver._conn)
+    @mock.patch('networking_infoblox.neutron.common.dns.DnsController')
+    @mock.patch('networking_infoblox.neutron.common.ipam.IpamSyncController')
+    @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
+    def test_allocate_specific_ip(self, ib_cxt_mock, ipam_mock, dns_mock):
+        driver = self._mock_driver()
+        subnet_id = 'subnet-id'
+        ipam_subnet = driver.get_subnet(subnet_id)
 
-    def _mock_subnet(self, cidr='192.168.1.0/24', pools=None):
-        subnet_req = requests.SpecificSubnetRequest(
-            'tenant_id', 'subnet_id', cidr, pools)
-        infoblox_network = mock.Mock()
-        infoblox_network.network = cidr
-        return drv.InfobloxSubnet(subnet_req, infoblox_network)
+        port = self._mock_port()
+        expected_ip = {'ip_address': '192.168.1.15'}
+        address_factory = driver.get_address_request_factory()
+        address_request = address_factory.get_request(self.ctx,
+                                                      port,
+                                                      expected_ip)
 
-    @mock.patch('infoblox_client.connector.Connector')
-    @mock.patch('networking_infoblox.ipam.driver.InfobloxPool')
+        ipam_subnet.allocate(address_request)
+
+        ipam_mock.IpamSyncController.allocate_specific_ip.called_once_with(
+            expected_ip['ip_address'],
+            port['mac_address'],
+            port['id'],
+            port['tenant_id'],
+            port['device_id'],
+            port['device_owner'])
+        dns_mock.DnsController.bind_names.called_once_with(
+            expected_ip['ip_address'],
+            None,
+            port['id'],
+            port['tenant_id'],
+            port['device_id'],
+            port['device_owner'])
+
+    @mock.patch('networking_infoblox.neutron.common.dns.DnsController')
+    @mock.patch('networking_infoblox.neutron.common.ipam.IpamSyncController')
+    @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
+    def test_allocate_ip_from_pool(self, ib_cxt_mock, ipam_mock, dns_mock):
+        driver = self._mock_driver()
+        subnet_id = 'subnet-id'
+        ipam_subnet = driver.get_subnet(subnet_id)
+
+        port = self._mock_port()
+        address_factory = driver.get_address_request_factory()
+        address_request = address_factory.get_request(self.ctx,
+                                                      port,
+                                                      {})
+
+        allocated_ip = ipam_subnet.allocate(address_request)
+
+        ipam_mock.IpamSyncController.allocate_ip_from_pool.called_once_with(
+            ipam_subnet._neutron_subnet['id'],
+            ipam_subnet._neutron_subnet['allocation_pools'],
+            port['mac_address'],
+            port['id'],
+            port['tenant_id'],
+            port['device_id'],
+            port['device_owner'])
+        dns_mock.DnsController.bind_names.called_once_with(
+            allocated_ip,
+            None,
+            port['id'],
+            port['tenant_id'],
+            port['device_id'],
+            port['device_owner'])
+
+    @mock.patch('networking_infoblox.neutron.common.dns.DnsController')
+    @mock.patch('networking_infoblox.neutron.common.ipam.IpamSyncController')
+    @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
     @mock.patch('infoblox_client.objects.FixedAddress')
-    def test_allocate_static_ip(self, fa, driver, connector):
-        ipam_sub = self._mock_subnet()
-        expected_ip = '192.168.1.15'
+    def test_deallocate_ip(self, fixed_ip_mock, ib_cxt_mock, ipam_mock,
+                           dns_mock):
+        driver = self._mock_driver()
+        subnet_id = 'subnet-id'
+        ipam_subnet = driver.get_subnet(subnet_id)
+
+        expected_ip = {'ip_address': '192.168.1.15'}
+
+        port = self._mock_port()
+        address_factory = driver.get_address_request_factory()
+        address_request = address_factory.get_request(self.ctx,
+                                                      port,
+                                                      expected_ip)
+
         fixed_address_mock = mock.Mock()
-        fixed_address_mock.ip = expected_ip
-        fa.create = mock.Mock(return_value=fixed_address_mock)
+        fixed_ip_mock.search = mock.Mock(return_value=fixed_address_mock)
+        ipam_subnet._build_address_request_from_ib_address = mock.Mock(
+            return_value=address_request)
 
-        address_req = requests.SpecificAddressRequest(expected_ip)
-        allocated_ip = ipam_sub.allocate(address_req)
+        ipam_subnet.deallocate(netaddr.IPAddress(expected_ip['ip_address']))
 
-        fa.create.assert_called_with(connector(),
-                                     network_view='default',
-                                     ip=expected_ip,
-                                     mac='00:00:00:00:00:00',
-                                     check_if_exists=False)
-        self.assertEqual(expected_ip, allocated_ip)
+        ipam_mock.IpamSyncController.deallocate_ip.called_once_with(
+            expected_ip['ip_address'])
+        dns_mock.DnsController.unbind_names.called_once_with(
+            expected_ip['ip_address'],
+            None,
+            port['id'],
+            port['tenant_id'],
+            port['device_id'],
+            port['device_owner'])
 
-    @mock.patch('infoblox_client.objects.IPAllocation')
-    @mock.patch('infoblox_client.objects.IPRange')
-    @mock.patch('infoblox_client.connector.Connector')
-    @mock.patch('networking_infoblox.ipam.driver.InfobloxPool')
-    @mock.patch('infoblox_client.objects.FixedAddress')
-    def test_allocate_ip_from_range(self, fa, driver, connector, range_mock,
-                                    ip_alloc):
-        ipam_sub = self._mock_subnet()
-        nios_range = mock.Mock()
-        nios_range.start_addr = '192.168.1.15'
-        nios_range.end_addr = '192.168.1.35'
-        range_mock.search_all.return_value = [nios_range]
 
-        address_req = requests.AnyAddressRequest()
-        allocated_ip = ipam_sub.allocate(address_req)
+class FakePool(object):
 
-        range_mock.search_all.assert_called_with(connector(),
-                                                 network_view='default',
-                                                 network='192.168.1.0/24')
-        ip_alloc.next_available_ip_from_range.assert_called_with(
-            'default',
-            nios_range.start_addr,
-            nios_range.end_addr)
-        fa.create.assert_called_with(connector(),
-                                     network_view='default',
-                                     ip=mock.ANY,
-                                     mac='00:00:00:00:00:00',
-                                     check_if_exists=False)
-        self.assertEqual(fa.create().ip, allocated_ip)
+    def __init__(self, object_mock):
+        self.mock = object_mock
 
-    @mock.patch('infoblox_client.connector.Connector')
-    @mock.patch('networking_infoblox.ipam.driver.InfobloxPool')
-    @mock.patch('infoblox_client.objects.FixedAddress')
-    def test_deallocate_ip(self, fa, driver, connector):
-        ipam_sub = self._mock_subnet()
-        expected_ip = '192.168.1.15'
-        fixed_address_mock = mock.Mock()
-        fa.search = mock.Mock(return_value=fixed_address_mock)
+    @drv.rollback_wrapper
+    def allocate_something(self, rollback_list, fail=False):
+        rollback_list.append(self.mock)
+        if fail:
+            raise ValueError
 
-        ipam_sub.deallocate(expected_ip)
 
-        fa.search.assert_called_with(connector(),
-                                     network_view='default',
-                                     ip=expected_ip)
-        fixed_address_mock.delete.assert_called_with()
+class TestWrapper(base.TestCase):
+
+    def test_rollback_wrapper(self):
+        created_object = mock.Mock()
+        pool = FakePool(created_object)
+        pool.allocate_something()
+        self.assertEqual(False, created_object.delete.called)
+
+    def test_rollback_wrapper_on_failure(self):
+        created_object = mock.Mock()
+        pool = FakePool(created_object)
+        self.assertRaises(ValueError, pool.allocate_something, fail=True)
+        self.assertEqual(True, created_object.delete.called)
+
+    def test_rollback_wrapper_on_delete_failure(self):
+        created_object = mock.Mock()
+        created_object.delete.side_effect = ib_exc.InfobloxException(
+            'error_response')
+        pool = FakePool(created_object)
+        self.assertRaises(ValueError, pool.allocate_something, fail=True)
+        self.assertEqual(True, created_object.delete.called)

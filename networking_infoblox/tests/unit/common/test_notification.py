@@ -19,11 +19,9 @@ eventlet.monkey_patch()
 import mock
 import time
 
-from oslo_config import cfg
-
 from neutron import context
-from neutron.plugins.ml2 import config as ml2_config
 
+from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import notification
 from networking_infoblox.neutron.common import notification_handler
 from networking_infoblox.neutron.common import utils
@@ -48,23 +46,21 @@ class NotificationTestCase(base.RpcTestCase):
         stub = grid_sync_stub.GridSyncStub(self.ctx, self.connector_fixture)
         stub.prepare_grid_manager(wapi_version='2.2')
         self.grid_mgr = stub.get_grid_manager()
+        self.grid_mgr.grid_config.grid_sync_support = False
         self.grid_mgr.last_sync_time = mock.Mock()
-        self._setup_config()
+        self.grid_mgr.grid_config.gm_connector = mock.Mock()
+        self.grid_mgr.grid_config.gm_connector.wapi_version = '2.0'
         self.event_handler = notification_handler.IpamEventHandler(
-            self.ctx, None, self.grid_mgr)
+            self.ctx, mock.Mock(), self.grid_mgr)
 
-    def _setup_config(self):
-        cfg.CONF.set_override('core_plugin',
-                              'neutron.plugins.ml2.plugin.Ml2Plugin')
-        ml2_config.cfg.CONF.set_override('type_drivers', 'local', group='ml2')
-
+    @mock.patch.object(notification_handler, 'IpamEventHandler', mock.Mock())
     def test_notification_endpoint_with_notification_handler(self):
         msg_context = {}
         publisher_id = 'test_publisher'
         payload = {}
         metadata = {}
 
-        endpoint = notification.NotificationEndpoint(self.ctx)
+        endpoint = notification.NotificationEndpoint(self.ctx, None)
         endpoint.handler = self.event_handler
 
         # go through each event type and verify that each event handler is
@@ -82,6 +78,8 @@ class NotificationTestCase(base.RpcTestCase):
         while endpoint.received_msg_count < expected_msg_count:
             time.sleep(0.01)
 
+    @mock.patch.object(notification, 'NotificationEndpoint', mock.Mock())
+    @mock.patch.object(grid, 'GridManager', mock.Mock())
     def test_notification_service(self):
         publisher_id = 'test_publisher'
         topic = 'notifications'
@@ -108,4 +106,4 @@ class NotificationTestCase(base.RpcTestCase):
         service.stop()
 
         for i in range(test_msg_count):
-            self.assertEqual(endpoint.received_payload[i], test_msg_payload[i])
+            self.assertEqual(test_msg_payload[i], endpoint.received_payload[i])
