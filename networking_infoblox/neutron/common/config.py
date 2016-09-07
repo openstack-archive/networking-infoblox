@@ -33,26 +33,24 @@ data_center_opts = [
     cfg.StrOpt('grid_master_host',
                default='',
                help=_('Host IP or name of the grid master.')),
+    cfg.StrOpt('grid_master_name',
+               default='',
+               help=_('Name of the grid master.')),
     cfg.StrOpt('admin_user_name',
                default='',
-               help=_("Admin user name to access grid master.")),
+               help=_("Admin user name to access the grid master or "
+                      "cloud platform appliance.")),
     cfg.StrOpt('admin_password',
-               default='',
-               help=_("Admin user password to access grid master.")),
-    cfg.StrOpt('cloud_user_name',
-               default='',
-               help=_("Cloud user name to access cloud platform members.")),
-    cfg.StrOpt('cloud_user_password',
-               default='',
-               help=_("Cloud user password to access cloud platform "
-                      "members.")),
+               default='', secret=True,
+               help=_("Admin user password to access the grid master or "
+                      "cloud platform appliance.")),
     cfg.StrOpt('wapi_version',
                default='',
                help=_("WAPI (Web API) version.")),
-    cfg.BoolOpt('ssl_verify',
-                default=False,
-                help=_("Ensure whether WAPI requests sent over HTTPS require "
-                       "SSL verification.")),
+    cfg.StrOpt('ssl_verify',
+               default='False',
+               help=_("Ensure whether WAPI requests sent over HTTPS require "
+                      "SSL verification.")),
     cfg.IntOpt('http_pool_connections',
                default=100,
                help=_("HTTP pool connection.")),
@@ -61,7 +59,14 @@ data_center_opts = [
                help=_("HTTP pool max size.")),
     cfg.IntOpt('http_request_timeout',
                default=120,
-               help=_("HTTP request timeout."))
+               help=_("HTTP request timeout.")),
+    cfg.IntOpt('wapi_max_results',
+               default=-1000,
+               help=_("Maximum number of objects to be returned. If set to a "
+                      "negative number the appliance will return an error "
+                      "when the number of returned objects would exceed the "
+                      "setting. If this is set to a positive number, the "
+                      "results will be truncated when necessary."))
 ]
 
 CONF = cfg.CONF

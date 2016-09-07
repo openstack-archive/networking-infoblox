@@ -66,9 +66,12 @@ class FixtureResourceMap(object):
     FAKE_MEMBERS_WITHOUT_CLOUD = 'fake_members_without_cloud.json'
     FAKE_MEMBERS_WITH_CLOUD = 'fake_members_with_cloud.json'
     FAKE_MEMBER_LICENSES = 'fake_member_licenses.json'
+    FAKE_MEMBER_DHCP = 'fake_member_dhcp.json'
+    FAKE_MEMBER_DNS = 'fake_member_dns.json'
     FAKE_NETWORKVIEW_WITHOUT_CLOUD = 'fake_networkview_without_cloud.json'
     FAKE_NETWORKVIEW_WITH_CLOUD = 'fake_networkview_with_cloud.json'
     FAKE_NETWORK_WITHOUT_CLOUD = 'fake_network_without_cloud.json'
     FAKE_NETWORK_WITH_CLOUD = 'fake_network_with_cloud.json'
     FAKE_GRID_MASTER_GRID_CONFIGURATION = \
         'fake_grid_master_grid_configuration.json'
+    FAKE_DNS_VIEW = 'fake_dns_view.json'

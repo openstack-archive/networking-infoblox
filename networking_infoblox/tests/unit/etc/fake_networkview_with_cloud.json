@@ -6,7 +6,11 @@
             "mgmt_platform": "",
             "owned_by_adaptor": false
         },
-        "extattrs": {},
+        "extattrs": {
+            "Cloud Adapter ID": {
+                "value": ["100"]
+            }
+        },
         "is_default": true,
         "name": "default"
     },
@@ -24,17 +28,14 @@
             "owned_by_adaptor": false
         },
         "extattrs": {
-             "Tenant CIDR Mapping": {
-                "value": [
-                    "11.11.1.0/24",
-                    "11.11.2.0/24"
-                ]
-            },
             "Tenant ID Mapping": {
                 "value": [
                     "90fbad5a098a4b7cb98826128d5b40b3",
                     "80afaaba012acb9c12888128d5123a09"
                 ]
+            },
+            "Cloud Adapter ID": {
+                "value": ["100"]
             }
         },
         "is_default": false,
@@ -62,6 +63,12 @@
                     "12.12.1.0/24",
                     "12.12.2.0/24"
                 ]
+            },
+            "Is Shared": {
+                "value": "True"
+            },
+            "Cloud Adapter ID": {
+                "value": ["100"]
             }
         },
         "is_default": false,
@@ -74,7 +81,11 @@
             "mgmt_platform": "",
             "owned_by_adaptor": false
         },
-        "extattrs": {},
+        "extattrs": {
+            "Cloud Adapter ID": {
+                "value": ["100"]
+            }
+        },
         "is_default": false,
         "name": "hs-view-3"
     },
@@ -91,7 +102,11 @@
             "mgmt_platform": "",
             "owned_by_adaptor": false
         },
-        "extattrs": {},
+        "extattrs": {
+            "Cloud Adapter ID": {
+                "value": ["100"]
+            }
+        },
         "is_default": false,
         "name": "hs-view-4"
     }

@@ -37,6 +37,11 @@ class GridSyncStub(object):
         self._setup_config()
         self.grid_mgr = grid.GridManager(self.context)
         self.grid_mgr.grid_config.gm_connector = mock.Mock()
+        self.grid_mgr.member._discover_dns_settings = mock.Mock(
+            return_value=[])
+        self.grid_mgr.member._discover_dhcp_settings = mock.Mock(
+            return_value=[])
+
         self._prepare_discovery_resources()
 
     def get_grid_manager(self):
@@ -48,7 +53,7 @@ class GridSyncStub(object):
 
         # register infoblox stanza
         config.register_infoblox_ipam_opts(cfg.CONF)
-        cfg.CONF.set_override("cloud_data_center_id", 1000, 'infoblox')
+        cfg.CONF.set_override("cloud_data_center_id", 100, 'infoblox')
         cfg.CONF.set_override("ipam_agent_workers", 1, 'infoblox')
 
         # register infoblox data center stanza
@@ -56,11 +61,11 @@ class GridSyncStub(object):
         config.register_infoblox_grid_opts(cfg.CONF, data_center_id)
         data_center = 'infoblox-dc:%s' % data_center_id
         cfg.CONF.set_override('grid_master_host', '192.168.1.7', data_center)
+        cfg.CONF.set_override('grid_master_name', 'nios-7.2.0-master.com',
+                              data_center)
         cfg.CONF.set_override('data_center_name', 'admin', data_center)
         cfg.CONF.set_override('admin_user_name', 'admin', data_center)
         cfg.CONF.set_override('admin_password', 'infoblox', data_center)
-        cfg.CONF.set_override('cloud_user_name', 'cloud', data_center)
-        cfg.CONF.set_override('cloud_user_password', 'cloud', data_center)
         cfg.CONF.set_override('wapi_version', self.wapi_version, data_center)
 
     def _prepare_discovery_resources(self):
@@ -79,6 +84,8 @@ class GridSyncStub(object):
         if self.grid_mgr.grid_config.is_cloud_wapi:
             netview_resource = resource_map.FAKE_NETWORKVIEW_WITH_CLOUD
             network_resource = resource_map.FAKE_NETWORK_WITH_CLOUD
+
+        dnsview_resource = resource_map.FAKE_DNS_VIEW
 
         # create members
         member_json = self.fixture.get_object(member_resource)
@@ -104,3 +111,7 @@ class GridSyncStub(object):
         network_json = self.fixture.get_object(network_resource)
         self.grid_mgr.mapping._discover_networks = mock.Mock()
         self.grid_mgr.mapping._discover_networks.return_value = network_json
+
+        dnsview_json = self.fixture.get_object(dnsview_resource)
+        self.grid_mgr.mapping._discover_dns_views = mock.Mock()
+        self.grid_mgr.mapping._discover_dns_views.return_value = dnsview_json

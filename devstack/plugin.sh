@@ -3,36 +3,80 @@
 function install_networking_infoblox {
     cd $DIR_INFOBLOX
     sudo python setup.py install
+    sudo pip install -r requirements.txt
 }
 
 function init_networking_infoblox {
     echo "init_networking_infoblox"
+    screen_it networking-infoblox "/usr/local/bin/infoblox-ipam-agent --config-file=$NEUTRON_CONF --config-file=/$Q_PLUGIN_CONF_FILE"
 }
 
 function run_db_migration_for_networking_infoblox {
     $NEUTRON_BIN_DIR/neutron-db-manage --config-file $NEUTRON_CONF --config-file /$Q_PLUGIN_CONF_FILE upgrade head
 }
 
+function update_conf_option {
+    local file=$1
+    local section=$2
+    local option=$3
+    local value=$4
+    local add_mode=$5
+
+    old_val=$(iniget "$file" "$section" "$option")
+
+    found=$(echo -n "$old_val" | sed -n -e "/$value/,/$value/p")
+    if [ -z "$found" ]
+    then
+        if [ "$add_mode" -eq "1" ]
+        then
+            wc_cnt=`echo -n $old_val | wc -c`
+            if [ $wc_cnt -gt 0 ]
+            then
+                value="${value},${old_val}"
+            fi
+        fi
+        inicomment "$file" "$section" "$option"
+        iniadd "$file" "$section" "$option" "$value"
+    fi
+}
+
 function configure_networking_infoblox {
     echo_summary "Running db migration for Infoblox Networking"
 
-    # run_db_migration_for_networking_infoblox
+    run_db_migration_for_networking_infoblox
 
     # Main Configurations
-    iniset $NEUTRON_CONF DEFAULT ipam_driver ""
+    iniset $NEUTRON_CONF DEFAULT ipam_driver "networking_infoblox.ipam.driver.InfobloxPool"
     iniset $NEUTRON_CONF infoblox cloud_data_center_id $NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID
 
     # Cloud Data Center Configurations
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID grid_master_host $NETWORKING_INFOBLOX_DC_GRID_MASTER_HOST
+    iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID grid_master_name $NETWORKING_INFOBLOX_DC_GRID_MASTER_NAME
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID admin_user_name $NETWORKING_INFOBLOX_DC_ADMIN_USER_NAME
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID admin_password $NETWORKING_INFOBLOX_DC_ADMIN_PASSWORD
-    iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID cloud_user_name $NETWORKING_INFOBLOX_DC_CLOUD_USER_NAME
-    iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID cloud_user_password $NETWORKING_INFOBLOX_DC_CLOUD_USER_PASSWORD
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID wapi_version $NETWORKING_INFOBLOX_DC_WAPI_VERSION
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID ssl_verify $NETWORKING_INFOBLOX_DC_SSL_VERIFY
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID http_pool_connections $NETWORKING_INFOBLOX_DC_HTTP_POOL_CONNECTIONS
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID http_pool_maxsize $NETWORKING_INFOBLOX_DC_HTTP_POOL_MAXSIZE
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID http_request_timeout $NETWORKING_INFOBLOX_DC_HTTP_REQUEST_TIMEOUT
+    iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID wapi_max_results $NETWORKING_INFOBLOX_DC_WAPI_MAX_RESULTS
+
+    # Update options that are non Infoblox specific
+    NOVA_CONF=/etc/nova/nova.conf
+    update_conf_option $NOVA_CONF DEFAULT notification_driver messagingv2 0
+    update_conf_option $NOVA_CONF DEFAULT notification_topics notifications 0
+    update_conf_option $NOVA_CONF DEFAULT notify_on_state_change vm_state 0
+    update_conf_option $NEUTRON_CONF DEFAULT notification_driver messagingv2 0
+    update_conf_option $NEUTRON_CONF DEFAULT notification_topics notifications 0
+
+    # Run create_ea_defs.py to create EA definitions
+    if [ -z $NETWORKING_INFOBLOX_DC_PARTICIPATING_NETWORK_VIEWS ]; then
+        NETWORKING_INFOBLOX_DC_PARTICIPATING_NETWORK_VIEWS=''
+    fi
+    create_ea_defs -s -u "$NETWORKING_INFOBLOX_SUPERUSER_USERNAME" -p "$NETWORKING_INFOBLOX_SUPERUSER_PASSWORD" -pnv "$NETWORKING_INFOBLOX_DC_PARTICIPATING_NETWORK_VIEWS"
+
+    # Run infoblox_grid_sync to sync Infoblox Grid information
+    infoblox_grid_sync --config-file=$NEUTRON_CONF --config-file=/$Q_PLUGIN_CONF_FILE
 }
 
 DIR_INFOBLOX=$DEST/networking-infoblox
@@ -58,13 +102,14 @@ if is_service_enabled networking-infoblox; then
     elif [[ "$1" == "stack" && "$2" == "extra" ]]; then
         # Initialize and start the networking-infoblox service
         echo_summary "Initializing Infoblox Networking"
-        init_networking_infoblox
+        if is_service_enabled networking-infoblox; then
+            init_networking_infoblox
+        fi
     fi
 
     if [[ "$1" == "unstack" ]]; then
-        # Shut down networking_infoblox services
-        # no-op
-        :
+        # uninstall networking-infoblox
+        sudo pip uninstall -q -y networking-infoblox
     fi
 
     if [[ "$1" == "clean" ]]; then
