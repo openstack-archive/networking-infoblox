@@ -280,16 +280,94 @@ class EaManagerTestCase(base.TestCase):
         for key, value in expected_ea.items():
             self.assertEqual(value, ea.get(key))
 
-    def test_get_ea_for_zone(self):
-        network = {'router:external': False,
-                   'shared': False}
+    def test_get_ea_for_zones_without_net(self):
+        # Test that None values is acceptable for network/subnet parameters
         expected_ea = {'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
                        'Account': self.user_id,
+                       'CMP Type': 'OpenStack',
                        'Cloud API Owned': str(True)}
-        ea = ea_manager.get_ea_for_zone(self.user_id, self.tenant_id,
-                                        self.tenant_name, network)
-        for key, value in expected_ea.items():
-            self.assertEqual(value, ea.get(key))
+        ea = ea_manager.get_ea_for_reverse_zone(self.user_id, self.tenant_id,
+                                                self.tenant_name, None, None)
+        self.assertEqual(expected_ea, ea.ea_dict)
+        ea = ea_manager.get_ea_for_forward_zone(self.user_id, self.tenant_id,
+                                                self.tenant_name, None, None,
+                                                '{subnet_id}.infoblox.com')
+        self.assertEqual(expected_ea, ea.ea_dict)
+
+    def test_get_ea_for_reverse_zone(self):
+        network = {'id': mock.Mock(),
+                   'name': mock.Mock(),
+                   'provider:segmentation_id': mock.Mock(),
+                   'provider:physical_network': mock.Mock(),
+                   'provider:network_type': mock.Mock()}
+        subnet = {'id': mock.Mock(),
+                  'name': mock.Mock()}
+        expected_ea = {'Subnet ID': subnet['id'],
+                       'Subnet Name': subnet['name'],
+                       'Network ID': network['id'],
+                       'Network Name': network['name'],
+                       'Network Encap': network['provider:network_type'],
+                       'Segmentation ID': network['provider:segmentation_id'],
+                       'Physical Network Name': (
+                           network['provider:physical_network']),
+                       'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
+                       'Account': self.user_id,
+                       'CMP Type': 'OpenStack',
+                       'Cloud API Owned': str(True)}
+        ea = ea_manager.get_ea_for_reverse_zone(self.user_id, self.tenant_id,
+                                                self.tenant_name, network,
+                                                subnet)
+        self.assertEqual(expected_ea, ea.ea_dict)
+
+    def _test_get_ea_for_forward_zone(self, template, skip_eas):
+        network = {'id': mock.Mock(),
+                   'name': mock.Mock(),
+                   'provider:segmentation_id': mock.Mock(),
+                   'provider:physical_network': mock.Mock(),
+                   'provider:network_type': mock.Mock()}
+        subnet = {'id': mock.Mock(),
+                  'name': mock.Mock()}
+        verified_ea = {'Subnet ID': subnet['id'],
+                       'Subnet Name': subnet['name'],
+                       'Network ID': network['id'],
+                       'Network Name': network['name'],
+                       'Network Encap': network['provider:network_type'],
+                       'Segmentation ID': network['provider:segmentation_id'],
+                       'Physical Network Name': (
+                           network['provider:physical_network']),
+                       'Tenant ID': self.tenant_id,
+                       'Tenant Name': self.context.tenant_name,
+                       'Account': self.user_id,
+                       'CMP Type': 'OpenStack',
+                       'Cloud API Owned': str(True)}
+        ea = ea_manager.get_ea_for_forward_zone(self.user_id, self.tenant_id,
+                                                self.tenant_name, network,
+                                                subnet, template)
+        expected_ea = {key: value for key, value in verified_ea.items()
+                       if key not in skip_eas}
+        self.assertEqual(expected_ea, ea.ea_dict)
+
+    def test_get_ea_for_forward_zone_template_subnet(self):
+        self._test_get_ea_for_forward_zone(template='{subnet_id}',
+                                           skip_eas=())
+        self._test_get_ea_for_forward_zone(template='{subnet_name}',
+                                           skip_eas=())
+
+    def test_get_ea_for_forward_zone_template_network(self):
+        skip_eas = ('Subnet ID', 'Subnet Name')
+        self._test_get_ea_for_forward_zone(template='{network_id}',
+                                           skip_eas=skip_eas)
+        self._test_get_ea_for_forward_zone(template='{network_name}',
+                                           skip_eas=skip_eas)
+
+    def test_get_ea_for_forward_zone_no_net_in_template(self):
+        skip_eas = ('Subnet ID', 'Subnet Name', 'Network ID', 'Network Name',
+                    'Network Encap', 'Segmentation ID',
+                    'Physical Network Name')
+        self._test_get_ea_for_forward_zone(
+            template='private.infoblox.com', skip_eas=skip_eas)
 
     def test_reset_ea_for_network(self):
         network_ea = {'CMP Type': {'value': 'OpenStack'},
