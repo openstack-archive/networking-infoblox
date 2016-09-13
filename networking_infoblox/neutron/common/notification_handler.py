@@ -47,7 +47,8 @@ class IpamEventHandler(object):
             self.grid_mgr = grid_manager
         else:
             self.grid_mgr = grid.GridManager(self.context)
-            self.grid_mgr.sync(True)
+            self.grid_syncer = grid.GridSyncer()
+            self.grid_syncer.sync(True)
 
         self.grid_config = self.grid_mgr.grid_config
         self.grid_id = self.grid_config.grid_id
@@ -57,7 +58,7 @@ class IpamEventHandler(object):
         self._cached_mapping_conditions = None
 
     def _resync(self, force_sync=False):
-        self.grid_mgr.sync(force_sync)
+        self.grid_syncer.sync(force_sync)
 
         self._cached_grid_members = dbi.get_members(
             self.context.session, grid_id=self.grid_id,

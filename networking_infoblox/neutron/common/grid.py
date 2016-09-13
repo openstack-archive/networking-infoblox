@@ -19,6 +19,8 @@ from oslo_log import log as logging
 import six
 import socket
 
+from neutron import context as neutron_context
+
 from infoblox_client import connector
 from infoblox_client import objects as ib_objects
 
@@ -33,6 +35,18 @@ from networking_infoblox.neutron.db import infoblox_db as dbi
 
 
 LOG = logging.getLogger(__name__)
+
+
+class GridSyncer(object):
+    def __init__(self):
+        self._context = neutron_context.get_admin_context()
+        self._grid_manager = GridManager(self._context)
+
+    def is_sync_needed(self, interval):
+        return self._grid_manager.is_sync_needed(interval)
+
+    def sync(self, force_sync=False):
+        self._grid_manager.sync(force_sync)
 
 
 class GridManager(object):
@@ -65,7 +79,7 @@ class GridManager(object):
         allow_sync = False
         if self.grid_config.grid_sync_support:
             interval = self.grid_config.grid_sync_minimum_wait_time
-            if (force_sync or self.is_sync_needed(interval)):
+            if force_sync or self.is_sync_needed(interval):
                 allow_sync = True
 
         if allow_sync:
@@ -270,9 +284,9 @@ class GridConfiguration(object):
         return config[0] if config and config[0].get('extattrs') else None
 
     def _set_default_values(self):
-        for property, key in self.property_to_ea_mapping.items():
+        for prop, key in self.property_to_ea_mapping.items():
             if key in const.GRID_CONFIG_DEFAULTS:
-                setattr(self, property, const.GRID_CONFIG_DEFAULTS[key])
+                setattr(self, prop, const.GRID_CONFIG_DEFAULTS[key])
 
     def _update_fields(self, extattr):
         for pm in self.property_to_ea_mapping:
