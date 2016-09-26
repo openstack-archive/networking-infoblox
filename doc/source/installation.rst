@@ -156,9 +156,9 @@ is equivalent to `cloud_data_center_id` defined in neutron.conf.
 
 Setting EA values to Configure the Integration
 ----------------------------------------------
-You must decide on the configuration you would like to use. The details of each
-option are in the configuration guide; however the most common options that
-need to be configured are described here.
+You must decide on the configuration you would like to use. For details on the
+configuration options, please refer to the Infoblox Configuration Guide
+(configuration_guide.rst).
 
 The configuration is captured within the various EAs that were created in the
 previous step. In general, these EAs are set on the *grid master* member. To do
@@ -167,218 +167,17 @@ next to the grid master member. Choose the *Extensible Attributes* option. From
 there you can create and modify various EA values that will apply to the entire
 IPAM driver integration.
 
-Network View Mapping
-~~~~~~~~~~~~~~~~~~~~
-When creating a new object in Infoblox, the IPAM driver must know the network
-view in which to create the object. This is determined using a number of EAs.
-
-In the simpliest form, you can configure the driver to automatically create
-network views as needed. The first EA that needs to be set is the
-`Default Network View Scope`. This EA defines the default mapping to network
-view when no mapping already exists within the Infoblox system. This can be
-any of the following values:
-
-1) ``Single``. This means that any time a pre-existing mapping cannot be found,
-   the resulting object should be placed within a single, specific network
-   view. That view should be specified with another EA, `Default Network View`.
-
-2) ``Tenant``. This means that any time a pre-existing mapping cannot be found,
-   the resulting object should be placed within a network view determined by
-   the OpenStack tenant that owns the object. If no network view tagged with
-   that Tenant ID exists, then a new network view will be created with the name
-   ``tenant_name``.``tenant_id``.
-
-3) ``Address Scope``. This means that any time a pre-existing mapping cannot be
-   found, the resulting object should be placed within a network view
-   determined by the OpenStack address scope associated with the object.
-   Address scopes are not fully supported in OpenStack Liberty, and so this
-   value should not be used until a later version of the driver is available
-   supporting this Mitaka feature.
-
-4) ``Network``. This means that any time a pre-existing mapping cannot be
-   found, the resulting object should be placed within a network view
-   determined by the OpenStack network. This is rarely used and primarily is
-   provided for use in automated testing, where the same tenant may create
-   multiple OpenStack Network entities with overlapping subnets.
-
-5) ``Subnet``. This means that any time a pre-existing mapping cannot be
-   found, the resulting object should be placed within a network view
-   determined by the OpenStack subnet. This is rarely used, but can be
-   necessary in certain deployments that utilize SDN plugins that allow
-   spanning subnets across OpenStack Neutron installations.
-
-Alternatively, You can pre-define mappings by creating a network view and then
-tagging it with the name of a tenant, address scope, or network, in addition to
-CIDR of a subnet. This can be done by creating the following EAs on a network
-view object. Each of these EAs allows multiple values to be specified.
-
-`Subnet CIDR Mapping` - If a subnet created matches one of the CIDR values
-specified in this EA, the subnet will be created under this network view.
-
-`Subnet ID Mapping` - If the ID of a subnet created matches one of the values
-specified in this EA, the subnet will be created under this network view.
-
-`Network Name Mapping` - If the name of a network matches one of the values
-specified in this EA, the subnets within the network will be created under this
-network view.
-
-`Network ID Mapping` - If the ID of a network matches one of the values
-specified in this EA, the subnets within the network will be created under this
-network view.
-
-`Tenant Name Mapping` - If the name of a tenant matches one of the values
-specified in this EA, objects within the tenant will be created under this
-network view.
-
-`Tenant ID Mapping` - If the ID of a tenant matches one of the values specified
-in this EA, objects within the tenant will be created under this network view.
-
-`Address Scope Name Mapping` - If the name of an address scope matches one of
-the values specified in this EA, objects within the address scope will be
-created under this network view.
-
-`Address Scope ID Mapping` - If the ID of an address scope matches one of the
-values specified in this EA, objects within the address scope will be created
-under this network view.
-
-Domain and Host Name Patterns
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-`Default Domain Name Pattern`. This EA is used to control how domain names for
-IP address allocations are determined. This EA can be set to a fixed string,
-or can use patterns to generate unique zone names. For example, you may set
-this to ``cloud.example.com`` to have all DNS entries within that domain. Or,
-you can use substitution patterns: ``{tenant_name}.cloud.example.com`` would
-place IPs associated with each tenant in their own domain.
-
-For domain names, the following patterns are supported:
-
-``{network_name}`` will be replaced with the OpenStack Network Name.
-
-``{network_id}`` will be replaced with the OpenStack Network ID.
-
-``{tenant_name}`` will be replaced with the OpenStack Tenant Name. Note that
-for this to work, the `Tenant Name Persistence` EA must be set to True.
-
-``{tenant_id}`` will be replaced with the OpenStack Tenant ID.
-this name. For example, if all of your
-
-``{subnet_name}`` will be replaced with the OpenStack Subnet Name.
-
-``{subnet_id}`` will be replaced with the OpenStack Subnet ID.
-
-`Default Host Name Pattern`. This EA controls host names in a manner similar to
-the way `Default Domain Name Pattern` controls domain names. In addition to the
-patterns supported for domain names, this EA supports these:
-
-``{port_id}``. The port ID of the port associated with the IP.
-
-``{instance_id}``. The Nova instance ID of the VM associated with the port.
-
-``{instance_name}``. The Nova instance name of the VM associated with the port.
-
-``{ip_address}``. The IP address for this port or host, with dots replaced by
-dashes.
-
-``{ip_address_octet{n}}`` where n is a number 0-3. This is for IPv4 addresses
-only. For example, if the pattern is
-``host-{ip_address_octet{2}}-{ip_address_octet{3}}``
-and the IP is 10.1.2.3, then the resulting hostname will be ``host-2-3``.
-
-`Tenant Name Persistence`. Since Neutron does not have direct access to tenant
-names (they are part of Keystone), the Infoblox IPAM agent can cache those
-names it receives from the message bus. This reduces the Keystone API calls
-needed to retrieve tenant name. This EA controls this behavior; it must be
-set to True for tenant name support in domain or host names.
-
-IPAM and DHCP/DNS Support
--------------------------
-
-IPAM and DHCP/DNS Support can be configured by setting `DHCP Support` and
-`DNS Support` EAs.
-
-`DHCP Support`. When set to False, Infoblox DHCP support will be disabled irrespective
-of the "Enable DHCP" option when a subnet is created in OpenStack. The default
-is False.
-
-`DNS Support`. When set to False, Infoblox DNS support will be disabled. Enabling it
-allows DNS record generation and DNS protocol. The default is False.
-
-Currently only the following configurations are supported.
-
-IPAM Only
-
- * `DHCP Support` = False
- * `DNS Support` = False
-
-Full DHCP/DNS Support
-
- * `DHCP Support` = True
- * `DNS Support` = True
-
-.. important::
-
-  You cannot set only one option to True. DHCP only or DNS
-  only configurations will be supported in an upcoming coming release.
-
-IP Allocation and DNS Record Creation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-`IP Allocation Strategy`. This EA is used to choose between Host Record and
-Fixed Address for IP allocation. If chosen for Fixed Address, DNS records
-associated with a fixed address are controlled by the additional EAs below.
-
-`DNS Record Binding Types`. List of DNS records to generate and bind to a
-fixed address during IP allocation. Supported DNS record types are
-``record:a`` (for A records), ``record:aaaa`` (for AAAA records), and
-``record:ptr`` (for PTR records). This is a multi-value EA, with one of these
-entries per value.
-
-`DNS Record Unbinding Types`. List of DNS records to unbind from a
-fixed address during IP deallocation. Supported DNS record types are the same
-as `DNS Record Binding Types`.
-
-`DNS Record Removable Types`. List of associated DNS records to delete when a
-fixed address is deleted. This is typically a list of DNS records created
-independently of the Infoblox IPAM Driver. Supported DNS record types are
-``record:a``, ``record:aaaa``, ``record:ptr``, ``record:txt``, and
-``record:cname``.
-
-.. note::
-
-  A DHCP port ip is an exception to this. The DHCP port ip is created as a host
-  record with DHCP disabled to allow IP aliasing, regardless of `IP Allocation
-  Strategy` configuration. IP aliasing is used in OpenStack when multiple
-  subnets are created in the same network. Each subnet requires a DHCP port ip
-  and those ips are all assigned to the same DHCP port, but only one MAC
-  address exists. If IPAM only support configuration is used, DNS is disabled
-  as well for the host record.
-
-Identify Members to Use
------------------------
-In order for Infoblox to serve DHCP and DNS, you must pick Infoblox grid members to be registered to
-Neutron. You should exclude Infoblox network discovery members and reporting members
-since they cannot serve DHCP and DNS. For the members to serve DHCP and DNS,
-the licenses must be properly installed and services must be properly running.
-
-In general in order to utilize Infoblox for DHCP, you will need to use an SDN
-solution that provides a DHCP relay function or use provider networks with DHCP relay/helpers
-enabled on your switches.  Standard OpenStack Neutron does not provide DHCP relay functionality.
-
-To identify a grid member as available for use by OpenStack, you must set the
-EA `Is Cloud Member` to True. If you are running with only a GM (not a full
-grid), there is no need to set this value, as the GM will be used for all
-protocol in that deployment model.
-
-If you are running a grid but the GM is not configured and licensed for DNS or
-DHCP, set `Use Grid Master for DHCP` EA on the GM object to False. This will
-exclude the GM from being selected to serve DHCP or DNS.
-
 Installing the Driver
 =====================
 The driver need to be installed on each controller node that is running the
 Neutron service. The driver is available from PyPi, and can be installed using
 the ``pip install`` command.
-Note that, by default, the init script ``infoblox-ipam-agent`` is installed as
+
+Infoblox IPAM Agent Installation
+--------------------------------
+The ``infoblox-ipam-agent`` init script that is used to start the Infoblox IPAM
+Agent will be installed as part of the ``pip install`` command.
+By default, the ``infoblox-ipam-agent`` init script is installed as
 ``/usr/local/etc/init.d/infoblox-ipam-agent``. To install the script in ``/etc/init.d``,
 specify ``--install-option`` as follow::
 
