@@ -16,12 +16,7 @@
 import abc
 import six
 
-from oslo_log import log as logging
-
 from networking_infoblox.neutron.common import constants as const
-
-
-LOG = logging.getLogger(__name__)
 
 
 @six.add_metaclass(abc.ABCMeta)

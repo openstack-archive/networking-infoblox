@@ -17,7 +17,6 @@
 import sys
 
 from oslo_config import cfg
-from oslo_log import log as logging
 
 from neutron.agent.common import config as agent_conf
 from neutron.common import config as common_config
@@ -25,8 +24,6 @@ from neutron import context
 
 from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import grid
-
-LOG = logging.getLogger(__name__)
 
 
 def register_options():
