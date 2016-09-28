@@ -14,7 +14,6 @@
 #    under the License.
 
 from datetime import datetime
-from oslo_log import log as logging
 import random
 from sqlalchemy import func
 from sqlalchemy.sql.expression import true
@@ -27,9 +26,6 @@ from neutron.db import models_v2
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.db import infoblox_models as ib_models
-
-
-LOG = logging.getLogger(__name__)
 
 
 # Grid Management
