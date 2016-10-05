@@ -17,15 +17,13 @@
 import os
 import sys
 
-from keystoneclient.v2_0 import client as ksclient
+from keystoneclient import client as ksclient
 
 from oslo_config import cfg
 from oslo_log import log as logging
 
 from neutron.common import config as common_config
 from neutron import context as neutron_context
-from neutron.i18n import _LE
-from neutron.i18n import _LW
 
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
@@ -33,6 +31,8 @@ from novaclient import client as nova_client
 from infoblox_client import exceptions as ib_exc
 from infoblox_client import objects as ib_objects
 
+from networking_infoblox._i18n import _LE
+from networking_infoblox._i18n import _LW
 from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import context as ib_context
 from networking_infoblox.neutron.common import dns
@@ -80,7 +80,10 @@ def main():
         return
 
     context = neutron_context.get_admin_context()
-    context.auth_token = get_auth_token(credentials)
+    auth_ref = get_auth_ref(credentials)
+    context.auth_token = auth_ref['token']['id']
+    context.tenant_id = auth_ref['token']['tenant']['id']
+    context.user_id = auth_ref['user']['id']
 
     grid_manager = grid.GridManager(context)
     grid_manager.sync(force_sync=True)
@@ -116,10 +119,10 @@ def get_credentials():
     return d
 
 
-def get_auth_token(credentials):
+def get_auth_ref(credentials):
     keystone = ksclient.Client(**credentials)
-
-    return keystone.auth_ref['token']['id']
+    keystone.authenticate()
+    return keystone.auth_ref
 
 
 def sync_neutron_to_infoblox(context, credentials, grid_manager):
@@ -170,7 +173,7 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
         for fip in floating_ips:
             instance_names_by_floating_ip[fip] = server.name
 
-    user_id = context.user_id or neutron_api.httpclient.auth_ref['user']['id']
+    user_id = context.user_id or neutron_api.httpclient.auth_ref.user_id
     user_tenant_id = context.tenant_id or neutron_api.httpclient.auth_tenant_id
 
     ib_networks = []
