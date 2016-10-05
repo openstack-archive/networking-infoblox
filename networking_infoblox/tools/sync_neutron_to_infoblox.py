@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Infoblox Inc.
+# Copyright 2016 Infoblox Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,15 +17,17 @@
 import os
 import sys
 
-from keystoneclient.v2_0 import client as ksclient
+from keystoneauth1.identity import v2
+from keystoneauth1.identity import v3
+from keystoneauth1 import session as ks_session
+from keystoneclient.v2_0 import client as client_2_0
+from keystoneclient.v3 import client as client_3
 
 from oslo_config import cfg
 from oslo_log import log as logging
 
 from neutron.common import config as common_config
 from neutron import context as neutron_context
-from neutron.i18n import _LE
-from neutron.i18n import _LW
 
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
@@ -33,6 +35,8 @@ from novaclient import client as nova_client
 from infoblox_client import exceptions as ib_exc
 from infoblox_client import objects as ib_objects
 
+from networking_infoblox._i18n import _LE
+from networking_infoblox._i18n import _LW
 from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import context as ib_context
 from networking_infoblox.neutron.common import dns
@@ -71,19 +75,37 @@ def main():
     config.register_infoblox_grid_opts(cfg.CONF, grid_id)
     register_keystone_opts(cfg.CONF)
 
-    credentials = get_credentials()
-    if not credentials:
+    try:
+        credentials, version = get_credentials()
+    except KeyError:
         print("\nYou must provide an admin user credentials in the shell "
               "environment.\nPlease export variables such as env[OS_USERNAME],"
               " env[OS_PASSWORD], env[OS_AUTH_URL], env[OS_TENANT_NAME], and "
               "env[OS_REGION_NAME]\n")
         return
 
+    password_creds = credentials.copy()
+    password_creds.pop('region_name', None)
+    if version == '3':
+        auth = v3.Password(**password_creds)
+        session = ks_session.Session(auth=auth)
+        client = client_3.Client(session=session)
+    else:
+        auth = v2.Password(**password_creds)
+        session = ks_session.Session(auth=auth)
+        client = client_2_0.Client(session=session)
+
     context = neutron_context.get_admin_context()
-    context.auth_token = get_auth_token(credentials)
+    context.auth_token = client.tokens.api.get_token()
+    context.user_id = client.tokens.api.get_user_id()
+    context.tenant_id = client.tokens.api.get_project_id()
 
     grid_manager = grid.GridManager(context)
     grid_manager.sync(force_sync=True)
+
+    credentials['session'] = session
+    for key in ('user_domain_id', 'project_domain_id'):
+        credentials.pop(key, None)
 
     sync_neutron_to_infoblox(context, credentials, grid_manager)
 
@@ -103,23 +125,22 @@ def register_keystone_opts(conf):
 
 def get_credentials():
     d = dict()
-    if ('OS_USERNAME' in os.environ and
-            'OS_PASSWORD' in os.environ and
-            'OS_AUTH_URL' in os.environ and
-            'OS_TENANT_NAME' in os.environ and
-            'OS_REGION_NAME' in os.environ):
-        d['username'] = os.environ['OS_USERNAME']
-        d['password'] = os.environ['OS_PASSWORD']
-        d['auth_url'] = os.environ['OS_AUTH_URL']
+    version = '2'
+    if 'OS_IDENTITY_API_VERSION' in os.environ:
+        version = os.environ['OS_IDENTITY_API_VERSION']
+    if version == '3':
+        d['project_name'] = os.environ['OS_PROJECT_NAME']
+        d['user_domain_id'] = os.environ.get('OS_USER_DOMAIN_ID', 'default')
+        d['project_domain_id'] = os.environ.get('OS_PROJECT_DOMAIN_ID',
+                                                'default')
+    else:
         d['tenant_name'] = os.environ['OS_TENANT_NAME']
-        d['region_name'] = os.environ['OS_REGION_NAME']
-    return d
+    d['username'] = os.environ['OS_USERNAME']
+    d['password'] = os.environ['OS_PASSWORD']
+    d['auth_url'] = os.environ['OS_AUTH_URL']
+    d['region_name'] = os.environ['OS_REGION_NAME']
 
-
-def get_auth_token(credentials):
-    keystone = ksclient.Client(**credentials)
-
-    return keystone.auth_ref['token']['id']
+    return d, version
 
 
 def sync_neutron_to_infoblox(context, credentials, grid_manager):
@@ -154,10 +175,7 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
     payload = neutron_api.list_ports()
     ports = payload['ports']
     nova_api = nova_client.Client(NOVA_API_VERSION,
-                                  credentials['username'],
-                                  credentials['password'],
-                                  credentials['tenant_name'],
-                                  credentials['auth_url'])
+                                  session=credentials['session'])
 
     instance_names_by_instance_id = dict()
     instance_names_by_floating_ip = dict()
@@ -170,8 +188,8 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
         for fip in floating_ips:
             instance_names_by_floating_ip[fip] = server.name
 
-    user_id = context.user_id or neutron_api.httpclient.auth_ref['user']['id']
-    user_tenant_id = context.tenant_id or neutron_api.httpclient.auth_tenant_id
+    user_id = neutron_api.httpclient.get_user_id()
+    user_tenant_id = neutron_api.httpclient.get_project_id()
 
     ib_networks = []
     should_exit = False
