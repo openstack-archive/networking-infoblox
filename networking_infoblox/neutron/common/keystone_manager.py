@@ -1,4 +1,4 @@
-# Copyright 2015 Infoblox Inc.
+# Copyright 2016 Infoblox Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,9 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from keystoneclient.auth.identity.generic import token
 from keystoneclient.auth import token_endpoint
 from keystoneclient import session
-from keystoneclient.v2_0 import client as k_client
+from keystoneclient.v2_0 import client as client_2_0
+from keystoneclient.v3 import client as client_3
 from neutron.common import config as cfg
 from oslo_log import log
 
@@ -32,19 +34,36 @@ def init_keystone_session():
     global _SESSION
     if not _SESSION:
         _SESSION = session.Session()
+    return _SESSION
 
 
 def get_keystone_client(auth_token):
-    init_keystone_session()
-    url = CONF['keystone_authtoken']['auth_uri'] + '/v2.0/'
+    sess = init_keystone_session()
+    url = CONF['keystone_authtoken']['auth_uri']
+    # Create token to get available service version
+    generic_token = token.Token(url, token=auth_token)
+    generic_token.reauthenticate = False
+    version = generic_token.get_auth_ref(sess)['version']
+    # update auth url aith version if needed
+    if version not in url.split('/'):
+        url = url + '/' + version
+    # create endpoint token using right url and provided auth token
     auth = token_endpoint.Token(url, auth_token)
-    return k_client.Client(session=session, auth=auth)
+    # create keystone client
+    if version == 'v3':
+        k_client = client_3.Client(session=sess, auth=auth)
+    else:
+        k_client = client_2_0.Client(session=sess, auth=auth)
+    return k_client
 
 
 def get_all_tenants(auth_token):
     try:
         keystone = get_keystone_client(auth_token)
-        return keystone.tenants.list()
+        if keystone.version == 'v3':
+            return keystone.projects.list()
+        else:
+            return keystone.tenants.list()
     except Exception as e:
         LOG.warning("Could not get tenants due to error: %s", e)
     return []
