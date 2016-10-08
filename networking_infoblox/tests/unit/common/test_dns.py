@@ -424,7 +424,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt.user_id = 'test-id'
         self.ib_cxt.mapping.network_view = 'test-view'
         self.ib_cxt.get_tenant_name.return_value = tenant_name
-        instance = mock.MagicMock()
+        instance = mock.Mock()
         instance.instance_name = instance_name
         dbi.get_instance.return_value = instance
 
