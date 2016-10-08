@@ -68,7 +68,7 @@ class FixedAddressAllocatorTestCase(base.TestCase):
 class HostRecordAllocatorTestCase(base.TestCase):
 
     def _test_creates_host_record_on_allocate_ip(self, use_dhcp, use_dns):
-        ib_mock = mock.MagicMock()
+        ib_mock = mock.Mock()
 
         netview = 'some-test-net-view'
         dnsview = 'some-dns-view'
@@ -97,7 +97,7 @@ class HostRecordAllocatorTestCase(base.TestCase):
 
     def _test_creates_host_record_range_on_range_allocation(self, use_dhcp,
                                                             use_dns):
-        ib_mock = mock.MagicMock()
+        ib_mock = mock.Mock()
 
         netview = 'some-test-net-view'
         dnsview = 'some-dns-view'
@@ -127,7 +127,7 @@ class HostRecordAllocatorTestCase(base.TestCase):
         self._test_creates_host_record_range_on_range_allocation(False, False)
 
     def test_deletes_host_record(self):
-        ib_mock = mock.MagicMock()
+        ib_mock = mock.Mock()
 
         netview = 'some-test-net-view'
         dnsview = 'some-dns-view'
@@ -151,7 +151,7 @@ class HostRecordAllocatorTestCase(base.TestCase):
 
     def _check_bind_names_calls(self, opts, params, expected_find,
                                 expected_get_host, expected_bind):
-        ib_mock = mock.MagicMock()
+        ib_mock = mock.Mock()
         ib_mock.find_hostname.return_value = None
         ib_mock.get_host_record.return_value = None
         allocator = ip_allocator.IPAllocator(ib_mock, opts)

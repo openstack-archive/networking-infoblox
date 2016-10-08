@@ -249,7 +249,7 @@ class TestIpamEventHandler(base.TestCase):
     def test_create_instance_bind_names(self):
         instance_id = 'instance-id'
         instance_name = 'test-host'
-        dns_controller = mock.MagicMock()
+        dns_controller = mock.Mock()
         dns.DnsController.return_value = dns_controller
         payload = {
             'instance_id': instance_id,
@@ -343,9 +343,9 @@ class TestIpamEventHandler(base.TestCase):
                 'tenant_id': tenant_id,
             }
         }
-        dns_controller = mock.MagicMock()
+        dns_controller = mock.Mock()
         dns.DnsController.return_value = dns_controller
-        instance = mock.MagicMock()
+        instance = mock.Mock()
         instance.instance_name = instance_name
         dbi.get_instance.return_value = instance
         # Attach port and ensure that bind_names called
