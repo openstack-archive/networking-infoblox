@@ -40,23 +40,87 @@ class FixedAddressAllocatorTestCase(base.TestCase):
         self.allocator = ip_allocator.IPAllocator(self.ib_mock, options)
 
     def test_creates_fixed_address_on_allocate_ip(self):
+        self.ib_mock.get_fixed_addresses_by_mac.return_value = []
         self.allocator.allocate_given_ip(
             self.netview, self.dnsview, self.zone_auth,
             self.hostname, self.mac, self.ip, self.extattrs)
 
+        self.ib_mock.get_fixed_addresses_by_mac.assert_called_once_with(
+            self.netview, self.mac)
         self.ib_mock.create_fixed_address_for_given_ip.assert_called_once_with(
             self.netview, self.mac, self.ip, self.extattrs)
+
+    def test_creates_fixed_address_on_allocate_ip_reuse_failed(self):
+        fa = mock.Mock()
+        fa.ip = self.ip + '1'
+        self.ib_mock.get_fixed_addresses_by_mac.return_value = [fa]
+        self.allocator.allocate_given_ip(
+            self.netview, self.dnsview, self.zone_auth,
+            self.hostname, self.mac, self.ip, self.extattrs)
+
+        self.ib_mock.get_fixed_addresses_by_mac.assert_called_once_with(
+            self.netview, self.mac)
+        self.ib_mock.create_fixed_address_for_given_ip.assert_called_once_with(
+            self.netview, self.mac, self.ip, self.extattrs)
+
+    def test_creates_fixed_address_on_allocate_ip_reuse_success(self):
+        fa = mock.Mock()
+        fa.ip = self.ip
+        self.ib_mock.get_fixed_addresses_by_mac.return_value = [fa]
+        self.allocator.allocate_given_ip(
+            self.netview, self.dnsview, self.zone_auth,
+            self.hostname, self.mac, self.ip, self.extattrs)
+
+        self.ib_mock.get_fixed_addresses_by_mac.assert_called_once_with(
+            self.netview, self.mac)
+        self.ib_mock.create_fixed_address_for_given_ip.assert_not_called()
 
     def test_creates_fixed_address_range_on_range_allocation(self):
         first_ip = '192.168.1.1'
         last_ip = '192.168.1.123'
+        self.ib_mock.get_fixed_addresses_by_mac.return_value = []
 
         self.allocator.allocate_ip_from_range(
             self.netview, self.dnsview, self.zone_auth, self.hostname,
             self.mac, first_ip, last_ip, self.extattrs)
 
+        self.ib_mock.get_fixed_addresses_by_mac.assert_called_once_with(
+            self.netview, self.mac)
         self.ib_mock.create_fixed_address_from_range.assert_called_once_with(
             self.netview, self.mac, first_ip, last_ip, self.extattrs)
+
+    def test_allocate_ip_from_range_reuse_failed(self):
+        first_ip = '192.168.1.1'
+        last_ip = '192.168.1.123'
+        fa = mock.Mock()
+        fa.ip = '192.168.1.124'
+        self.ib_mock.get_fixed_addresses_by_mac.return_value = [fa]
+
+        ip = self.allocator.allocate_ip_from_range(
+            self.netview, self.dnsview, self.zone_auth, self.hostname,
+            self.mac, first_ip, last_ip, self.extattrs)
+
+        assert ip != fa.ip
+        self.ib_mock.get_fixed_addresses_by_mac.assert_called_once_with(
+            self.netview, self.mac)
+        self.ib_mock.create_fixed_address_from_range.assert_called_once_with(
+            self.netview, self.mac, first_ip, last_ip, self.extattrs)
+
+    def test_allocate_ip_from_range_reuse_success(self):
+        first_ip = '192.168.1.1'
+        last_ip = '192.168.1.123'
+        fa = mock.Mock()
+        fa.ip = '192.168.1.12'
+        self.ib_mock.get_fixed_addresses_by_mac.return_value = [fa]
+
+        ip = self.allocator.allocate_ip_from_range(
+            self.netview, self.dnsview, self.zone_auth, self.hostname,
+            self.mac, first_ip, last_ip, self.extattrs)
+
+        assert ip == fa.ip
+        self.ib_mock.get_fixed_addresses_by_mac.assert_called_once_with(
+            self.netview, self.mac)
+        self.ib_mock.create_fixed_address_from_range.assert_not_called()
 
     def test_deletes_fixed_address(self):
         self.allocator.deallocate_ip(self.netview, self.dnsview, self.ip)

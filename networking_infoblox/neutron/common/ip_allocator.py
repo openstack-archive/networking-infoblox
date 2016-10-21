@@ -14,6 +14,7 @@
 #    under the License.
 
 import abc
+import netaddr
 import six
 
 from oslo_log import log as logging
@@ -189,12 +190,37 @@ class FixedAddressIPAllocator(IPAllocator):
     def allocate_ip_from_range(self, network_view, dns_view,
                                zone_auth, hostname, mac, first_ip, last_ip,
                                extattrs=None):
+        # First search addresses with same IP and if exists address within
+        # given range - use it instead of creating new one
+        # https://bugs.launchpad.net/networking-infoblox/+bug/1628517
+        fixed_addrs = self.manager.get_fixed_addresses_by_mac(network_view,
+                                                              mac.lower())
+        if fixed_addrs:
+            ip_range = netaddr.IPRange(first_ip, last_ip)
+            for fixed_addr in fixed_addrs:
+                ip_addr = netaddr.IPAddress(fixed_addr.ip)
+                if ip_addr in ip_range:
+                    self.manager.update_fixed_address_eas(network_view,
+                                                          fixed_addr.ip,
+                                                          extattrs)
+                    return fixed_addr.ip
         fa = self.manager.create_fixed_address_from_range(
             network_view, mac, first_ip, last_ip, extattrs)
         return fa.ip
 
     def allocate_given_ip(self, network_view, dns_view, zone_auth,
                           hostname, mac, ip, extattrs=None):
+        # First search addresses with same IP and if exists address within
+        # given range - use it instead of creating new one
+        # https://bugs.launchpad.net/networking-infoblox/+bug/1628517
+        fixed_addrs = self.manager.get_fixed_addresses_by_mac(network_view,
+                                                              mac.lower())
+        if fixed_addrs:
+            for fixed_addr in fixed_addrs:
+                if fixed_addr.ip == ip:
+                    self.manager.update_fixed_address_eas(network_view, ip,
+                                                          extattrs)
+                    return fixed_addr.ip
         fa = self.manager.create_fixed_address_for_given_ip(
             network_view, mac, ip, extattrs)
         return fa.ip
