@@ -17,12 +17,8 @@ import re
 
 from infoblox_client import exceptions as ibc_exc
 from neutron.common import constants as n_const
-from oslo_log import log as logging
 
 from networking_infoblox.neutron.common import constants as const
-
-
-LOG = logging.getLogger(__name__)
 
 
 class PatternBuilder(object):
