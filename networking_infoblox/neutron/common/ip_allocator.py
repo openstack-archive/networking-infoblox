@@ -14,6 +14,7 @@
 #    under the License.
 
 import abc
+import netaddr
 import six
 
 from networking_infoblox.neutron.common import constants as const
@@ -135,10 +136,33 @@ class HostRecordIPAllocator(IPAllocator):
         fqdn = hostname + '.' + zone_auth
         host_record = self.manager.find_hostname(
             dns_view, fqdn, first_ip)
+
         if host_record:
             hr = self.manager.add_ip_to_host_record_from_range(
                 host_record, network_view, mac, first_ip, last_ip, use_dhcp)
         else:
+            # First search hosts with same MAC and if exists address within
+            # given range - use it instead of creating new one
+            # https://bugs.launchpad.net/networking-infoblox/+bug/1628517
+            hosts = self.manager.find_host_records_by_mac(dns_view,
+                                                          mac.lower(),
+                                                          network_view)
+            if hosts:
+                ip_range = netaddr.IPRange(first_ip, last_ip)
+                ip_version = netaddr.IPAddress(first_ip).version
+                for host in hosts:
+                    if host.ip_version != ip_version:
+                        continue
+                    for ip in host.ips:
+                        ip_mac = ip.mac if ip_version == 4 else ip.duid
+                        if ip_mac != mac:
+                            continue
+                        ip_addr = netaddr.IPAddress(ip.ip)
+                        if ip_addr in ip_range:
+                            self.manager.update_host_record_eas(dns_view,
+                                                                ip.ip,
+                                                                extattrs)
+                            return ip.ip
             hr = self.manager.create_host_record_from_range(
                 dns_view, network_view, zone_auth, hostname, mac,
                 first_ip, last_ip, extattrs, use_dhcp, use_dns)
@@ -148,6 +172,26 @@ class HostRecordIPAllocator(IPAllocator):
                           hostname, mac, ip, extattrs=None):
         use_dhcp = self.opts['configure_for_dhcp']
         use_dns = self.opts['configure_for_dns']
+        # First search hosts with same MAC and if exists address with
+        # same IP - use it instead of creating new one
+        # https://bugs.launchpad.net/networking-infoblox/+bug/1628517
+        hosts = self.manager.find_host_records_by_mac(dns_view,
+                                                      mac.lower(),
+                                                      network_view)
+        if hosts:
+            ip_version = netaddr.IPAddress(ip).version
+            for host in hosts:
+                if host.ip_version != ip_version:
+                    continue
+                for host_ip in host.ips:
+                    ip_mac = host_ip.mac if ip_version == 4 else ip.duid
+                    if ip_mac != mac:
+                        continue
+                    if host_ip.ip == ip:
+                        self.manager.update_host_record_eas(dns_view,
+                                                            host_ip.ip,
+                                                            extattrs)
+                        return host_ip.ip
         hr = self.manager.create_host_record_for_given_ip(
             dns_view, zone_auth, hostname, mac, ip, extattrs, use_dhcp,
             use_dns)
@@ -184,12 +228,37 @@ class FixedAddressIPAllocator(IPAllocator):
     def allocate_ip_from_range(self, network_view, dns_view,
                                zone_auth, hostname, mac, first_ip, last_ip,
                                extattrs=None):
+        # First search addresses with same MAC and if exists address within
+        # given range - use it instead of creating new one
+        # https://bugs.launchpad.net/networking-infoblox/+bug/1628517
+        fixed_addrs = self.manager.get_fixed_addresses_by_mac(network_view,
+                                                              mac.lower())
+        if fixed_addrs:
+            ip_range = netaddr.IPRange(first_ip, last_ip)
+            for fixed_addr in fixed_addrs:
+                ip_addr = netaddr.IPAddress(fixed_addr.ip)
+                if ip_addr in ip_range:
+                    self.manager.update_fixed_address_eas(network_view,
+                                                          fixed_addr.ip,
+                                                          extattrs)
+                    return fixed_addr.ip
         fa = self.manager.create_fixed_address_from_range(
             network_view, mac, first_ip, last_ip, extattrs)
         return fa.ip
 
     def allocate_given_ip(self, network_view, dns_view, zone_auth,
                           hostname, mac, ip, extattrs=None):
+        # First search addresses with same MAC and if exists address with
+        # same IP - use it instead of creating new one
+        # https://bugs.launchpad.net/networking-infoblox/+bug/1628517
+        fixed_addrs = self.manager.get_fixed_addresses_by_mac(network_view,
+                                                              mac.lower())
+        if fixed_addrs:
+            for fixed_addr in fixed_addrs:
+                if fixed_addr.ip == ip:
+                    self.manager.update_fixed_address_eas(network_view, ip,
+                                                          extattrs)
+                    return fixed_addr.ip
         fa = self.manager.create_fixed_address_for_given_ip(
             network_view, mac, ip, extattrs)
         return fa.ip
