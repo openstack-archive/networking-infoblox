@@ -17,6 +17,7 @@ import functools
 import netaddr
 import sys
 
+from neutron_lib.plugins import directory
 from oslo_log import log as logging
 from oslo_utils import excutils
 
@@ -24,7 +25,6 @@ from neutron.ipam import driver
 from neutron.ipam import exceptions as ipam_exc
 from neutron.ipam import requests as ipam_req
 from neutron.ipam import subnet_alloc
-from neutron import manager
 
 from infoblox_client import exceptions as ib_exc
 from infoblox_client import objects as ib_objects
@@ -86,7 +86,7 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
     @catch_ib_client_exception
     def __init__(self, subnetpool, context):
         super(InfobloxPool, self).__init__(subnetpool, context)
-        self._plugin = manager.NeutronManager.get_plugin()
+        self._plugin = directory.get_plugin()
         self._grid_manager = grid.GridManager(self._context)
         self._grid_manager.get_config()
         self._grid_config = self._grid_manager.grid_config

@@ -15,7 +15,7 @@
 
 import mock
 
-from neutron.common import constants as n_const
+from neutron_lib import constants as n_const
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import pattern

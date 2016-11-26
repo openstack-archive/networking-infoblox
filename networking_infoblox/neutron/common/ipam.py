@@ -14,11 +14,10 @@
 #    under the License.
 
 import netaddr
-
+from neutron_lib import constants as n_const
 from oslo_log import log as logging
 from oslo_utils import uuidutils
 
-from neutron.common import constants as n_const
 from neutron.ipam import exceptions as ipam_exc
 from neutron.ipam import utils as ipam_utils
 

@@ -13,10 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron_lib.db import model_base
 import sqlalchemy as sa
-
-from neutron.db import model_base
-from neutron.db import models_v2
 
 
 class InfobloxGrid(model_base.BASEV2):
@@ -242,7 +240,7 @@ class InfobloxObject(model_base.BASEV2):
     )
 
 
-class InfobloxOperation(model_base.BASEV2, models_v2.HasId):
+class InfobloxOperation(model_base.BASEV2, model_base.HasId):
     """Operational data like last sync time."""
     __tablename__ = 'infoblox_operations'
 

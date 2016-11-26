@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron_lib import constants as attributes
 from oslo_config import cfg
 from oslo_utils import uuidutils
 
-from neutron.api.v2 import attributes
 from neutron.db import address_scope_db
 
 
