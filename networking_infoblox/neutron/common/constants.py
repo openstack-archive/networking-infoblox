@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.common import constants as n_const
+from neutron_lib import constants as n_const
+
 from neutron.plugins.common import constants as p_const
 
 

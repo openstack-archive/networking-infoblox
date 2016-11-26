@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron.api.v2 import attributes
-from neutron.common import constants as n_const
+from neutron_lib import constants as n_const
+
 from neutron.ipam import requests
 
 
@@ -36,7 +36,7 @@ class InfobloxSubnetRequestFactory(requests.SubnetRequestFactory):
         # neutron api sets optional attributes to the following
         #     ATTR_NOT_SPECIFIED = object()
         dns_nameservers = subnet.get('dns_nameservers')
-        if dns_nameservers is attributes.ATTR_NOT_SPECIFIED:
+        if dns_nameservers is n_const.ATTR_NOT_SPECIFIED:
             dns_nameservers = []
         request.dns_nameservers = dns_nameservers
         return request

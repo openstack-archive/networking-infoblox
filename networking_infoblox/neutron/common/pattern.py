@@ -16,7 +16,7 @@
 import re
 
 from infoblox_client import exceptions as ibc_exc
-from neutron.common import constants as n_const
+from neutron_lib import constants as n_const
 
 from networking_infoblox.neutron.common import constants as const
 

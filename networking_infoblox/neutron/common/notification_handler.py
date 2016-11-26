@@ -14,14 +14,13 @@
 #    under the License.
 
 import netaddr
+from neutron_lib.plugins import directory
 from oslo_log import log as logging
 import oslo_messaging
 from oslo_utils import encodeutils
 from sqlalchemy import exc as sql_exc
 
 from infoblox_client import objects as ib_objects
-
-from neutron import manager
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import context
@@ -42,7 +41,7 @@ class IpamEventHandler(object):
 
     def __init__(self, neutron_context, plugin=None, grid_manager=None):
         self.context = neutron_context
-        self.plugin = plugin if plugin else manager.NeutronManager.get_plugin()
+        self.plugin = plugin if plugin else directory.get_plugin()
         if grid_manager:
             self.grid_mgr = grid_manager
         else:

@@ -17,9 +17,9 @@ import eventlet
 eventlet.monkey_patch()
 
 import mock
+from neutron_lib.plugins import directory
 
 from neutron import context
-from neutron import manager
 from neutron.tests.unit import testlib_api
 
 from infoblox_client import objects as ib_objects
@@ -41,7 +41,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ctx = context.get_admin_context()
 
         self.setup_coreplugin(neutron_plugin_stub.DB_PLUGIN_KLASS)
-        self.plugin = manager.NeutronManager.get_plugin()
+        self.plugin = directory.get_plugin()
 
         self.plugin_stub = neutron_plugin_stub.NeutronPluginStub(self.ctx,
                                                                  self.plugin)

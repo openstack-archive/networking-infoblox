@@ -14,9 +14,8 @@
 #    under the License.
 
 from collections import Counter
+from neutron_lib.plugins import directory
 from oslo_log import log as logging
-
-from neutron import manager
 
 from infoblox_client import connector
 
@@ -42,7 +41,7 @@ class InfobloxContext(object):
                  mapping_conditions=None, ib_network=None):
         self.context = neutron_context
         self.user_id = user_id
-        self.plugin = plugin if plugin else manager.NeutronManager.get_plugin()
+        self.plugin = plugin if plugin else directory.get_plugin()
         self.network = network if network else {}
         self.subnet = subnet if subnet else {}
         self.ib_network = ib_network

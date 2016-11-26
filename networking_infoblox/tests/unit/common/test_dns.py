@@ -14,8 +14,8 @@
 #    under the License.
 
 import mock
+from neutron_lib import constants as n_const
 
-from neutron.common import constants as n_const
 from neutron import context
 from neutron.tests.unit import testlib_api
 
