@@ -52,18 +52,6 @@ Installation and Configuration
 
 See the documentation link above for details on Installation and Configuration.
 
-Limitations
------------
-
-When a change is made to the EAs within Infoblox that are used to control the
-IPAM driver configuration, those changes are not automatically synchronized
-to OpenStack. They will be syncrhonized during subnet or network creation or
-when the IPAM agent is restarted.
-
-Currently there is no script to migrate existing OpenStack installation
-data into Infoblox, apart from the built-in vDiscovery in Infoblox 7.2.4
-or later.
-
 Known issues
 ------------
 
