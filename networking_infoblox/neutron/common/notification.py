@@ -23,6 +23,7 @@ from neutron.common import topics
 from neutron import context
 
 from networking_infoblox._i18n import _LE
+from networking_infoblox._i18n import _LI
 from networking_infoblox._i18n import _LW
 from networking_infoblox.neutron.common import config
 from networking_infoblox.neutron.common import constants as const
@@ -111,7 +112,7 @@ class NotificationService(service.Service):
         try:
             return int(conf.grid_sync_maximum_wait_time)
         except TypeError:
-            LOG.warning(_LE("Invalid resync interval set: %s"),
+            LOG.warning(_LW("Invalid resync interval set: %s"),
                         conf.grid_sync_maximum_wait_time)
             return self.RESYNC_TRY_INTERVAL
 
@@ -124,7 +125,7 @@ class NotificationService(service.Service):
         try:
             interval = self._get_resync_interval()
             if self.grid_syncer.is_sync_needed(interval):
-                LOG.info(_LE("Initiating resync."))
+                LOG.info(_LI("Initiating resync."))
                 self.grid_syncer.sync(True)
         except Exception as e:
             LOG.exception(_LE("Resync failed due to error: %s"), e)
