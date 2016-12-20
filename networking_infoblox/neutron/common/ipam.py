@@ -323,16 +323,18 @@ class IpamSyncController(object):
                                             self.ib_cxt.subnet)
 
         nameservers = self.ib_cxt.mapping.ib_nameservers
+        nameservers_option_val = ""
         if nameservers:
             nameservers_option_val = ','.join(nameservers)
-            opt_dns = [opt for opt in ib_network.options
-                       if opt.name == 'domain-name-servers']
-            if not opt_dns:
-                ib_network.options.append(
-                    ib_objects.DhcpOption(name='domain-name-servers',
-                                          value=nameservers_option_val))
-            else:
-                opt_dns[0].value = nameservers_option_val
+        opt_dns = [opt for opt in ib_network.options
+                   if opt.name == 'domain-name-servers']
+
+        if opt_dns:
+            opt_dns[0].value = nameservers_option_val
+        elif nameservers:
+            ib_network.options.append(
+                ib_objects.DhcpOption(name='domain-name-servers',
+                                      value=nameservers_option_val))
 
         self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
         self._restart_services()
