@@ -285,6 +285,7 @@ installation):
 
 .. code-block:: ini
 
+   [DEFAULT]
    ipam_driver = infoblox
 
    [infoblox]
@@ -303,6 +304,7 @@ within Neutron, if they are not already enabled.
 
 .. code-block:: ini
 
+   [DEFAULT]
    notification_driver = messagingv2
    notification_topics = notifications
 
