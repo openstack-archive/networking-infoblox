@@ -128,11 +128,11 @@ class GridManager(object):
             return
 
         conn = self.grid_config.gm_connector
-        host_ip = getattr(conn, 'host')
-        if utils.get_ip_version(host_ip) == 4:
-            gm = ib_objects.Member.search(conn, ipv4_address=host_ip)
+        gm = self.grid_config.get_gm_member()
+        if gm.member_ip:
+            gm = ib_objects.Member.search(conn, ipv4_address=gm.member_ip)
         else:
-            gm = ib_objects.Member.search(conn, ipv6_address=host_ip)
+            gm = ib_objects.Member.search(conn, ipv6_address=gm.member_ipv6)
 
         sync_info = (str(self.grid_config.grid_id) + ':' +
                      self.hostname + ' => ' +
@@ -241,7 +241,7 @@ class GridConfiguration(object):
         return self._is_cloud_wapi
 
     def sync(self):
-        discovered_config = self._discover_config(self._get_gm_member())
+        discovered_config = self._discover_config(self.get_gm_member())
         if discovered_config:
             self._update_fields(discovered_config)
             LOG.debug(_LI("grid config synced: %s"), self.__dict__)
@@ -295,7 +295,7 @@ class GridConfiguration(object):
             return False
         return value
 
-    def _get_gm_member(self):
+    def get_gm_member(self):
         session = self.context.session
         members = dbi.get_members(session,
                                   grid_id=self.grid_id,
