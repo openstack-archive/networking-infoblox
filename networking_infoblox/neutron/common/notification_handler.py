@@ -125,6 +125,8 @@ class IpamEventHandler(object):
         for network in networks:
             if self.traceable:
                 LOG.info("Created network: %s", network)
+            dbi.add_or_update_network(self.context.session,
+                                      network.get('id'), network.get('name'))
 
         if self.grid_config.tenant_name_persistence:
             keystone_manager.update_tenant_mapping(self.context,
@@ -144,7 +146,18 @@ class IpamEventHandler(object):
                                              network, None, self.grid_config,
                                              self.plugin)
         ipam_controller = ipam.IpamAsyncController(ib_context)
-        ipam_controller.update_network_sync()
+        network_id = network.get('id')
+        new_name = network.get('name')
+        old_network = dbi.get_network(self.context.session, network_id)
+        need_new_zones = False
+        if new_name is not None and (
+                old_network is None or new_name != old_network.network_name):
+            dbi.add_or_update_network(self.context.session,
+                                      network_id, new_name)
+            pattern = self.grid_config.default_domain_name_pattern
+            if '{network_name}' in pattern:
+                need_new_zones = True
+        ipam_controller.update_network_sync(need_new_zones)
 
     def delete_network_sync(self, payload):
         """Notifies that the network has been deleted."""
@@ -154,6 +167,7 @@ class IpamEventHandler(object):
             LOG.info("Deleted network: %s", network_id)
 
         self._resync()
+        dbi.remove_network(self.context.session, network_id)
 
     def create_subnet_sync(self, payload):
         """Notifies that new subnets have been created."""

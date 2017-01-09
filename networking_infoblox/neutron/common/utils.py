@@ -23,7 +23,6 @@ import six
 import time
 import urllib
 
-from oslo_log import log as logging
 from oslo_serialization import jsonutils
 
 from infoblox_client import connector as conn
@@ -32,9 +31,6 @@ from infoblox_client import objects as ib_objects
 
 from networking_infoblox.neutron.common import config as cfg
 from networking_infoblox.neutron.common import constants as const
-
-
-LOG = logging.getLogger(__name__)
 
 
 def json_to_obj(obj_type, json_data):
