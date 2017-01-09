@@ -228,8 +228,9 @@ class InfobloxContext(object):
             # service member assignment for a new network
             dhcp_member = self._reserve_dhcp_member()
             dhcp_members = [dhcp_member]
-            dns_members = dhcp_members
-            nameservers = self._get_nameservers(dns_members)
+            if self.grid_config.dns_support:
+                dns_members = dhcp_members
+            nameservers = self._get_nameservers(dhcp_members)
         else:
             # service member assignment for the predefined network
             # - first set dhcp servers option
@@ -244,18 +245,22 @@ class InfobloxContext(object):
                     name=dhcp_member.member_name,
                     ipv4addr=dhcp_ip)]
 
-            # - then set dns servers option
-            dns_members = self._get_dns_members(ib_network)
-            if not dns_members:
-                # for CPM as authority member, only one dhcp member can be
-                # assigned and dns member needs to be the same as dhcp member
-                # for host record.
-                # for GM as authority member, multiple dhcp members can be
-                # assigned but the first dhcp member will serve as the grid
-                # primary and the rest will serve as the grid secondaries.
-                dns_members = dhcp_members
+            if self.grid_config.dns_support:
+                # - then set dns servers option
+                dns_members = self._get_dns_members(ib_network)
+                if not dns_members:
+                    # for CPM as authority member, only one dhcp member can be
+                    # assigned and dns member needs to be the same as dhcp
+                    # member for host record.
+                    # for GM as authority member, multiple dhcp members can be
+                    # assigned but the first dhcp member will serve as the grid
+                    # primary and the rest will serve as the grid secondaries.
+                    dns_members = dhcp_members
 
-            nameservers = self._get_nameservers(dns_members)
+                nameservers = self._get_nameservers(dns_members)
+            else:
+                nameservers = self._get_nameservers(dhcp_members)
+
             nameservers_option_val = ','.join(nameservers)
 
             opt_dns = [opt for opt in ib_network.options

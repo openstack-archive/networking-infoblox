@@ -552,6 +552,27 @@ class IpamAsyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             ipam_controller.update_network_sync()
             dns_controller.update_dns_zones.assert_called_once_with()
 
+    @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
+    @mock.patch('networking_infoblox.neutron.common.dns.DnsController')
+    @mock.patch.object(dbi, 'get_network_view_mappings', return_value=[])
+    def test_update_network_update_zone_names(self, dbi_mock, dns_mock,
+                                              cxt_mock):
+        test_opts = dict()
+        self.helper.prepare_test(test_opts)
+
+        dns_controller = mock.Mock()
+        dns_mock.return_value = dns_controller
+        ipam_controller = ipam.IpamAsyncController(self.ib_cxt)
+        cxt_mock.return_value = self.ib_cxt
+        with mock.patch.object(dbi,
+                               'get_subnets_by_network_id',
+                               return_value=[{'id': 'subnet-id',
+                                              'cidr': '11.11.1.0/24',
+                                              'network_id': 'test_net'}]):
+            ipam_controller.update_network_sync(need_new_zones=True)
+            dns_controller.update_dns_zones.assert_not_called()
+            dns_controller.create_dns_zones.assert_called_once_with([])
+
 
 class IpamSyncControllerUnitTestCase(base.TestCase):
 

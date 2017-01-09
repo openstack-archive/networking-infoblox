@@ -330,8 +330,8 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertEqual(test_authority_member.member_id,
                          ib_cxt.mapping.authority_member.member_id)
 
-    def test_reserve_service_members_without_ib_network_for_cpm_authortity(
-            self):
+    def _test_reserve_service_members_without_ib_network_for_cpm_auth(
+            self, test_authority_member, dns_support, expected_dns_members):
         user_id = 'test user'
         tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
 
@@ -346,15 +346,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                                                 network['id'], subnet_cidr)
 
         self.grid_config.dhcp_support = True
-
-        test_authority_member = utils.json_to_obj(
-            'AuthorityMember',
-            {'member_id': 'member-id', 'member_type': 'CPM',
-             'member_ip': '11.11.1.11', 'member_ipv6': None,
-             'member_dns_ip': '12.11.1.11', 'member_dns_ipv6': None,
-             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
-             'member_name': 'm1', 'member_status': 'ON',
-             'member_wapi': '11.11.1.11'})
+        self.grid_config.dns_support = dns_support
 
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
@@ -364,11 +356,29 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         ib_cxt.reserve_service_members()
 
         self.assertEqual([test_authority_member], ib_cxt.mapping.dhcp_members)
-        self.assertEqual([test_authority_member], ib_cxt.mapping.dns_members)
+        self.assertEqual(expected_dns_members, ib_cxt.mapping.dns_members)
+
+    def test_reserve_service_members_without_ib_network_for_cpm_authortity(
+            self):
+        test_authority_member = utils.json_to_obj(
+            'AuthorityMember',
+            {'member_id': 'member-id', 'member_type': 'CPM',
+             'member_ip': '11.11.1.11', 'member_ipv6': None,
+             'member_dns_ip': '12.11.1.11', 'member_dns_ipv6': None,
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON',
+             'member_wapi': '11.11.1.11'})
+        self._test_reserve_service_members_without_ib_network_for_cpm_auth(
+            test_authority_member,
+            dns_support=True, expected_dns_members=[test_authority_member])
+        self._test_reserve_service_members_without_ib_network_for_cpm_auth(
+            test_authority_member,
+            dns_support=False, expected_dns_members=[])
 
     @mock.patch.object(dbi, 'get_service_members')
-    def test_reserve_service_members_without_ib_network_for_gm_authortity(
-            self, dbi_service_member_mock):
+    def _test_reserve_service_members_without_ib_network_for_gm_auth(
+            self, test_authority_member, dns_support, expected_dns_members,
+            dbi_service_member_mock):
         user_id = 'test user'
         tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
 
@@ -383,15 +393,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                                                 network['id'], subnet_cidr)
 
         self.grid_config.dhcp_support = True
-
-        test_authority_member = utils.json_to_obj(
-            'AuthorityMember',
-            {'member_id': 'member-id-gm', 'member_type': 'GM',
-             'member_ip': '11.11.1.11', 'member_ipv6': None,
-             'member_dns_ip': '12.11.1.11', 'member_dns_ipv6': None,
-             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
-             'member_name': 'gm', 'member_status': 'ON',
-             'member_wapi': '11.11.1.11'})
+        self.grid_config.dns_support = dns_support
 
         dbi_service_member_mock.return_value = []
 
@@ -405,10 +407,25 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         self.assertEqual(test_authority_member.member_id,
                          ib_cxt.mapping.dhcp_members[0].member_id)
-        self.assertEqual(test_authority_member.member_id,
-                         ib_cxt.mapping.dns_members[0].member_id)
+        self.assertEqual(expected_dns_members, ib_cxt.mapping.dns_members)
 
-    def test_reserve_service_members_with_ib_network_gm_owned(self):
+    def test_reserve_service_members_without_ib_network_for_gm_authortity(
+            self):
+        test_authority_member = utils.json_to_obj(
+            'AuthorityMember',
+            {'member_id': 'member-id-gm', 'member_type': 'GM',
+             'member_ip': '11.11.1.11', 'member_ipv6': None,
+             'member_dns_ip': '12.11.1.11', 'member_dns_ipv6': None,
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
+             'member_name': 'gm', 'member_status': 'ON',
+             'member_wapi': '11.11.1.11'})
+        self._test_reserve_service_members_without_ib_network_for_gm_auth(
+            test_authority_member, True, [test_authority_member])
+        self._test_reserve_service_members_without_ib_network_for_gm_auth(
+            test_authority_member, False, [])
+
+    def _test_reserve_service_members_with_ib_network_gm_owned(
+            self, dns_support):
         user_id = 'test user'
         tenant_id = 'tenant-id'
 
@@ -423,6 +440,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                                                 network['id'], subnet_cidr)
 
         self.grid_config.dhcp_support = True
+        self.grid_config.dns_support = dns_support
 
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
@@ -443,15 +461,21 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         ib_cxt.reserve_service_members(test_ib_network)
 
+        expected_dns_members = (
+            ib_cxt.mapping.dhcp_members if dns_support else [])
         self.assertEqual(expected_dhcp_member.member_id,
                          ib_cxt.mapping.dhcp_members[0].member_id)
-        self.assertEqual(expected_dhcp_member.member_id,
-                         ib_cxt.mapping.dns_members[0].member_id)
+        self.assertEqual(expected_dns_members, ib_cxt.mapping.dns_members)
         actual_opt_router = [opt for opt in test_ib_network.options
                              if opt.name == 'routers']
         self.assertEqual(subnet['gateway_ip'], actual_opt_router[0].value)
 
-    def test_reserve_service_members_with_ib_network_with_dhcp_member(self):
+    def test_reserve_service_members_with_ib_network_gm_owned(self):
+        self._test_reserve_service_members_with_ib_network_gm_owned(True)
+        self._test_reserve_service_members_with_ib_network_gm_owned(False)
+
+    def _test_reserve_service_members_with_ib_network_with_dhcp_member(
+            self, test_dhcp_member, dns_support, expected_dns_members):
         user_id = 'test user'
         tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
 
@@ -466,15 +490,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                                                 network['id'], subnet_cidr)
 
         self.grid_config.dhcp_support = True
-
-        test_dhcp_member = utils.json_to_obj(
-            'DhcpMember',
-            {'member_id': 'member-id', 'member_type': 'REGULAR',
-             'member_ip': '11.11.1.12', 'member_ipv6': None,
-             'member_dns_ip': '12.11.1.11', 'member_dns_ipv6': None,
-             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
-             'member_name': 'm1', 'member_status': 'ON',
-             'member_wapi': '11.11.1.11'})
+        self.grid_config.dns_support = dns_support
 
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
@@ -498,12 +514,29 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         ib_cxt.reserve_service_members(test_ib_network)
 
         self.assertEqual([test_dhcp_member], ib_cxt.mapping.dhcp_members)
-        self.assertEqual([test_dhcp_member], ib_cxt.mapping.dns_members)
+        self.assertEqual(expected_dns_members, ib_cxt.mapping.dns_members)
         actual_opt_router = [opt for opt in test_ib_network.options
                              if opt.name == 'routers']
         self.assertEqual(subnet['gateway_ip'], actual_opt_router[0].value)
 
-    def test_reserve_service_members_with_ib_network_without_dhcp_member(self):
+    def test_reserve_service_members_with_ib_network_with_dhcp_member(self):
+        test_dhcp_member = utils.json_to_obj(
+            'DhcpMember',
+            {'member_id': 'member-id', 'member_type': 'REGULAR',
+             'member_ip': '11.11.1.12', 'member_ipv6': None,
+             'member_dns_ip': '12.11.1.11', 'member_dns_ipv6': None,
+             'member_dhcp_ip': None, 'member_dhcp_ipv6': None,
+             'member_name': 'm1', 'member_status': 'ON',
+             'member_wapi': '11.11.1.11'})
+        self._test_reserve_service_members_with_ib_network_with_dhcp_member(
+            test_dhcp_member,
+            dns_support=True, expected_dns_members=[test_dhcp_member])
+        self._test_reserve_service_members_with_ib_network_with_dhcp_member(
+            test_dhcp_member,
+            dns_support=False, expected_dns_members=[])
+
+    def _test_reserve_service_members_with_ib_network_without_dhcp_member(
+            self, dns_support):
         user_id = 'test user'
         tenant_id = '90fbad5a098a4b7cb98826128d5b40b3'
 
@@ -518,6 +551,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
                                                 network['id'], subnet_cidr)
 
         self.grid_config.dhcp_support = True
+        self.grid_config.dns_support = dns_support
 
         ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
                                             self.grid_config, self.plugin)
@@ -538,16 +572,24 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         ib_cxt.reserve_service_members(test_ib_network)
 
+        expected_dns_members = (
+            [ib_cxt.mapping.authority_member] if dns_support else [])
         # authority member is CPM, so dhcp/dns member should be the same as
         # authority member
         self.assertEqual([ib_cxt.mapping.authority_member],
                          ib_cxt.mapping.dhcp_members)
-        self.assertEqual([ib_cxt.mapping.authority_member],
+        self.assertEqual(expected_dns_members,
                          ib_cxt.mapping.dns_members)
         actual_opt_router = [opt for opt in test_ib_network.options
                              if opt.name == 'routers']
         self.assertEqual(subnet['gateway_ip'] + ',' + test_gateway_ip,
                          actual_opt_router[0].value)
+
+    def test_reserve_service_members_with_ib_network_without_dhcp_member(self):
+        self._test_reserve_service_members_with_ib_network_without_dhcp_member(
+            True)
+        self._test_reserve_service_members_with_ib_network_without_dhcp_member(
+            False)
 
     def test_get_dns_members_without_dhcp_support(self):
         user_id = 'test user'

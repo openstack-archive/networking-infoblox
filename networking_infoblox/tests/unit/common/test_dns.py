@@ -37,6 +37,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.ib_cxt = self._get_ib_context()
         self.ib_cxt.context = self.neutron_cxt
         self.ib_cxt.network_is_external = False
+        self.ib_cxt.grid_config.zone_creation_strategy = (
+            self._get_default_zone_creation_strategy())
         self.test_zone_format = "IPV%s" % self.ib_cxt.subnet['ip_version']
         self.controller = dns.DnsController(self.ib_cxt)
         self.controller.pattern_builder = mock.Mock()
@@ -68,11 +70,9 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ib_cxt.grid_config.allow_static_zone_deletion = False
         return ib_cxt
 
-    def test_create_dns_zones_without_ns_group(self):
+    def test_create_dns_zones_without_ns_group_both_zones(self):
         rollback_list = []
         # default strategy is to create both Forward and Reverse zones
-        self.ib_cxt.grid_config.zone_creation_strategy = (
-            self._get_default_zone_creation_strategy())
         self.controller.create_dns_zones(rollback_list)
         assert self.ib_cxt.ibom.method_calls == [
             mock.call.create_dns_zone(
@@ -94,6 +94,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         # check strategy with only Forward zone
         self.ib_cxt.grid_config.zone_creation_strategy = [
             constants.ZONE_CREATION_STRATEGY_FORWARD]
+        self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
         assert self.ib_cxt.ibom.method_calls == [
             mock.call.create_dns_zone(
@@ -108,6 +109,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         # check strategy with only Reverse zone
         self.ib_cxt.grid_config.zone_creation_strategy = [
             constants.ZONE_CREATION_STRATEGY_REVERSE]
+        self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
         assert self.ib_cxt.ibom.method_calls == [
             mock.call.create_dns_zone(
@@ -122,14 +124,13 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         # check empty strategy
         self.ib_cxt.grid_config.zone_creation_strategy = []
+        self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
         assert self.ib_cxt.ibom.method_calls == []
 
     def test_create_dns_zones_with_ns_group(self):
         rollback_list = []
         # default strategy is to create both Forward and Reverse zones
-        self.ib_cxt.grid_config.zone_creation_strategy = (
-            self._get_default_zone_creation_strategy())
         self.ib_cxt.grid_config.ns_group = 'test-ns-group'
         self.controller.create_dns_zones(rollback_list)
         assert self.ib_cxt.ibom.method_calls == [
@@ -150,6 +151,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         # check strategy with only Forward zone
         self.ib_cxt.grid_config.zone_creation_strategy = [
             constants.ZONE_CREATION_STRATEGY_FORWARD]
+        self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
         assert self.ib_cxt.ibom.method_calls == [
             mock.call.create_dns_zone(
@@ -163,6 +165,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         # check strategy with only Reverse zone
         self.ib_cxt.grid_config.zone_creation_strategy = [
             constants.ZONE_CREATION_STRATEGY_REVERSE]
+        self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
         assert self.ib_cxt.ibom.method_calls == [
             mock.call.create_dns_zone(
@@ -176,6 +179,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         # check empty strategy
         self.ib_cxt.ibom.reset_mock()
         self.ib_cxt.grid_config.zone_creation_strategy = []
+        self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
         assert self.ib_cxt.ibom.method_calls == []
 
@@ -549,6 +553,7 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
     def _test_update_calls(self, strategy, calls):
         self.ib_cxt.grid_config.zone_creation_strategy = strategy
+        self.controller._update_strategy_and_eas()
         self.controller.update_dns_zones()
         assert self.ib_cxt.ibom.method_calls == calls
         self.ib_cxt.ibom.reset_mock()
