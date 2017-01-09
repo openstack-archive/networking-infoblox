@@ -19,6 +19,8 @@ from oslo_log import log as logging
 import six
 import socket
 
+from neutron import context as neutron_context
+
 from infoblox_client import connector
 from infoblox_client import objects as ib_objects
 
@@ -33,6 +35,18 @@ from networking_infoblox.neutron.db import infoblox_db as dbi
 
 
 LOG = logging.getLogger(__name__)
+
+
+class GridSyncer(object):
+    def __init__(self):
+        self._context = neutron_context.get_admin_context()
+        self._grid_manager = GridManager(self._context)
+
+    def is_sync_needed(self, interval):
+        return self._grid_manager.is_sync_needed(interval)
+
+    def sync(self, force_sync=False):
+        self._grid_manager.sync(force_sync)
 
 
 class GridManager(object):
@@ -65,7 +79,7 @@ class GridManager(object):
         allow_sync = False
         if self.grid_config.grid_sync_support:
             interval = self.grid_config.grid_sync_minimum_wait_time
-            if (force_sync or self.is_sync_needed(interval)):
+            if force_sync or self.is_sync_needed(interval):
                 allow_sync = True
 
         if allow_sync:
@@ -128,11 +142,11 @@ class GridManager(object):
             return
 
         conn = self.grid_config.gm_connector
-        host_ip = getattr(conn, 'host')
-        if utils.get_ip_version(host_ip) == 4:
-            gm = ib_objects.Member.search(conn, ipv4_address=host_ip)
+        gm = self.grid_config.get_gm_member()
+        if gm.member_ip:
+            gm = ib_objects.Member.search(conn, ipv4_address=gm.member_ip)
         else:
-            gm = ib_objects.Member.search(conn, ipv6_address=host_ip)
+            gm = ib_objects.Member.search(conn, ipv6_address=gm.member_ipv6)
 
         sync_info = (str(self.grid_config.grid_id) + ':' +
                      self.hostname + ' => ' +
@@ -241,7 +255,7 @@ class GridConfiguration(object):
         return self._is_cloud_wapi
 
     def sync(self):
-        discovered_config = self._discover_config(self._get_gm_member())
+        discovered_config = self._discover_config(self.get_gm_member())
         if discovered_config:
             self._update_fields(discovered_config)
             LOG.debug(_LI("grid config synced: %s"), self.__dict__)
@@ -270,9 +284,9 @@ class GridConfiguration(object):
         return config[0] if config and config[0].get('extattrs') else None
 
     def _set_default_values(self):
-        for property, key in self.property_to_ea_mapping.items():
+        for prop, key in self.property_to_ea_mapping.items():
             if key in const.GRID_CONFIG_DEFAULTS:
-                setattr(self, property, const.GRID_CONFIG_DEFAULTS[key])
+                setattr(self, prop, const.GRID_CONFIG_DEFAULTS[key])
 
     def _update_fields(self, extattr):
         for pm in self.property_to_ea_mapping:
@@ -295,7 +309,7 @@ class GridConfiguration(object):
             return False
         return value
 
-    def _get_gm_member(self):
+    def get_gm_member(self):
         session = self.context.session
         members = dbi.get_members(session,
                                   grid_id=self.grid_id,

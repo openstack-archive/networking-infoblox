@@ -36,15 +36,30 @@ class DnsController(object):
         self.pattern_builder = pattern.PatternBuilder(self.ib_cxt)
         self.dns_zone = self.pattern_builder.get_zone_name(
             is_external=self.ib_cxt.network_is_external)
+        self._update_strategy_and_eas()
+
+    def _update_strategy_and_eas(self):
+        self.need_forward = (constants.ZONE_CREATION_STRATEGY_FORWARD in
+                             self.grid_config.zone_creation_strategy)
+        if self.need_forward:
+            self.forward_zone_eas = eam.get_ea_for_forward_zone(
+                self.ib_cxt.user_id, self.ib_cxt.tenant_id,
+                self.ib_cxt.tenant_name, self.ib_cxt.network,
+                self.ib_cxt.subnet,
+                self.pattern_builder.get_zone_name(
+                    is_external=self.ib_cxt.network_is_external))
+        self.need_reverse = (constants.ZONE_CREATION_STRATEGY_REVERSE in
+                             self.grid_config.zone_creation_strategy)
+        if self.need_reverse:
+            self.reverse_zone_eas = eam.get_ea_for_reverse_zone(
+                self.ib_cxt.user_id, self.ib_cxt.tenant_id,
+                self.ib_cxt.tenant_name, self.ib_cxt.network,
+                self.ib_cxt.subnet)
 
     def create_dns_zones(self, rollback_list):
         if self.grid_config.dns_support is False:
             return
 
-        ea_zone = eam.get_ea_for_zone(self.ib_cxt.user_id,
-                                      self.ib_cxt.tenant_id,
-                                      self.ib_cxt.tenant_name,
-                                      self.ib_cxt.network)
         cidr = self.ib_cxt.subnet['cidr']
         subnet_name = self.ib_cxt.subnet['name']
         dns_view = self.ib_cxt.mapping.dns_view
@@ -54,69 +69,59 @@ class DnsController(object):
 
         grid_primaries, grid_secondaries = self.ib_cxt.get_dns_members()
 
-        need_forward = (constants.ZONE_CREATION_STRATEGY_FORWARD in
-                        self.grid_config.zone_creation_strategy)
-        need_reverse = (constants.ZONE_CREATION_STRATEGY_REVERSE in
-                        self.grid_config.zone_creation_strategy)
         if ns_group:
             # create Forward zone
-            if need_forward:
+            if self.need_forward:
                 ib_zone = self.ib_cxt.ibom.create_dns_zone(
                     dns_view,
                     self.dns_zone,
                     ns_group=ns_group,
-                    extattrs=ea_zone)
+                    extattrs=self.forward_zone_eas)
                 rollback_list.append(ib_zone)
             # create Reverse zone
-            if need_reverse:
+            if self.need_reverse:
                 ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
                     dns_view,
                     cidr,
                     prefix=prefix,
                     zone_format=zone_format,
-                    extattrs=ea_zone)
+                    extattrs=self.reverse_zone_eas)
                 rollback_list.append(ib_zone_cidr)
         else:
             # create Forward zone
-            if need_forward:
+            if self.need_forward:
                 ib_zone = self.ib_cxt.ibom.create_dns_zone(
                     dns_view,
                     self.dns_zone,
                     grid_primary=grid_primaries,
                     grid_secondaries=grid_secondaries,
-                    extattrs=ea_zone)
+                    extattrs=self.forward_zone_eas)
                 rollback_list.append(ib_zone)
             # create Reverse zone
-            if need_reverse:
+            if self.need_reverse:
                 ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
                     dns_view,
                     cidr,
                     grid_primary=grid_primaries,
                     prefix=prefix,
                     zone_format=zone_format,
-                    extattrs=ea_zone)
+                    extattrs=self.reverse_zone_eas)
                 rollback_list.append(ib_zone_cidr)
 
     def update_dns_zones(self):
         if self.grid_config.dns_support is False:
             return
 
-        ea_zone = eam.get_ea_for_zone(self.ib_cxt.user_id,
-                                      self.ib_cxt.tenant_id,
-                                      self.ib_cxt.tenant_name,
-                                      self.ib_cxt.network)
         dns_view = self.ib_cxt.mapping.dns_view
 
         # update Forward zone
-        if (constants.ZONE_CREATION_STRATEGY_FORWARD in
-                self.grid_config.zone_creation_strategy):
+        if self.need_forward:
             self.ib_cxt.ibom.update_dns_zone_attrs(
-                dns_view, self.dns_zone, ea_zone)
+                dns_view, self.dns_zone, self.forward_zone_eas)
         # update Reverse zone
-        if (constants.ZONE_CREATION_STRATEGY_REVERSE in
-                self.grid_config.zone_creation_strategy):
+        if self.need_reverse:
             self.ib_cxt.ibom.update_dns_zone_attrs(
-                dns_view, self.ib_cxt.subnet['cidr'], ea_zone)
+                dns_view, self.ib_cxt.subnet['cidr'], self.reverse_zone_eas)
 
     def delete_dns_zones(self, dns_zone=None, ib_network=None):
         if self.grid_config.dns_support is False:
