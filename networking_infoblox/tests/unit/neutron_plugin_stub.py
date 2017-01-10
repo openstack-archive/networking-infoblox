@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from neutron_lib import constants as n_const
 from oslo_config import cfg
 from oslo_utils import uuidutils
 
-from neutron.api.v2 import attributes
 from neutron.db import address_scope_db
 
 
@@ -43,18 +43,18 @@ class NeutronPluginStub(object):
 
     def create_subnet(self, tenant_id, name, network_id, cidr, ip_version=4,
                       enable_dhcp=True, subnetpool_id=None,
-                      v6_address_mode=attributes.ATTR_NOT_SPECIFIED,
-                      allocation_pools=attributes.ATTR_NOT_SPECIFIED):
+                      v6_address_mode=n_const.ATTR_NOT_SPECIFIED,
+                      allocation_pools=n_const.ATTR_NOT_SPECIFIED):
         subnet = {'subnet': {'name': name,
                              'cidr': cidr,
                              'ip_version': ip_version,
-                             'gateway_ip': attributes.ATTR_NOT_SPECIFIED,
+                             'gateway_ip': n_const.ATTR_NOT_SPECIFIED,
                              'allocation_pools': allocation_pools,
                              'enable_dhcp': enable_dhcp,
-                             'dns_nameservers': attributes.ATTR_NOT_SPECIFIED,
-                             'host_routes': attributes.ATTR_NOT_SPECIFIED,
+                             'dns_nameservers': n_const.ATTR_NOT_SPECIFIED,
+                             'host_routes': n_const.ATTR_NOT_SPECIFIED,
                              'ipv6_address_mode': v6_address_mode,
-                             'ipv6_ra_mode': attributes.ATTR_NOT_SPECIFIED,
+                             'ipv6_ra_mode': n_const.ATTR_NOT_SPECIFIED,
                              'network_id': network_id,
                              'tenant_id': tenant_id,
                              'subnetpool_id': subnetpool_id}}
@@ -62,9 +62,9 @@ class NeutronPluginStub(object):
 
     def create_subnet_pool(self, tenant_id, name, prefix_list, min_prefixlen,
                            ip_version, shared=False,
-                           max_prefixlen=attributes.ATTR_NOT_SPECIFIED,
-                           default_prefixlen=attributes.ATTR_NOT_SPECIFIED,
-                           default_quota=attributes.ATTR_NOT_SPECIFIED):
+                           max_prefixlen=n_const.ATTR_NOT_SPECIFIED,
+                           default_prefixlen=n_const.ATTR_NOT_SPECIFIED,
+                           default_quota=n_const.ATTR_NOT_SPECIFIED):
         subnetpool = {'subnetpool': {'name': name,
                                      'tenant_id': tenant_id,
                                      'prefixes': prefix_list,

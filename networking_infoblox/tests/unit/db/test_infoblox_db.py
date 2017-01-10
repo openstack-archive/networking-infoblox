@@ -901,3 +901,27 @@ class InfobloxDbTestCase(testlib_api.SqlTestCase):
                                            'instance-id2', 'instance-name2')
         instance = infoblox_db.get_instance(self.ctx.session, 'instance-id2')
         self.assertEqual('instance-name2', instance.instance_name)
+
+    def _create_networks(self, networks):
+        for id, name in networks.items():
+            infoblox_db.add_network(self.ctx.session, id, name)
+
+    def test_add_and_get_network(self):
+        networks = {'network-id': 'network-name'}
+        self._create_networks(networks)
+        network = infoblox_db.get_network(self.ctx.session, 'network-id')
+        self.assertEqual('network-name', network.network_name)
+
+    def test_add_or_update_network(self):
+        networks = {'network-id1': 'network-name1'}
+        self._create_networks(networks)
+        new_network_name = 'network-name-updated'
+        infoblox_db.add_or_update_network(self.ctx.session,
+                                          'network-id1', new_network_name)
+        network = infoblox_db.get_network(self.ctx.session, 'network-id1')
+        self.assertEqual(new_network_name, network.network_name)
+
+        infoblox_db.add_or_update_network(self.ctx.session,
+                                          'network-id2', 'network-name2')
+        network = infoblox_db.get_network(self.ctx.session, 'network-id2')
+        self.assertEqual('network-name2', network.network_name)

@@ -15,8 +15,7 @@
 
 import mock
 import netaddr
-
-from neutron.common import constants as n_const
+from neutron_lib import constants as n_const
 
 from networking_infoblox.ipam import requests
 from networking_infoblox.tests import base
