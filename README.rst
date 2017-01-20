@@ -10,6 +10,24 @@ Contains Neutron drivers for integration with Infoblox grids for IPAM and DNS.
 * Installation: https://github.com/openstack/networking-infoblox/blob/master/doc/source/installation.rst
 * Configuration Guide: https://github.com/openstack/networking-infoblox/blob/master/doc/source/configuration_guide.rst
 
+Changes to Versioning Scheme
+----------------------------
+Starting with this release, Infoblox uses new versioning scheme for the IPAM Driver,
+as follows:
+
+* To better align the IPAM Driver version with the Neutron version, the current release
+is 7.0.0 (which supports Neutron Release 7, Liberty). Note that release 7.0.0 is the
+subsequent release of 2.0.2.
+* The major number in the IPAM Driver version matches the Neutron major number.
+For example, in release 7.0.0, the major number '7' matches the Neutron major number '7.'.
+* The minor number (the second digit in the release version) represents the functionality
+level of the IPAM Driver. In other words, releases that have the same minor number will
+have the same functionality.
+* The patch number (the last digit in the release version) is used for releases that
+contain resolved issues or bug fixes for a particular release version.
+* Release 8.0.0 of the Infoblox IPAM Driver for OpenStack Neutron supports the Neutron
+Mikata version while release 9.0.0 supports the Newton version.
+
 Features
 --------
 
