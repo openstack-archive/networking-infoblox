@@ -19,7 +19,7 @@ eventlet.monkey_patch()
 import mock
 import time
 
-from neutron import context
+from neutron_lib import context
 
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import notification
@@ -82,8 +82,8 @@ class NotificationTestCase(base.RpcTestCase):
     @mock.patch.object(grid, 'GridManager', mock.Mock())
     def test_notification_service(self):
         publisher_id = 'test_publisher'
-        topic = 'notifications'
-        notifier = self.get_notifier(topic=topic, publisher_id=publisher_id)
+        topics = ['notifications']
+        notifier = self.get_notifier(topics=topics, publisher_id=publisher_id)
 
         # prepare service
         service = notification.NotificationService(report_interval=30)

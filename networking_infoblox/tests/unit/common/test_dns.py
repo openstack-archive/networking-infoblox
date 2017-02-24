@@ -14,10 +14,10 @@
 #    under the License.
 
 import mock
-from neutron_lib import constants as n_const
 
-from neutron import context
 from neutron.tests.unit import testlib_api
+from neutron_lib import constants as n_const
+from neutron_lib import context
 
 from infoblox_client import objects as ib_objects
 

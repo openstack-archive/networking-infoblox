@@ -16,8 +16,8 @@
 import mock
 from oslo_serialization import jsonutils
 
-from neutron import context
 from neutron.tests.unit import testlib_api
+from neutron_lib import context
 
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import member
