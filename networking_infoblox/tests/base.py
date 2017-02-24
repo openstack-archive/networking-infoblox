@@ -41,8 +41,8 @@ class RpcTestCase(TestCase):
         super(RpcTestCase, self).setUp()
         self.transport = oslo_messaging.get_transport(cfg.CONF, "fake://")
 
-    def get_notifier(self, topic='testtopic', publisher_id='testpublisher'):
-        return oslo_messaging.Notifier(self.transport, topic=topic,
+    def get_notifier(self, topics=['testtopic'], publisher_id='testpublisher'):
+        return oslo_messaging.Notifier(self.transport, topics=topics,
                                        driver='messaging',
                                        publisher_id=publisher_id)
 
