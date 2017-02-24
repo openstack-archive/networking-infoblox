@@ -17,9 +17,9 @@ from datetime import datetime
 from oslo_db import exception as db_exc
 from oslo_serialization import jsonutils
 
-from neutron import context
 from neutron.db import models_v2
 from neutron.tests.unit import testlib_api
+from neutron_lib import context
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import utils

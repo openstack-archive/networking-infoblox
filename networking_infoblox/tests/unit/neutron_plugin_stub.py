@@ -17,7 +17,7 @@ from neutron_lib import constants as n_const
 from oslo_config import cfg
 from oslo_utils import uuidutils
 
-from neutron.db import address_scope_db
+from neutron.db.models import address_scope as address_scope_db
 
 
 DB_PLUGIN_KLASS = 'neutron.db.db_base_plugin_v2.NeutronDbPluginV2'

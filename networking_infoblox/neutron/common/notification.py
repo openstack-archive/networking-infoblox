@@ -20,7 +20,7 @@ from oslo_service import service
 
 from neutron.agent import rpc as agent_rpc
 from neutron.common import topics
-from neutron import context
+from neutron_lib import context
 
 from networking_infoblox._i18n import _LE
 from networking_infoblox._i18n import _LI
