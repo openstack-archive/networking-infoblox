@@ -15,8 +15,8 @@
 
 import mock
 
-from neutron import context
 from neutron.tests.unit import testlib_api
+from neutron_lib import context
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc

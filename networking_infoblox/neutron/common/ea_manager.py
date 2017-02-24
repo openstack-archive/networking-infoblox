@@ -15,10 +15,10 @@
 
 from infoblox_client import objects as ib_objects
 from neutron_lib import constants as n_const
+from neutron_lib.api.definitions import provider_net as providernet
 
 from neutron.api.v2 import attributes
 from neutron.extensions import external_net
-from neutron.extensions import providernet
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import utils

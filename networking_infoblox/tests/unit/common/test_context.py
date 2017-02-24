@@ -17,10 +17,10 @@ import eventlet
 eventlet.monkey_patch()
 
 import mock
-from neutron_lib.plugins import directory
 
-from neutron import context
 from neutron.tests.unit import testlib_api
+from neutron_lib import context
+from neutron_lib.plugins import directory
 
 from infoblox_client import objects as ib_objects
 
