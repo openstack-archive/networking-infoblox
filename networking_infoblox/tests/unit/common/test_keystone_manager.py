@@ -20,6 +20,16 @@ from networking_infoblox.neutron.common import keystone_manager
 from networking_infoblox.tests import base
 
 
+class DummyKeystoneAuthtoken(object):
+    def __init__(self):
+        self.auth_uri = ''
+        self.auth_version = 'v2.0'
+        self.admin_user = 'cloud_admin_user'
+        self.admin_password = 'cloud_admin_password'
+        self.admin_tenant_name = 'cloud_admin_tenant'
+        self.project_domain_id = 'cloud_admin_domain'
+
+
 class TestKeystoneManager(base.TestCase):
 
     def setUp(self):
@@ -65,8 +75,10 @@ class TestKeystoneManager(base.TestCase):
         auth_uri = 'test_auth_uri'
         token_endpoint = 'token_endpoint'
         InitMock.return_value = session
-        ConfMock.__getitem__ = mock.Mock()
-        ConfMock.__getitem__.return_value = {'auth_uri': auth_uri}
+        ConfMock.keystone_authtoken = DummyKeystoneAuthtoken()
+        ConfMock.keystone_authtoken.auth_uri = auth_uri
+        ConfMock.keystone_authtoken.auth_version = (
+            keystone_authtoken['version'])
         TokenObjMock = mock.Mock()
         TokenObjMock.get_auth_ref.return_value = keystone_authtoken
         TokenMock.return_value = TokenObjMock
@@ -86,12 +98,26 @@ class TestKeystoneManager(base.TestCase):
     @mock.patch('keystoneclient.v2_0.client.Client')
     def test_get_keystone_client_v2_0(self, ClientMock):
         ClientMock.return_value = 'keystone_client_v2_0'
-        self._test_get_keystone_client(ClientMock, {'version': 'v2_0'})
+        self._test_get_keystone_client(ClientMock, {'version': 'v2.0'})
 
+    @mock.patch('networking_infoblox.neutron.common.keystone_manager.CONF')
     @mock.patch('keystoneclient.v3.client.Client')
-    def test_get_keystone_client_v3(self, ClientMock):
+    def test_get_keystone_client_v3(self, ClientMock, ConfMock):
         ClientMock.return_value = 'keystone_client_v3'
-        self._test_get_keystone_client(ClientMock, {'version': 'v3'})
+        auth_uri = 'test_auth_uri'
+        auth_token = 'test_auth_token'
+        ConfMock.keystone_authtoken = DummyKeystoneAuthtoken()
+        ConfMock.keystone_authtoken.auth_uri = auth_uri
+        ConfMock.keystone_authtoken.auth_version = 'v3'
+        # call tested function
+        k_client = keystone_manager.get_keystone_client(auth_token)
+        # check calls
+        ClientMock.assert_called_once_with(
+            auth_url=ConfMock.keystone_authtoken.auth_uri + '/v3',
+            username=ConfMock.keystone_authtoken.admin_user,
+            password=ConfMock.keystone_authtoken.admin_password,
+            domain_name=ConfMock.keystone_authtoken.project_domain_id)
+        assert k_client == ClientMock.return_value
 
     @mock.patch('networking_infoblox.neutron.common.keystone_manager.'
                 'get_keystone_client')
@@ -111,7 +137,7 @@ class TestKeystoneManager(base.TestCase):
             client_mock.tenants.list.assert_called_once_with()
 
     def test_get_all_tenants_v2_0(self):
-        self._test_get_all_tenants('v2_0')
+        self._test_get_all_tenants('v2.0')
 
     def test_get_all_tenants_v3(self):
         self._test_get_all_tenants('v3')
