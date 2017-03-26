@@ -14,7 +14,7 @@
 # pip install {opts} {packages}
 
 ZUUL_CLONER=/usr/zuul-env/bin/zuul-cloner
-BRANCH_NAME=stable/liberty
+BRANCH_NAME=liberty-eol
 neutron_installed=$(echo "import neutron" | python 2>/dev/null ; echo $?)
 
 set -ex
