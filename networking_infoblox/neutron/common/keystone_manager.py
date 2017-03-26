@@ -19,15 +19,44 @@ from keystoneclient import session
 from keystoneclient.v2_0 import client as client_2_0
 from keystoneclient.v3 import client as client_3
 from neutron.common import config as cfg
+
+from oslo_config import cfg as os_cfg
 from oslo_log import log
 
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
 
 CONF = cfg.cfg.CONF
-LOG = log.getLogger(__name__)
 
+
+LOG = log.getLogger(__name__)
 _SESSION = None
+
+
+def register_keystone_opts(conf):
+    ka_opts = [
+        os_cfg.StrOpt('auth_uri',
+                      default='',
+                      help=_('Keystone Authtoken URI')),
+        os_cfg.StrOpt('admin_user',
+                      help='Admin user name'),
+        os_cfg.StrOpt('admin_password',
+                      help='Admin password'),
+        os_cfg.StrOpt('admin_tenant_name',
+                      help='Admin tenant name'),
+        os_cfg.StrOpt('project_domain_id',
+                      help='Admin Project domain id'),
+        os_cfg.StrOpt('auth_version',
+                      default='v2.0', help='Auth protocol used.'),
+    ]
+    conf.register_group(os_cfg.OptGroup(
+        name='keystone_authtoken',
+        title='Keystone Authtoken'))
+    conf.register_opts(ka_opts, group='keystone_authtoken')
+
+if 'keystone_authtoken' not in CONF:
+    LOG.warn("Keystone Authtoken not registered in opts,registering...")
+    register_keystone_opts(CONF)
 
 
 def init_keystone_session():
@@ -37,9 +66,37 @@ def init_keystone_session():
     return _SESSION
 
 
+def get_identity_service(keystone_conf):
+    allowed_keystone_version = ['v2.0', 'v3']
+    uri_version = keystone_conf.auth_uri.split('/')[-1]
+    if uri_version in allowed_keystone_version:
+        return keystone_conf.auth_uri, uri_version
+    return (keystone_conf.auth_uri + (
+        '/%s' % (keystone_conf.auth_version)),
+        keystone_conf.auth_version)
+
+
 def get_keystone_client(auth_token):
+    key_client = None
+    keystone_conf = CONF.keystone_authtoken
+    identity_service, version = get_identity_service(keystone_conf)
+    if version == 'v2.0':
+        key_client = get_keystone_client_v2(auth_token)
+
+    elif version == 'v3':
+        key_client = (
+            client_3.Client(
+                username=keystone_conf.admin_user,
+                password=keystone_conf.admin_password,
+                domain_name=keystone_conf.project_domain_id,
+                auth_url=identity_service))
+
+    return key_client
+
+
+def get_keystone_client_v2(auth_token):
     sess = init_keystone_session()
-    url = CONF['keystone_authtoken']['auth_uri']
+    url = CONF.keystone_authtoken.auth_uri
     # Create token to get available service version
     generic_token = token.Token(url, token=auth_token)
     generic_token.reauthenticate = False
@@ -49,11 +106,7 @@ def get_keystone_client(auth_token):
         url = url + '/' + version
     # create endpoint token using right url and provided auth token
     auth = token_endpoint.Token(url, auth_token)
-    # create keystone client
-    if version == 'v3':
-        k_client = client_3.Client(session=sess, auth=auth)
-    else:
-        k_client = client_2_0.Client(session=sess, auth=auth)
+    k_client = client_2_0.Client(session=sess, auth=auth)
     return k_client
 
 
