@@ -106,7 +106,8 @@ def main():
     credentials['session'] = session
     for key in ('user_domain_id', 'project_domain_id'):
         credentials.pop(key, None)
-
+    if version == '3':
+        credentials['tenant_name'] = credentials.pop('project_name')
     sync_neutron_to_infoblox(context, credentials, grid_manager)
 
 
