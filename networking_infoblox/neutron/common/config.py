@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from keystoneauth1 import loading
 from oslo_config import cfg
-
 
 ipam_opts = [
     cfg.IntOpt('cloud_data_center_id',
@@ -23,8 +23,26 @@ ipam_opts = [
                       "more grids to serve networks in Infoblox backend.")),
     cfg.IntOpt('ipam_agent_workers',
                default=1,
-               help=_("Number of Infoblox IPAM agent workers to run"))
+               help=_("Number of Infoblox IPAM agent workers to run")),
+    cfg.StrOpt('keystone_auth_uri',
+               help=_('Keystone Authtoken URI')),
+    cfg.StrOpt('keystone_admin_username',
+               help='Admin user name'),
+    cfg.StrOpt('keystone_admin_password',
+               help='Admin password'),
+    cfg.StrOpt('keystone_admin_project_name',
+               help='Admin project name'),
+    cfg.StrOpt('keystone_admin_tenant_name',
+               help='Admin tenant name'),
+    cfg.StrOpt('keystone_admin_user_domain_id',
+               help='Admin User domain id'),
+    cfg.StrOpt('keystone_admin_project_domain_id',
+               help='Admin Project domain id'),
+    cfg.StrOpt('keystone_auth_version',
+               default='v2.0', help='Auth Version.'),
+
 ]
+
 
 data_center_opts = [
     cfg.StrOpt('data_center_name',
@@ -77,6 +95,8 @@ def register_infoblox_ipam_opts(conf):
         name='infoblox',
         title="Configuration for Infoblox IPAM Driver"))
     conf.register_opts(ipam_opts, group='infoblox')
+    loading.register_auth_conf_options(CONF, 'infoblox')
+    loading.register_session_conf_options(CONF, 'infoblox')
 
 
 def register_infoblox_grid_opts(conf, data_center_id):

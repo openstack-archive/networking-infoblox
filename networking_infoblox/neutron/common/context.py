@@ -115,14 +115,13 @@ class InfobloxContext(object):
 
         if self.grid_config.tenant_name_persistence:
             # Try resync with keystone if still no tenant name is found
-            if km.sync_tenants_from_keystone(self.context,
-                                             self.context.auth_token):
+            if km.sync_tenants_from_keystone(self.context):
                 tenant = dbi.get_tenant(self.context.session,
                                         tenant_id_in_query)
                 if tenant:
                     return tenant.tenant_name
         else:
-            tenants = km.get_all_tenants(self.context.auth_token)
+            tenants = km.get_all_tenants()
             for tenant in tenants:
                 if tenant.id == tenant_id_in_query:
                     return tenant.name

@@ -214,7 +214,9 @@ class TestIpamEventHandler(base.TestCase):
                         'name': 'network_name',
                         'tenant_id': db_tenant.id}}
         self._prepare_context()
-        self.ipam_handler.create_network_sync(payload)
+        mock_km_str = 'networking_infoblox.neutron.common.keystone_manager.'
+        with mock.patch(mock_km_str + 'update_tenant_mapping'):
+            self.ipam_handler.create_network_sync(payload)
 
     @mock.patch.object(dbi, 'add_or_update_instance', mock.Mock())
     def test_create_instance_sync_instance_name_create(self):

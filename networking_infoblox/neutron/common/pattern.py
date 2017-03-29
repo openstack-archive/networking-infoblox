@@ -29,7 +29,7 @@ class PatternBuilder(object):
 
     def get_hostname(self, ip_address, instance_name=None, port_id=None,
                      device_owner=None, device_id=None, port_name=None,
-                     external=False):
+                     external=False, port_tenant_id=None, tenant_name=None):
         """Build fqdn based on patterns for network type and device owner.
 
         Two types of host and domain patterns exist:
@@ -59,7 +59,9 @@ class PatternBuilder(object):
         pattern = [host_pattern, domain_pattern]
         pattern = '.'.join(el.strip('.') for el in pattern if el)
         return self._build(pattern, ip_address, instance_name, port_id,
-                           device_id, port_name=port_name)
+                           device_id, port_name=port_name,
+                           port_tenant_id=port_tenant_id,
+                           tenant_name=tenant_name)
 
     def get_zone_name_pattern(self, subnet_name=None, is_external=False):
         pattern = self.grid_config.default_domain_name_pattern
@@ -72,7 +74,8 @@ class PatternBuilder(object):
         return self._build(pattern, subnet_name=subnet_name)
 
     def _build(self, pattern, ip_address=None, instance_name=None,
-               port_id=None, device_id=None, subnet_name=None, port_name=None):
+               port_id=None, device_id=None, subnet_name=None,
+               port_name=None, port_tenant_id=None, tenant_name=None):
         self._validate_pattern(pattern)
 
         subnet = self.ib_cxt.subnet
@@ -86,8 +89,8 @@ class PatternBuilder(object):
         pattern_dict = {
             'network_id': subnet['network_id'],
             'network_name': network_name,
-            'tenant_id': self.ib_cxt.tenant_id,
-            'tenant_name': self.ib_cxt.tenant_name,
+            'tenant_id': port_tenant_id or self.ib_cxt.tenant_id,
+            'tenant_name': tenant_name or self.ib_cxt.tenant_name,
             'subnet_name': subnet_name,
             'subnet_id': subnet['id']
         }
