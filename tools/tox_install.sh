@@ -14,7 +14,6 @@
 # pip install {opts} {packages}
 
 ZUUL_CLONER=/usr/zuul-env/bin/zuul-cloner
-BRANCH_NAME=stable/liberty
 TAG_NAME=liberty-eol
 
 neutron_installed=$(echo "import neutron" | python 2>/dev/null ; echo $?)
@@ -31,10 +30,11 @@ elif [ -x "$ZUUL_CLONER" ]; then
     cd /tmp
     $ZUUL_CLONER --cache-dir \
         /opt/git \
-        --branch $BRANCH_NAME \
+        --branch master \
         git://git.openstack.org \
         openstack/neutron
     cd openstack/neutron
+    git checkout $TAG_NAME
     pip install -e .
     cd "$cwd"
 else
