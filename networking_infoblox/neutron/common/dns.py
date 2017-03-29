@@ -221,8 +221,10 @@ class DnsController(object):
                     else self.ib_cxt.ip_alloc)
         try:
             self._bind_names(ip_alloc.bind_names, ip_address,
-                             instance_name, port_id, port_tenant_id, device_id,
-                             device_owner, ea_ip_address, port_name)
+                             instance_name, port_id,
+                             port_tenant_id, device_id,
+                             device_owner, ea_ip_address,
+                             port_name, tenant_name)
         except ibc_exc.InfobloxCannotCreateObject:
             with excutils.save_and_reraise_exception():
                 self.unbind_names(ip_address, instance_name, port_id,
@@ -245,17 +247,20 @@ class DnsController(object):
     def _bind_names(self, binding_func, ip_address, instance_name=None,
                     port_id=None, port_tenant_id=None, device_id=None,
                     device_owner=None, ea_ip_address=None, port_name=None,
-                    unbind=False):
+                    tenant_name=None, unbind=False):
         network_view = self.ib_cxt.mapping.network_view
         dns_view = self.ib_cxt.mapping.dns_view
         is_external = self.ib_cxt.network_is_external
 
         fqdn = None
         try:
-            fqdn = self.pattern_builder.get_hostname(ip_address, instance_name,
-                                                     port_id, device_owner,
-                                                     device_id, port_name,
-                                                     external=is_external)
+            fqdn = self.pattern_builder.get_hostname(
+                ip_address, instance_name,
+                port_id, device_owner,
+                device_id, port_name,
+                external=is_external,
+                port_tenant_id=port_tenant_id,
+                tenant_name=tenant_name)
         except ibc_exc.InfobloxConfigException:
             # if unbind - just use fqdn=None to search by ip
             if not unbind:
