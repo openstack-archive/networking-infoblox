@@ -69,8 +69,8 @@ class NotificationEndpoint(object):
 
     def info(self, ctxt, publisher_id, event_type, payload, metadata):
         if event_type in self.event_subscription_list:
-            self.handler.process(ctxt, publisher_id, event_type, payload,
-                                 metadata)
+            return self.handler.process(ctxt, publisher_id, event_type,
+                                        payload, metadata)
 
 
 class NotificationService(service.Service):
@@ -83,15 +83,16 @@ class NotificationService(service.Service):
         super(NotificationService, self).__init__()
         self.report_thread = None
         self.event_listener = None
+        self.executor = "blocking"
         if report_interval:
             self.report_interval = report_interval
         else:
             self.report_interval = config.CONF.AGENT.report_interval
         self.context = context.get_admin_context()
         # Make sure config is in sync before using grid_sync_maximum_wait_time
-        self.grid_manager = grid.GridManager(self.context)
         self.grid_syncer = grid.GridSyncer()
         self.grid_syncer.sync(True)
+        self.grid_manager = self.grid_syncer._grid_manager
         self._init_agent_report_thread()
         self._init_notification_listener()
         self._init_periodic_resync()
@@ -168,7 +169,8 @@ class NotificationService(service.Service):
             self.transport,
             self.event_targets,
             self.event_endpoints,
-            pool=const.AGENT_NOTIFICATION_POOL
+            pool=const.AGENT_NOTIFICATION_POOL,
+            executor=self.executor
         )
         self.event_listener.start()
 
@@ -182,8 +184,9 @@ class NotificationService(service.Service):
 
 
 def get_notification_listener(transport, targets, endpoints,
-                              allow_requeue=False, pool=None):
+                              allow_requeue=False, pool=None,
+                              executor='blocking'):
     """Return a configured oslo_messaging notification listener."""
     return oslo_messaging.get_notification_listener(
-        transport, targets, endpoints, executor='eventlet',
+        transport, targets, endpoints, executor=executor,
         allow_requeue=allow_requeue, pool=pool)
