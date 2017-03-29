@@ -132,8 +132,7 @@ class IpamEventHandler(object):
             keystone_manager.update_tenant_mapping(self.context,
                                                    networks,
                                                    self.ctxt['tenant_id'],
-                                                   self.ctxt['tenant_name'],
-                                                   self.ctxt['auth_token'])
+                                                   self.ctxt['tenant_name'])
 
     def update_network_sync(self, payload):
         """Notifies that the network property has been updated."""
@@ -438,12 +437,12 @@ class IpamEventHandler(object):
         """Notifies that an instance has been created."""
         instance_id = payload.get('instance_id')
         instance_name = payload.get('hostname')
-        dbi.add_or_update_instance(self.context.session,
-                                   instance_id, instance_name)
         if self.traceable:
             LOG.info("Created instance: %s, host: %s",
                      instance_id, instance_name)
 
+        dbi.add_or_update_instance(self.context.session,
+                                   instance_id, instance_name)
         ips = payload.get('fixed_ips')
         if not ips:
             return

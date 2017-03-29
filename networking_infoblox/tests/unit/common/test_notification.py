@@ -90,6 +90,7 @@ class NotificationTestCase(base.RpcTestCase):
         endpoint = self.NotificationEndpointTester()
         service.event_endpoints = [endpoint]
         service.transport = self.transport
+        service.executor = "eventlet"
         service.start()
 
         # send notification messages
