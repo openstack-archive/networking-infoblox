@@ -13,106 +13,61 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from keystoneclient.auth.identity.generic import token
-from keystoneclient.auth import token_endpoint
-from keystoneclient import session
+from keystoneauth1.identity import generic
+from keystoneauth1 import loading
+
 from keystoneclient.v2_0 import client as client_2_0
 from keystoneclient.v3 import client as client_3
-from neutron.common import config as cfg
 
-from oslo_config import cfg as os_cfg
+# from neutron.common import config as cfg
+from oslo_config import cfg
 from oslo_log import log
 
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
 
-CONF = cfg.cfg.CONF
+CONF = cfg.CONF
 
 
 LOG = log.getLogger(__name__)
-_SESSION = None
 
 
-def register_keystone_opts(conf):
-    ka_opts = [
-        os_cfg.StrOpt('auth_uri',
-                      default='',
-                      help=_('Keystone Authtoken URI')),
-        os_cfg.StrOpt('admin_user',
-                      help='Admin user name'),
-        os_cfg.StrOpt('admin_password',
-                      help='Admin password'),
-        os_cfg.StrOpt('admin_tenant_name',
-                      help='Admin tenant name'),
-        os_cfg.StrOpt('project_domain_id',
-                      help='Admin Project domain id'),
-        os_cfg.StrOpt('auth_version',
-                      default='v2.0', help='Auth protocol used.'),
-    ]
-    conf.register_group(os_cfg.OptGroup(
-        name='keystone_authtoken',
-        title='Keystone Authtoken'))
-    conf.register_opts(ka_opts, group='keystone_authtoken')
-
-if 'keystone_authtoken' not in CONF:
-    LOG.warn("Keystone Authtoken not registered in opts,registering...")
-    register_keystone_opts(CONF)
-
-
-def init_keystone_session():
-    global _SESSION
-    if not _SESSION:
-        _SESSION = session.Session()
-    return _SESSION
-
-
-def get_identity_service(keystone_conf):
+def get_identity_service(ib_opts):
     allowed_keystone_version = ['v2.0', 'v3']
-    uri_version = keystone_conf.auth_uri.split('/')[-1]
+    uri_version = ib_opts.keystone_auth_uri.split('/')[-1]
     if uri_version in allowed_keystone_version:
-        return keystone_conf.auth_uri, uri_version
-    return (keystone_conf.auth_uri + (
-        '/%s' % (keystone_conf.auth_version)),
-        keystone_conf.auth_version)
+        return ib_opts.keystone_auth_uri, uri_version
+    return (ib_opts.keystone_auth_uri + (
+        '/%s' % (ib_opts.keystone_auth_version)),
+        (ib_opts.keystone_auth_version))
 
 
-def get_keystone_client(auth_token):
+def get_keystone_client():
     key_client = None
-    keystone_conf = CONF.keystone_authtoken
-    identity_service, version = get_identity_service(keystone_conf)
+    ib_opts = CONF.infoblox
+    identity_service, version = get_identity_service(ib_opts)
+    auth = generic.Password(
+        auth_url=identity_service,
+        username=ib_opts.keystone_admin_username,
+        password=ib_opts.keystone_admin_password,
+        project_name=ib_opts.keystone_admin_project_name,
+        user_domain_id=ib_opts.keystone_admin_user_domain_id,
+        project_domain_id=ib_opts.keystone_admin_project_domain_id,
+        tenant_name=ib_opts.keystone_admin_tenant_name)
+
+    session = loading.load_session_from_conf_options(CONF, 'infoblox',
+                                                     auth=auth)
+
     if version == 'v2.0':
-        key_client = get_keystone_client_v2(auth_token)
-
+        key_client = client_2_0.Client(session=session)
     elif version == 'v3':
-        key_client = (
-            client_3.Client(
-                username=keystone_conf.admin_user,
-                password=keystone_conf.admin_password,
-                domain_name=keystone_conf.project_domain_id,
-                auth_url=identity_service))
-
+        key_client = client_3.Client(session=session)
     return key_client
 
 
-def get_keystone_client_v2(auth_token):
-    sess = init_keystone_session()
-    url = CONF.keystone_authtoken.auth_uri
-    # Create token to get available service version
-    generic_token = token.Token(url, token=auth_token)
-    generic_token.reauthenticate = False
-    version = generic_token.get_auth_ref(sess)['version']
-    # update auth url aith version if needed
-    if version not in url.split('/'):
-        url = url + '/' + version
-    # create endpoint token using right url and provided auth token
-    auth = token_endpoint.Token(url, auth_token)
-    k_client = client_2_0.Client(session=sess, auth=auth)
-    return k_client
-
-
-def get_all_tenants(auth_token):
+def get_all_tenants():
     try:
-        keystone = get_keystone_client(auth_token)
+        keystone = get_keystone_client()
         if keystone.version == 'v3':
             return keystone.projects.list()
         else:
@@ -123,7 +78,7 @@ def get_all_tenants(auth_token):
 
 
 def update_tenant_mapping(context, networks, tenant_id,
-                          tenant_name, auth_token):
+                          tenant_name):
     """Updates tenant_id to tenant_name mapping information.
 
     Tries to get tenant name to tenant id mapping from context info.
@@ -134,10 +89,6 @@ def update_tenant_mapping(context, networks, tenant_id,
     """
 
     dbi.add_or_update_tenant(context.session, tenant_id, tenant_name)
-
-    # If there are no auth_token all later checks are useless
-    if not auth_token:
-        return
 
     # Get unique tenants ids and check if there are unknown one
     tenant_ids = {net['tenant_id']: True for net in networks}
@@ -151,10 +102,8 @@ def update_tenant_mapping(context, networks, tenant_id,
                                      tenant_ids=unknown_ids)
         for tenant in db_tenants:
             tenant_ids[tenant.tenant_id] = False
-        # If there are still unknown tenants in request try last resort
-        # make an api call to keystone with auth_token
         if _get_unknown_ids_from_dict(tenant_ids):
-            sync_tenants_from_keystone(context, auth_token)
+            sync_tenants_from_keystone(context)
 
 
 def _get_unknown_ids_from_dict(tenant_ids):
@@ -162,11 +111,8 @@ def _get_unknown_ids_from_dict(tenant_ids):
             if unknown is True]
 
 
-def sync_tenants_from_keystone(context, auth_token):
-    if not auth_token:
-        return
-
-    tenants = get_all_tenants(auth_token)
+def sync_tenants_from_keystone(context):
+    tenants = get_all_tenants()
     for tenant in tenants:
         LOG.info("Tenants obtained from keystone: %s", tenant)
         # tenants from keystone have 'id' and 'name' comparing to

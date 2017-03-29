@@ -14,12 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ast
 import os
 import sys
 
-from keystoneauth1.identity import v2
-from keystoneauth1.identity import v3
-from keystoneauth1 import session as ks_session
+from keystoneauth1.identity import generic
+from keystoneauth1.loading import session as load_session
+
 from keystoneclient.v2_0 import client as client_2_0
 from keystoneclient.v3 import client as client_3
 
@@ -73,7 +74,6 @@ def main():
     config.register_infoblox_ipam_opts(cfg.CONF)
     grid_id = cfg.CONF.infoblox.cloud_data_center_id
     config.register_infoblox_grid_opts(cfg.CONF, grid_id)
-    register_keystone_opts(cfg.CONF)
 
     try:
         credentials, version = get_credentials()
@@ -83,16 +83,19 @@ def main():
               " env[OS_PASSWORD], env[OS_AUTH_URL], env[OS_TENANT_NAME], and "
               "env[OS_REGION_NAME]\n")
         return
-
     password_creds = credentials.copy()
     password_creds.pop('region_name', None)
+
+    # keystoneauth1 provides generic api to create auth object based on the
+    # arguments passed.
+    auth = generic.Password(**password_creds)
+
+    # Load keystone session using the ssl options which are in environment
+    session = load_session.Session().load_from_options(**get_session_options())
+    session.auth = auth
     if version == '3':
-        auth = v3.Password(**password_creds)
-        session = ks_session.Session(auth=auth)
         client = client_3.Client(session=session)
     else:
-        auth = v2.Password(**password_creds)
-        session = ks_session.Session(auth=auth)
         client = client_2_0.Client(session=session)
 
     context = neutron_context.get_admin_context()
@@ -111,22 +114,10 @@ def main():
     sync_neutron_to_infoblox(context, credentials, grid_manager)
 
 
-def register_keystone_opts(conf):
-    ka_opts = [
-        cfg.StrOpt('auth_uri',
-                   default='',
-                   help=_('Keystone Authtoken URI')),
-    ]
-
-    conf.register_group(cfg.OptGroup(
-        name='keystone_authtoken',
-        title='Keystone Authtoken'))
-    conf.register_opts(ka_opts, group='keystone_authtoken')
-
-
 def get_credentials():
     d = dict()
     version = '2'
+
     if 'OS_IDENTITY_API_VERSION' in os.environ:
         version = os.environ['OS_IDENTITY_API_VERSION']
     if version == '3':
@@ -136,12 +127,23 @@ def get_credentials():
                                                 'default')
     else:
         d['tenant_name'] = os.environ['OS_TENANT_NAME']
+
     d['username'] = os.environ['OS_USERNAME']
     d['password'] = os.environ['OS_PASSWORD']
     d['auth_url'] = os.environ['OS_AUTH_URL']
     d['region_name'] = os.environ['OS_REGION_NAME']
 
     return d, version
+
+
+def get_session_options():
+    session_creds = dict()
+    session_creds['cacert'] = os.environ.get('OS_CACERT')
+    session_creds['key'] = os.environ.get('OS_KEY')
+    session_creds['cert'] = os.environ.get('OS_CERT')
+    session_creds['insecure'] = ast.literal_eval(os.environ.get('OS_INSECURE',
+                                                                False))
+    return session_creds
 
 
 def sync_neutron_to_infoblox(context, credentials, grid_manager):

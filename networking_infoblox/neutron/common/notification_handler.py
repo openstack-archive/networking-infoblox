@@ -132,8 +132,7 @@ class IpamEventHandler(object):
             keystone_manager.update_tenant_mapping(self.context,
                                                    networks,
                                                    self.ctxt['tenant_id'],
-                                                   self.ctxt['tenant_name'],
-                                                   self.ctxt['auth_token'])
+                                                   self.ctxt['tenant_name'])
 
     def update_network_sync(self, payload):
         """Notifies that the network property has been updated."""
