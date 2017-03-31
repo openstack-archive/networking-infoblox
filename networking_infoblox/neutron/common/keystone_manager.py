@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from keystoneclient.auth.identity.generic import token
 from keystoneclient.auth import token_endpoint
 from keystoneclient import session
 from keystoneclient.v2_0 import client as client_2_0
@@ -46,6 +45,9 @@ def register_keystone_opts(conf):
                       help='Admin tenant name'),
         os_cfg.StrOpt('project_domain_id',
                       help='Admin Project domain id'),
+        os_cfg.StrOpt('cafile',
+                      default='',
+                      help=_('Keystone Authtoken Certificate File')),
         os_cfg.StrOpt('auth_version',
                       default='v2.0', help='Auth protocol used.'),
     ]
@@ -59,10 +61,10 @@ if 'keystone_authtoken' not in CONF:
     register_keystone_opts(CONF)
 
 
-def init_keystone_session():
+def init_keystone_session(verify_cert):
     global _SESSION
     if not _SESSION:
-        _SESSION = session.Session()
+        _SESSION = session.Session(verify=verify_cert)
     return _SESSION
 
 
@@ -80,32 +82,32 @@ def get_keystone_client(auth_token):
     key_client = None
     keystone_conf = CONF.keystone_authtoken
     identity_service, version = get_identity_service(keystone_conf)
-    if version == 'v2.0':
-        key_client = get_keystone_client_v2(auth_token)
 
+    verify_cert = False
+    if keystone_conf.cafile:
+        verify_cert = keystone_conf.cafile or True
+
+    if version == 'v2.0':
+        key_client = (
+            get_keystone_client_v2(auth_token,
+                                   identity_service,
+                                   verify_cert))
     elif version == 'v3':
         key_client = (
             client_3.Client(
                 username=keystone_conf.admin_user,
                 password=keystone_conf.admin_password,
                 domain_name=keystone_conf.project_domain_id,
-                auth_url=identity_service))
+                auth_url=identity_service,
+                verify=verify_cert))
 
     return key_client
 
 
-def get_keystone_client_v2(auth_token):
-    sess = init_keystone_session()
-    url = CONF.keystone_authtoken.auth_uri
-    # Create token to get available service version
-    generic_token = token.Token(url, token=auth_token)
-    generic_token.reauthenticate = False
-    version = generic_token.get_auth_ref(sess)['version']
-    # update auth url aith version if needed
-    if version not in url.split('/'):
-        url = url + '/' + version
+def get_keystone_client_v2(auth_token, identity_service, verify_cert):
+    sess = init_keystone_session(verify_cert)
     # create endpoint token using right url and provided auth token
-    auth = token_endpoint.Token(url, auth_token)
+    auth = token_endpoint.Token(identity_service, auth_token)
     k_client = client_2_0.Client(session=sess, auth=auth)
     return k_client
 

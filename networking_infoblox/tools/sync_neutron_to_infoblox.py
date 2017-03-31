@@ -84,15 +84,20 @@ def main():
               "env[OS_REGION_NAME]\n")
         return
 
+    verify_cert = False
+    if cfg.CONF.keystone_authtoken.cafile:
+        verify_cert = cfg.CONF.keystone_authtoken.cafile or True
+
     password_creds = credentials.copy()
     password_creds.pop('region_name', None)
+
     if version == '3':
         auth = v3.Password(**password_creds)
-        session = ks_session.Session(auth=auth)
+        session = ks_session.Session(auth=auth, verify=verify_cert)
         client = client_3.Client(session=session)
     else:
         auth = v2.Password(**password_creds)
-        session = ks_session.Session(auth=auth)
+        session = ks_session.Session(auth=auth, verify=verify_cert)
         client = client_2_0.Client(session=session)
 
     context = neutron_context.get_admin_context()
@@ -115,6 +120,9 @@ def register_keystone_opts(conf):
         cfg.StrOpt('auth_uri',
                    default='',
                    help=_('Keystone Authtoken URI')),
+        cfg.StrOpt('cafile',
+                   default='',
+                   help=_('Keystone Authotoken Certificate File'))
     ]
 
     conf.register_group(cfg.OptGroup(
