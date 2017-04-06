@@ -19,7 +19,7 @@ import six
 
 from oslo_serialization import jsonutils
 
-from neutron import context
+from neutron_lib import context
 from neutron.tests.unit import testlib_api
 
 from infoblox_client import objects as ib_objects
