@@ -17,10 +17,10 @@ import mock
 import netaddr
 
 from infoblox_client import exceptions as ib_exc
-from neutron import context
 from neutron.ipam import utils as ipam_utils
 from neutron.plugins.ml2 import config as ml2_config
 from neutron.tests.unit import testlib_api
+from neutron_lib import context
 from oslo_config import cfg
 
 from networking_infoblox.ipam import driver as drv

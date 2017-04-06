@@ -19,7 +19,7 @@ eventlet.monkey_patch()
 import mock
 import time
 
-from neutron import context
+from neutron_lib import context
 
 from networking_infoblox.neutron.common import grid
 from networking_infoblox.neutron.common import notification

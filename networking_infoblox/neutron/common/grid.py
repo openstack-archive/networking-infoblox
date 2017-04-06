@@ -19,7 +19,7 @@ from oslo_log import log as logging
 import six
 import socket
 
-from neutron import context as neutron_context
+from neutron_lib import context as neutron_context
 
 from infoblox_client import connector
 from infoblox_client import objects as ib_objects
