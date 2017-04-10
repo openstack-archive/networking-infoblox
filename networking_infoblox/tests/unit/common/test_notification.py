@@ -40,7 +40,8 @@ class NotificationTestCase(base.RpcTestCase):
             self.received_payload.append(payload)
             self.received_msg_count += 1
 
-    def setUp(self):
+    @mock.patch("neutron.manager.init")
+    def setUp(self, initMock):
         super(NotificationTestCase, self).setUp()
         self.ctx = context.get_admin_context()
         stub = grid_sync_stub.GridSyncStub(self.ctx, self.connector_fixture)
