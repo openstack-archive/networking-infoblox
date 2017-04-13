@@ -14,6 +14,7 @@
 #    under the License.
 
 import netaddr
+from neutron import manager
 from neutron_lib.plugins import directory
 from oslo_log import log as logging
 import oslo_messaging
@@ -41,6 +42,12 @@ class IpamEventHandler(object):
 
     def __init__(self, neutron_context, plugin=None, grid_manager=None):
         self.context = neutron_context
+        # Check if neutron_manager is loaded as accessing directory methods
+        # before a Neutron Manager has had the chances to load the environment
+        # may result in callers handling an empty directory.
+        if not directory.is_loaded():
+            manager.init()
+
         self.plugin = plugin if plugin else directory.get_plugin()
         if grid_manager:
             self.grid_mgr = grid_manager
