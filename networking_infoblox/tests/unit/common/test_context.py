@@ -57,6 +57,15 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.grid_id = self.grid_mgr.grid_config.grid_id
         self.grid_config = self.grid_mgr.grid_config
 
+    def _get_ib_context(self, user_id, network, subnet):
+        mock_km_str = 'networking_infoblox.neutron.common.keystone_manager.'
+        with mock.patch(mock_km_str + 'get_all_tenants'), (
+                mock.patch(mock_km_str + 'sync_tenants_from_keystone')):
+            ib_cxt = ib_context.InfobloxContext(self.ctx, user_id,
+                                                network, subnet,
+                                                self.grid_config, self.plugin)
+        return ib_cxt
+
     def test_network_view_mapping_conditions_with_single_scope(self):
         user_id = 'test user'
         tenant_id = 'test-tenant'
@@ -84,8 +93,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertEqual('default', self.grid_config.default_network_view)
 
         # test default mapping as 'Single'
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ib_cxt.connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
@@ -136,8 +144,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             const.NETWORK_VIEW_SCOPE_TENANT)
 
         # test default mapping as 'Tenant'
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ib_cxt.connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
@@ -177,8 +184,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.assertEqual(1, len(db_conditions))
 
         # test mapping where tenant id mapping is found
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ib_cxt.connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
@@ -238,8 +244,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             subnet['id'])
 
         # test mapping where both tenant id and tenant cidr match
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ib_cxt.connector = mock.Mock()
         ib_cxt.ibom = mock.Mock()
         ib_cxt.ip_allocator = mock.Mock()
@@ -274,8 +279,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
             {'id': 'test-id', 'network_view': 'test-view', 'shared': False})
         dbi_network_view_mock.return_value = test_network_view
 
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, None, None,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, None, None)
         ib_cxt.mapping.network_view = test_network_view.network_view
 
         ib_cxt.reserve_authority_member()
@@ -320,8 +324,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
              'shared': False})
         dbi_network_view_mock.return_value = test_network_view
 
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ib_cxt.mapping.network_view = test_network_view.network_view
         ib_cxt.reserve_authority_member()
 
@@ -348,8 +351,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.grid_config.dhcp_support = True
         self.grid_config.dns_support = dns_support
 
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ib_cxt.mapping.authority_member = test_authority_member
         ib_cxt._register_services = mock.Mock()
 
@@ -397,8 +399,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         dbi_service_member_mock.return_value = []
 
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ib_cxt.mapping.authority_member = test_authority_member
         ib_cxt.grid_config.use_grid_master_for_dhcp = True
         ib_cxt._register_services = mock.Mock()
@@ -442,8 +443,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.grid_config.dhcp_support = True
         self.grid_config.dns_support = dns_support
 
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ib_cxt._register_services = mock.Mock()
         dhcp_members = dbi.get_service_members(
             self.ctx.session,
@@ -492,8 +492,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.grid_config.dhcp_support = True
         self.grid_config.dns_support = dns_support
 
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ib_cxt._register_services = mock.Mock()
         ib_cxt._get_dhcp_members = mock.Mock(return_value=[test_dhcp_member])
         ib_cxt._get_dns_members = mock.Mock(return_value=[test_dhcp_member])
@@ -553,8 +552,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.grid_config.dhcp_support = True
         self.grid_config.dns_support = dns_support
 
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ib_cxt._register_services = mock.Mock()
 
         # ib network with dhcp member and gateway ips assigned
@@ -607,8 +605,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         self.grid_config.dhcp_support = False
 
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
 
         test_authority_member = utils.json_to_obj(
             'AuthorityMember',
@@ -643,8 +640,7 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         self.grid_config.dhcp_support = True
 
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
 
         test_authority_member = utils.json_to_obj(
             'AuthorityMember',
@@ -702,21 +698,18 @@ class InfobloxContextTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.grid_config.zone_creation_strategy = (
             const.GRID_CONFIG_DEFAULTS[
                 const.EA_GRID_CONFIG_ZONE_CREATION_STRATEGY])
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ip_allocator = ib_cxt._get_ip_allocator()
         self.assertEqual(True, ip_allocator.opts['configure_for_dns'])
 
         self.grid_config.dns_support = False
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ip_allocator = ib_cxt._get_ip_allocator()
         self.assertEqual(False, ip_allocator.opts['configure_for_dns'])
 
         self.grid_config.dns_support = True
         self.grid_config.zone_creation_strategy = [
             const.ZONE_CREATION_STRATEGY_REVERSE]
-        ib_cxt = ib_context.InfobloxContext(self.ctx, user_id, network, subnet,
-                                            self.grid_config, self.plugin)
+        ib_cxt = self._get_ib_context(user_id, network, subnet)
         ip_allocator = ib_cxt._get_ip_allocator()
         self.assertEqual(False, ip_allocator.opts['configure_for_dns'])
