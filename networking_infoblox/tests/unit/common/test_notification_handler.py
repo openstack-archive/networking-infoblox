@@ -32,7 +32,8 @@ class TestIpamEventHandler(base.TestCase):
         super(TestIpamEventHandler, self).setUp()
         self.prepare_ipam_event_handler()
 
-    def prepare_ipam_event_handler(self):
+    @mock.patch("neutron.manager.init")
+    def prepare_ipam_event_handler(self, initMock):
         self.context = mock.Mock()
         self.plugin = mock.Mock()
         self.grid_manager = mock.Mock()
