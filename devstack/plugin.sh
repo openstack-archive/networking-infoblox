@@ -48,6 +48,18 @@ function configure_networking_infoblox {
     # Main Configurations
     iniset $NEUTRON_CONF DEFAULT ipam_driver "networking_infoblox.ipam.driver.InfobloxPool"
     iniset $NEUTRON_CONF infoblox cloud_data_center_id $NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID
+    iniset $NEUTRON_CONF infoblox cafile ${SSL_BUNDLE_FILE:-""}
+    iniset $NEUTRON_CONF infoblox cert ""
+    iniset $NEUTRON_CONF infoblox key ""
+    iniset $NEUTRON_CONF infoblox insecure False
+    iniset $NEUTRON_CONF infoblox keystone_auth_version 'v3'
+    iniset $NEUTRON_CONF infoblox keystone_auth_uri $KEYSTONE_SERVICE_URI
+    iniset $NEUTRON_CONF infoblox keystone_admin_password $ADMIN_PASSWORD
+    iniset $NEUTRON_CONF infoblox keystone_admin_username admin
+    iniset $NEUTRON_CONF infoblox keystone_admin_tenant_name admin
+    iniset $NEUTRON_CONF infoblox keystone_admin_project_name admin
+    iniset $NEUTRON_CONF infoblox keystone_admin_user_domain_id default
+    iniset $NEUTRON_CONF infoblox keystone_admin_project_domain_id default
 
     # Cloud Data Center Configurations
     iniset $NEUTRON_CONF infoblox-dc:$NETWORKING_INFOBLOX_CLOUD_DATA_CENTER_ID grid_master_host $NETWORKING_INFOBLOX_DC_GRID_MASTER_HOST
