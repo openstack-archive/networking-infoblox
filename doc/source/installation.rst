@@ -244,6 +244,30 @@ grids is not yet available.
        a unique ID for a network view that is cached in neutron database.
        Starting it with a very high number may exceed the max length of a
        network view id.
+   * - keystone_auth_uri
+     - Openstack keystone authentication uri.
+   * - keystone_admin_username
+     - Openstack keystone admin username.
+   * - keystone_admin_password
+     - Password of keystone admin user.
+   * - keystone_admin_tenant_name (Only for keystone v2.0)
+     - Tenant name of keystone admin user.
+   * - keystone_admin_project_name (Only for keystone v3)
+     - Project name of keystone admin user.
+   * - keystone_admin_user_domain_id (Only for keystone v3)
+     - User Domain Id of keystone admin user.
+   * - keystone_admin_project_domain_id (Only for keystone v3)
+     - Project DOmain Id of keystone admin user.
+   * - keystone_auth_version
+     - Openstack keystone version.
+   * - cafile
+     - CA certificate bundle file for keystone authentication.
+   * - insecure
+     - Disable server certificate verification.
+   * - cert
+     - Client certificate bundle file for keystone authentication.
+   * - key
+     - Client certificate key file for keystone authentication.
    * - grid_master_host
      - The IP address, hostname, or FQDN of the Grid Master (GM).
        Proxying is supported so this does not have to be the exact IP or
@@ -290,6 +314,18 @@ installation):
 
    [infoblox]
    cloud_data_center_id = 1
+   keystone_admin_project_domain_id = default
+   keystone_admin_user_domain_id = default
+   keystone_admin_project_name = admin
+   keystone_admin_tenant_name = admin
+   keystone_admin_username = admin
+   keystone_admin_password = infoblox
+   keystone_auth_uri = http://controller:5000
+   keystone_auth_version = v3
+   cafile = /opt/stack/data/ca-bundle.pem
+   insecure = False
+   key = <key>
+   cert = <cert>
 
    [infoblox-dc:1]
    grid_master_host = GRID_MASTER_HOST
@@ -374,11 +410,36 @@ migration script.
     unset OS_SERVICE_TOKEN
     export OS_USERNAME=admin
     export OS_PASSWORD=admin
-    export OS_AUTH_URL=http://10.39.12.161:5000/v2.0
+    export OS_AUTH_URL=http://controller:5000/v2.0
     export PS1='[\u@\h \W(keystone_admin)]\$ '
 
     export OS_TENANT_NAME=admin
     export OS_REGION_NAME=RegionOne
+
+For keystone behind TLS:
+
+.. code-block:: console
+
+    $ cat keystone_admin
+    unset OS_SERVICE_TOKEN
+    export OS_USERNAME=admin
+    export OS_PASSWORD=mysecret
+    export OS_AUTH_URL=https://controller:5000/v3
+    export PS1='[\u@\h \W(keystone_admin)]\$ '
+
+    export OS_TENANT_NAME=admin
+    export OS_PROJECT_NAME=admin
+    export OS_REGION_NAME=RegionOne
+    export OS_PROJECT_DOMAIN_NAME=default
+    export OS_USER_DOMAIN_NAME=default
+    export SERVICE_ENDPOINT=https://controller:5000/v3
+    export OS_IDENTITY_API_VERSION=3
+    export OS_CACERT=/etc/ssl/certs/apache-selfsigned.crt
+    export OS_INSECURE=False
+    export OS_KEY=<key>
+    export OS_CERT=<cert>
+
+.. code-block:: console
 
     $ source keystone_admin
 
