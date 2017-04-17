@@ -142,7 +142,7 @@ def get_session_options():
     session_creds['key'] = os.environ.get('OS_KEY')
     session_creds['cert'] = os.environ.get('OS_CERT')
     session_creds['insecure'] = ast.literal_eval(os.environ.get('OS_INSECURE',
-                                                                False))
+                                                                'False'))
     return session_creds
 
 
