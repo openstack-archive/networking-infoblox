@@ -121,6 +121,7 @@ class IpamEventHandler(object):
 
         self._resync()
 
+    @dbi.with_transaction
     def create_network_sync(self, payload):
         """Notifies that new networks have been created."""
         if 'networks' in payload:
@@ -140,6 +141,7 @@ class IpamEventHandler(object):
                                                    self.ctxt['tenant_id'],
                                                    self.ctxt['tenant_name'])
 
+    @dbi.with_transaction
     def update_network_sync(self, payload):
         """Notifies that the network property has been updated."""
         network = payload.get('network')
@@ -164,6 +166,7 @@ class IpamEventHandler(object):
                 need_new_zones = True
         ipam_controller.update_network_sync(need_new_zones)
 
+    @dbi.with_transaction
     def delete_network_sync(self, payload):
         """Notifies that the network has been deleted."""
         network_id = payload.get('network_id')
@@ -258,6 +261,7 @@ class IpamEventHandler(object):
                     const.NEUTRON_DEVICE_OWNER_COMPUTE_NOVA,
                     port_name=port['name'])
 
+    @dbi.with_transaction
     def update_port_sync(self, payload):
         """Notifies that the port has been updated."""
         port = payload.get('port')
@@ -360,6 +364,7 @@ class IpamEventHandler(object):
 
         return ib_address.extattrs.get(const.EA_VM_NAME)
 
+    @dbi.with_transaction
     def update_floatingip_sync(self, payload):
         """Notifies that the floating ip has been updated.
 
@@ -439,6 +444,7 @@ class IpamEventHandler(object):
         if self.traceable:
             LOG.info("Deleted floatingip: %s", floatingip_id)
 
+    @dbi.with_transaction
     def create_instance_sync(self, payload):
         """Notifies that an instance has been created."""
         instance_id = payload.get('instance_id')
@@ -461,6 +467,7 @@ class IpamEventHandler(object):
         for port in ports:
             self._process_port(port, 'Instance creation', instance_name)
 
+    @dbi.with_transaction
     def delete_instance_sync(self, payload):
         """Notifies that an instance has been deleted."""
         instance_id = payload.get('instance_id')
