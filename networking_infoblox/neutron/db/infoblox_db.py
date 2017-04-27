@@ -28,6 +28,14 @@ from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.db import infoblox_models as ib_models
 
 
+def with_transaction(func):
+    def wrapper(*args, **kwargs):
+        context = args[0].context
+        with context.session.begin(subtransactions=True):
+            return func(*args, **kwargs)
+    return wrapper
+
+
 # Grid Management
 def get_grids(session, grid_id=None, grid_name=None, grid_status=None):
     q = session.query(ib_models.InfobloxGrid)
