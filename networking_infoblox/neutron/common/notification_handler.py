@@ -75,7 +75,8 @@ class IpamEventHandler(object):
             handler_name = utils.get_notification_handler_name(event_type)
             handler = getattr(self, handler_name)
             if handler:
-                handler(payload)
+                with self.context.session.begin(subtransactions=True):
+                    handler(payload)
             return oslo_messaging.NotificationResult.HANDLED
         except sql_exc.OperationalError as e:
             LOG.info("Operational Error occurred. Please restart the agent.")
