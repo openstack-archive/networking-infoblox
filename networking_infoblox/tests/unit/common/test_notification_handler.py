@@ -14,6 +14,7 @@
 #    under the License.
 
 import mock
+from neutron_lib import context as n_context
 
 from infoblox_client import objects as ib_objects
 
@@ -25,8 +26,10 @@ from networking_infoblox.neutron.common import notification_handler as handler
 from networking_infoblox.neutron.db import infoblox_db as dbi
 from networking_infoblox.tests import base
 
+from neutron.tests.unit import testlib_api
 
-class TestIpamEventHandler(base.TestCase):
+
+class TestIpamEventHandler(base.TestCase, testlib_api.SqlTestCase):
 
     def setUp(self):
         super(TestIpamEventHandler, self).setUp()
@@ -34,7 +37,7 @@ class TestIpamEventHandler(base.TestCase):
 
     @mock.patch("neutron.manager.init")
     def prepare_ipam_event_handler(self, initMock):
-        self.context = mock.Mock()
+        self.context = n_context.get_admin_context()
         self.plugin = mock.Mock()
         self.grid_manager = mock.Mock()
         self.grid_manager.grid_config.gm_connector = mock.Mock()
@@ -58,6 +61,7 @@ class TestIpamEventHandler(base.TestCase):
         self.ipam_handler.create_subnet_alert(payload)
         self.ipam_handler._resync.assert_called_once_with()
 
+    @mock.patch.object(dbi, 'get_network', mock.Mock())
     def test_update_network_sync(self):
         payload = {'network': {}}
         with mock.patch.object(ipam.IpamAsyncController,
@@ -118,6 +122,7 @@ class TestIpamEventHandler(base.TestCase):
         self.ipam_handler.delete_subnet_sync(payload)
         self.ipam_handler._resync.assert_called_once_with(True)
 
+    @mock.patch.object(dbi, 'get_port_by_id', mock.Mock())
     @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
     def test_update_floatingip_sync(self, ib_cxt_mock):
         payload = {'floatingip': {'id': 'floatingip-id',
@@ -195,6 +200,7 @@ class TestIpamEventHandler(base.TestCase):
                            'user_name': u'admin'}
         self.ipam_handler.ctxt = message_context
 
+    @mock.patch.object(dbi, 'add_or_update_network', mock.Mock())
     def test_create_network_sync_same_tenant(self):
         payload = {
             'network': {'status': 'ACTIVE',
@@ -202,8 +208,11 @@ class TestIpamEventHandler(base.TestCase):
                         'name': 'network_name',
                         'tenant_id': 'bf0806763e32436bbdb8fd9b6ebfac93'}}
         self._prepare_context()
-        self.ipam_handler.create_network_sync(payload)
+        with mock.patch('networking_infoblox.neutron.common.'
+                        'keystone_manager.update_tenant_mapping'):
+            self.ipam_handler.create_network_sync(payload)
 
+    @mock.patch.object(dbi, 'add_or_update_network', mock.Mock())
     @mock.patch('networking_infoblox.neutron.db.infoblox_db.get_tenants')
     def test_create_network_sync_tenant_mismatch(self, get_mock):
         db_tenant = mock.Mock()
@@ -215,8 +224,8 @@ class TestIpamEventHandler(base.TestCase):
                         'name': 'network_name',
                         'tenant_id': db_tenant.id}}
         self._prepare_context()
-        mock_km_str = 'networking_infoblox.neutron.common.keystone_manager.'
-        with mock.patch(mock_km_str + 'update_tenant_mapping'):
+        with mock.patch('networking_infoblox.neutron.common.'
+                        'keystone_manager.update_tenant_mapping'):
             self.ipam_handler.create_network_sync(payload)
 
     @mock.patch.object(dbi, 'add_or_update_instance', mock.Mock())
