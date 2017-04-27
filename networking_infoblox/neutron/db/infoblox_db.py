@@ -14,6 +14,7 @@
 #    under the License.
 
 from datetime import datetime
+import functools
 import random
 from sqlalchemy import func
 from sqlalchemy.sql.expression import true
@@ -26,6 +27,15 @@ from neutron.db import models_v2
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc
 from networking_infoblox.neutron.db import infoblox_models as ib_models
+
+
+def with_transaction(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        context = args[0].context
+        with context.session.begin(subtransactions=True):
+            return func(*args, **kwargs)
+    return wrapper
 
 
 # Grid Management
