@@ -19,6 +19,7 @@ eventlet.monkey_patch()
 import mock
 import time
 
+from neutron.tests.unit import testlib_api
 from neutron_lib import context
 
 from networking_infoblox.neutron.common import grid
@@ -30,7 +31,7 @@ from networking_infoblox.tests import base
 from networking_infoblox.tests.unit import grid_sync_stub
 
 
-class NotificationTestCase(base.RpcTestCase):
+class NotificationTestCase(testlib_api.BaseSqlTestCase, base.RpcTestCase):
 
     class NotificationEndpointTester(object):
         received_msg_count = 0
@@ -54,13 +55,13 @@ class NotificationTestCase(base.RpcTestCase):
         self.event_handler = notification_handler.IpamEventHandler(
             self.ctx, mock.Mock(), self.grid_mgr)
 
-    @mock.patch.object(notification_handler, 'IpamEventHandler', mock.Mock())
-    def test_notification_endpoint_with_notification_handler(self):
+    @mock.patch.object(notification_handler, 'IpamEventHandler')
+    def test_notification_endpoint_with_notification_handler(self, mk_ipam_eh):
         msg_context = {}
         publisher_id = 'test_publisher'
         payload = {}
         metadata = {}
-
+        mk_ipam_eh.context = context.get_admin_context()
         endpoint = notification.NotificationEndpoint(self.ctx, None)
         endpoint.handler = self.event_handler
 
