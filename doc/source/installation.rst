@@ -253,11 +253,13 @@ grids is not yet available.
    * - keystone_admin_tenant_name (Only for keystone v2.0)
      - Tenant name of keystone admin user.
    * - keystone_admin_project_name (Only for keystone v3)
-     - Project name of keystone admin user.
+     - Project name of keystone admin user for project-level authorization scope.
    * - keystone_admin_user_domain_id (Only for keystone v3)
      - User Domain Id of keystone admin user.
    * - keystone_admin_project_domain_id (Only for keystone v3)
-     - Project DOmain Id of keystone admin user.
+     - Project Domain Id of keystone admin user for project-level authorization scope.
+   * - keystone_admin_domain_id (Only for keystone v3)
+     - Domain Id of keystone admin user for domain-level authorization scope.
    * - keystone_auth_version
      - Openstack keystone version.
    * - cafile
@@ -314,10 +316,11 @@ installation):
 
    [infoblox]
    cloud_data_center_id = 1
-   keystone_admin_project_domain_id = default
+   keystone_admin_project_domain_id = default # project-level authorization scope
    keystone_admin_user_domain_id = default
-   keystone_admin_project_name = admin
-   keystone_admin_tenant_name = admin
+   keystone_admin_domain_id = default # domain-level authorization scope
+   keystone_admin_project_name = admin # project-level authorization scope
+   keystone_admin_tenant_name = admin # if keystone version = v2.0
    keystone_admin_username = admin
    keystone_admin_password = infoblox
    keystone_auth_uri = http://controller:5000
@@ -428,10 +431,11 @@ For keystone behind TLS:
     export PS1='[\u@\h \W(keystone_admin)]\$ '
 
     export OS_TENANT_NAME=admin
-    export OS_PROJECT_NAME=admin
+    export OS_PROJECT_NAME=admin (project-level authorization scope)
     export OS_REGION_NAME=RegionOne
-    export OS_PROJECT_DOMAIN_NAME=default
+    export OS_PROJECT_DOMAIN_NAME=default (project-level authorization scope)
     export OS_USER_DOMAIN_NAME=default
+    export OS_DOMAIN_NAME=default (domain-level authorization scope)
     export SERVICE_ENDPOINT=https://controller:5000/v3
     export OS_IDENTITY_API_VERSION=3
     export OS_CACERT=/etc/ssl/certs/apache-selfsigned.crt
