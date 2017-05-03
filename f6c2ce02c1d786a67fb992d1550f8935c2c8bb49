@@ -1,0 +1,8 @@
+Code-Review+2: John Belamaric <jbelamaric@infoblox.com>
+Workflow+1: Yue Ko <yko@infoblox.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Wed, 03 May 2017 20:19:52 +0000
+Reviewed-on: https://review.openstack.org/424845
+Project: openstack/networking-infoblox
+Branch: refs/heads/stable/newton
