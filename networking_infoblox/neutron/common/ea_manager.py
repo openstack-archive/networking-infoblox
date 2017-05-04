@@ -24,7 +24,8 @@ from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import utils
 
 
-def get_ea_for_network_view(tenant_id, tenant_name, cloud_adapter_id):
+def get_ea_for_network_view(tenant_id, tenant_name, cloud_adapter_id,
+                            request_id):
     """Generates EAs for Network View.
 
     :param tenant_id: tenant_id
@@ -38,7 +39,8 @@ def get_ea_for_network_view(tenant_id, tenant_name, cloud_adapter_id):
                   const.EA_TENANT_ID: tenant_id or const.EA_RESET_VALUE,
                   const.EA_TENANT_NAME: tenant_name,
                   const.EA_CLOUD_API_OWNED: 'False',
-                  const.EA_CLOUD_ADAPTER_ID: str(cloud_adapter_id)}
+                  const.EA_CLOUD_ADAPTER_ID: str(cloud_adapter_id),
+                  const.EA_REQUEST_ID: request_id}
     return ib_objects.EA(attributes)
 
 
@@ -72,7 +74,8 @@ def get_subnet_specific_eas(subnet):
             const.EA_SUBNET_NAME: subnet.get('name')}
 
 
-def get_ea_for_network(user_id, tenant_id, tenant_name, network, subnet):
+def get_ea_for_network(user_id, tenant_id, tenant_name, network, subnet,
+                       request_id):
     """Generates EAs for Network.
 
     :param user_id: user_id
@@ -89,7 +92,7 @@ def get_ea_for_network(user_id, tenant_id, tenant_name, network, subnet):
     attributes.update(get_net_specific_eas(network))
 
     common_ea = get_common_ea(network, user_id, tenant_id,
-                              tenant_name, for_network=True)
+                              tenant_name, request_id, for_network=True)
     attributes.update(common_ea)
 
     return ib_objects.EA(attributes)
@@ -107,9 +110,9 @@ def reset_ea_for_network(ib_network):
     ib_network.extattrs = ib_objects.EA.from_dict(ea_dict)
 
 
-def get_ea_for_range(user_id, tenant_id, tenant_name, network):
+def get_ea_for_range(user_id, tenant_id, tenant_name, network, request_id):
     return ib_objects.EA(get_common_ea(network, user_id, tenant_id,
-                                       tenant_name))
+                                       tenant_name, request_id))
 
 
 def reset_ea_for_range(ib_range):
@@ -134,15 +137,17 @@ def get_dict_for_ip(port_id, device_owner, device_id,
             const.EA_VM_NAME: instance_name}
 
 
-def get_default_ea_for_ip(user_id, tenant_id, tenant_name):
-    common_ea = get_common_ea(None, user_id, tenant_id, tenant_name)
+def get_default_ea_for_ip(user_id, tenant_id, tenant_name, request_id):
+    common_ea = get_common_ea(None, user_id, tenant_id, tenant_name,
+                              request_id)
     ip_dict = get_dict_for_ip(None, None, None, None, const.IP_TYPE_FIXED)
     common_ea.update(ip_dict)
     return ib_objects.EA(common_ea)
 
 
 def get_ea_for_ip(user_id, tenant_id, tenant_name, network, port_id, device_id,
-                  device_owner, is_floating_ip=False, instance_name=None):
+                  device_owner, request_id, is_floating_ip=False,
+                  instance_name=None):
     instance_id = None
     ip_type = const.IP_TYPE_FIXED
     if is_floating_ip or device_owner == n_const.DEVICE_OWNER_FLOATINGIP:
@@ -150,23 +155,27 @@ def get_ea_for_ip(user_id, tenant_id, tenant_name, network, port_id, device_id,
     if device_owner in const.NEUTRON_DEVICE_OWNER_COMPUTE_LIST:
         instance_id = device_id
 
-    common_ea = get_common_ea(network, user_id, tenant_id, tenant_name)
+    common_ea = get_common_ea(network, user_id, tenant_id, tenant_name,
+                              request_id)
     ip_dict = get_dict_for_ip(port_id, device_owner, device_id,
                               instance_id, ip_type, instance_name)
     common_ea.update(ip_dict)
     return ib_objects.EA(common_ea)
 
 
-def get_ea_for_reverse_zone(user_id, tenant_id, tenant_name, network, subnet):
-    ea_dict = get_common_ea(network, user_id, tenant_id, tenant_name)
+def get_ea_for_reverse_zone(user_id, tenant_id, tenant_name,
+                            network, subnet, request_id):
+    ea_dict = get_common_ea(network, user_id, tenant_id, tenant_name,
+                            request_id)
     ea_dict.update(get_net_specific_eas(network))
     ea_dict.update(get_subnet_specific_eas(subnet))
     return ib_objects.EA(ea_dict)
 
 
 def get_ea_for_forward_zone(user_id, tenant_id, tenant_name, network, subnet,
-                            name_template):
-    ea_dict = get_common_ea(network, user_id, tenant_id, tenant_name)
+                            name_template, request_id):
+    ea_dict = get_common_ea(network, user_id, tenant_id, tenant_name,
+                            request_id)
     if '{subnet_id}' in name_template or '{subnet_name}' in name_template:
         ea_dict.update(get_subnet_specific_eas(subnet))
         ea_dict.update(get_net_specific_eas(network))
@@ -187,7 +196,8 @@ def reset_ea_for_zone(ib_zone):
     ib_zone.extattrs = ib_objects.EA.from_dict(ea_dict)
 
 
-def get_common_ea(network, user_id, tenant_id, tenant_name, for_network=False):
+def get_common_ea(network, user_id, tenant_id, tenant_name,
+                  request_id, for_network=False):
     if network:
         is_external = network.get(external_net.EXTERNAL, False)
         is_shared = network.get(attributes.SHARED)
@@ -200,7 +210,8 @@ def get_common_ea(network, user_id, tenant_id, tenant_name, for_network=False):
                const.EA_TENANT_ID: tenant_id or const.EA_RESET_VALUE,
                const.EA_TENANT_NAME: tenant_name,
                const.EA_ACCOUNT: user_id,
-               const.EA_CLOUD_API_OWNED: str(is_cloud_owned)}
+               const.EA_CLOUD_API_OWNED: str(is_cloud_owned),
+               const.EA_REQUEST_ID: request_id}
     if for_network:
         ea_dict[const.EA_IS_EXTERNAL] = str(is_external)
         ea_dict[const.EA_IS_SHARED] = str(is_shared)

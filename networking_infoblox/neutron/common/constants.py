@@ -115,8 +115,10 @@ EA_CLOUD_API_OWNED = 'Cloud API Owned'
 EA_CMP_TYPE = 'CMP Type'
 EA_IS_EXTERNAL = 'Is External'
 EA_IS_SHARED = 'Is Shared'
+EA_REQUEST_ID = 'Request ID'
 
-REQUIRED_EA_LIST = [EA_CMP_TYPE, EA_TENANT_ID, EA_CLOUD_API_OWNED]
+REQUIRED_EA_LIST = [EA_CMP_TYPE, EA_TENANT_ID, EA_CLOUD_API_OWNED,
+                    EA_REQUEST_ID]
 
 NETWORK_EA_LIST = [EA_ACCOUNT, EA_TENANT_NAME,
                    EA_IS_EXTERNAL, EA_IS_SHARED, EA_SUBNET_ID, EA_SUBNET_NAME,
@@ -261,6 +263,9 @@ REQUIRED_EA_DEFS = [
 
     {'name': EA_VM_NAME, 'type': 'STRING', 'flags': 'C',
      'comment': 'Instance Name in OpenStack'},
+
+    {'name': EA_REQUEST_ID, 'type': 'STRING', 'flags': 'C',
+     'comment': 'Request ID in OpenStack'},
 
     # Grid Configuration EAs
     {'name': EA_GRID_CONFIG_GRID_SYNC_SUPPORT,

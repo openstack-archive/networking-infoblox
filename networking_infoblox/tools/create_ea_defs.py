@@ -223,7 +223,7 @@ def participate_network_views(grid_id):
             continue
 
         ib_netview = ib_netview_found[0]
-        ea_netview = eam.get_ea_for_network_view(None, None, grid_id)
+        ea_netview = eam.get_ea_for_network_view(None, None, grid_id, '')
         if operation == 'ASSOCIATION':
             if ib_netview.extattrs is None:
                 ib_netview.extattrs = ea_netview

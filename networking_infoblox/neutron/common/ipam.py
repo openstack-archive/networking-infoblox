@@ -78,12 +78,12 @@ class IpamSyncController(object):
         # create a network view if it does not exist
         if not network_view_exists:
             ib_network_view = self._create_ib_network_view()
-            rollback_list.append(ib_network_view)
+            if ib_network_view:
+                rollback_list.append(ib_network_view)
 
-        ib_network, created = self._create_ib_network()
+        ib_network = self._create_ib_network()
         if ib_network:
-            if created:
-                rollback_list.append(ib_network)
+            rollback_list.append(ib_network)
             self._create_ib_ip_range(rollback_list)
 
         # tenats available only with wapi 2.0+
@@ -109,7 +109,8 @@ class IpamSyncController(object):
         ea_network_view = eam.get_ea_for_network_view(
             self.ib_cxt.tenant_id,
             self.ib_cxt.tenant_name,
-            self.grid_id)
+            self.grid_id,
+            self.ib_cxt.request_id)
 
         ib_network_view = self.ib_cxt.ibom.create_network_view(
             self.ib_cxt.mapping.network_view,
@@ -136,7 +137,8 @@ class IpamSyncController(object):
                                             self.ib_cxt.tenant_id,
                                             self.ib_cxt.tenant_name,
                                             network,
-                                            subnet)
+                                            subnet,
+                                            self.ib_cxt.request_id)
         network_template = self.grid_config.network_template
 
         # check if network already exists
@@ -149,7 +151,7 @@ class IpamSyncController(object):
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
                 LOG.info("ib network already exists so updated options: %s",
                          ib_network)
-                return ib_network, False
+                return ib_network
             raise exc.InfobloxPrivateSubnetAlreadyExist()
 
         # network creation using template
@@ -162,7 +164,7 @@ class IpamSyncController(object):
             self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
             LOG.info("ib network created from template %s: %s",
                      network_template, ib_network)
-            return ib_network, True
+            return ib_network
 
         # network creation starts
         self.ib_cxt.reserve_service_members()
@@ -180,7 +182,7 @@ class IpamSyncController(object):
         LOG.info("ib network has been created: %s", ib_network)
 
         self._restart_services()
-        return ib_network, True
+        return ib_network
 
     def _get_service_members(self, field='member_id'):
         dhcp_members = [m.get(field) for m in self.ib_cxt.mapping.dhcp_members]
@@ -235,7 +237,8 @@ class IpamSyncController(object):
         ea_range = eam.get_ea_for_range(self.ib_cxt.user_id,
                                         self.ib_cxt.tenant_id,
                                         self.ib_cxt.tenant_name,
-                                        self.ib_cxt.network)
+                                        self.ib_cxt.network,
+                                        self.ib_cxt.request_id)
         is_shared = self.ib_cxt.network_is_shared_or_external
 
         for pool in pools:
@@ -284,7 +287,8 @@ class IpamSyncController(object):
                 disable,
                 ea_range)
             LOG.info("ip range has been created: %s", ib_ip_range)
-            rollback_list.append(ib_ip_range)
+            if ib_ip_range:
+                rollback_list.append(ib_ip_range)
 
     def update_subnet_allocation_pools(self, rollback_list):
         cidr = self.ib_cxt.subnet.get('cidr')
@@ -319,7 +323,8 @@ class IpamSyncController(object):
                                             self.ib_cxt.tenant_id,
                                             self.ib_cxt.tenant_name,
                                             self.ib_cxt.network,
-                                            self.ib_cxt.subnet)
+                                            self.ib_cxt.subnet,
+                                            self.ib_cxt.request_id)
 
         nameservers = self.ib_cxt.mapping.ib_nameservers
         if nameservers:
@@ -529,7 +534,8 @@ class IpamSyncController(object):
                                           self.ib_cxt.network,
                                           port_id,
                                           device_id,
-                                          device_owner)
+                                          device_owner,
+                                          self.ib_cxt.request_id)
         dns_view = self.ib_cxt.mapping.dns_view
         zone_auth = self.pattern_builder.get_zone_name(
             is_external=self.ib_cxt.network_is_external)
@@ -566,7 +572,8 @@ class IpamSyncController(object):
                                           self.ib_cxt.network,
                                           port_id,
                                           device_id,
-                                          device_owner)
+                                          device_owner,
+                                          self.ib_cxt.request_id)
 
         dns_view = self.ib_cxt.mapping.dns_view
         zone_auth = self.pattern_builder.get_zone_name(
@@ -656,7 +663,8 @@ class IpamAsyncController(object):
                                                     self.ib_cxt.tenant_id,
                                                     self.ib_cxt.tenant_name,
                                                     network,
-                                                    subnet)
+                                                    subnet,
+                                                    self.ib_cxt.request_id)
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
 
             if need_new_zones:
@@ -701,7 +709,8 @@ class IpamAsyncController(object):
                                                   network_view,
                                                   port['id'],
                                                   port['device_id'],
-                                                  port['device_owner'])
+                                                  port['device_owner'],
+                                                  self.ib_cxt.request_id)
                 self.ib_cxt.ibom.update_fixed_address_eas(network_view,
                                                           ip_address,
                                                           ea_ip_address)

@@ -60,7 +60,9 @@ def rollback_wrapper(f):
     @functools.wraps(f)
     def rollback(*args, **kwargs):
         rollback_list = []
+        context = None
         try:
+            context = args[0]._context
             return f(args[0], rollback_list, *args[1:], **kwargs)
         except Exception as e:
             with excutils.save_and_reraise_exception():
@@ -69,7 +71,12 @@ def rollback_wrapper(f):
                           {'action': f.__name__, 'error': e})
                 for ib_object in reversed(rollback_list):
                     try:
-                        ib_object.delete()
+                        extattrs = ib_object.extattrs.to_dict()
+                        if extattrs.get('Request ID') and (
+                                extattrs['Request ID']['value']):
+                            request_id = extattrs['Request ID']['value']
+                            if context.request_id == request_id:
+                                ib_object.delete()
                     except ib_exc.InfobloxException as e:
                         LOG.warning(_LW("Unable to delete %(obj)s due "
                                         "to error: %(error)s."),
