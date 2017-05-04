@@ -78,11 +78,12 @@ class IpamSyncController(object):
         # create a network view if it does not exist
         if not network_view_exists:
             ib_network_view = self._create_ib_network_view()
-            rollback_list.append(ib_network_view)
+            if ib_network_view and ib_network_view.is_created:
+                rollback_list.append(ib_network_view)
 
-        ib_network, created = self._create_ib_network()
+        ib_network = self._create_ib_network()
         if ib_network:
-            if created:
+            if ib_network.is_created:
                 rollback_list.append(ib_network)
             self._create_ib_ip_range(rollback_list)
 
@@ -149,7 +150,7 @@ class IpamSyncController(object):
                 self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
                 LOG.info("ib network already exists so updated options: %s",
                          ib_network)
-                return ib_network, False
+                return ib_network
             raise exc.InfobloxPrivateSubnetAlreadyExist()
 
         # network creation using template
@@ -162,7 +163,7 @@ class IpamSyncController(object):
             self.ib_cxt.ibom.update_network_options(ib_network, ea_network)
             LOG.info("ib network created from template %s: %s",
                      network_template, ib_network)
-            return ib_network, True
+            return ib_network
 
         # network creation starts
         self.ib_cxt.reserve_service_members()
@@ -180,7 +181,7 @@ class IpamSyncController(object):
         LOG.info("ib network has been created: %s", ib_network)
 
         self._restart_services()
-        return ib_network, True
+        return ib_network
 
     def _get_service_members(self, field='member_id'):
         dhcp_members = [m.get(field) for m in self.ib_cxt.mapping.dhcp_members]
@@ -284,7 +285,8 @@ class IpamSyncController(object):
                 disable,
                 ea_range)
             LOG.info("ip range has been created: %s", ib_ip_range)
-            rollback_list.append(ib_ip_range)
+            if ib_ip_range and ib_ip_range.is_created:
+                rollback_list.append(ib_ip_range)
 
     def update_subnet_allocation_pools(self, rollback_list):
         cidr = self.ib_cxt.subnet.get('cidr')
