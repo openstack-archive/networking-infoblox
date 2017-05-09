@@ -168,7 +168,7 @@ class TestKeystoneManager(base.TestCase):
         assert get_unknown.call_count == expected_results['get_unknown_count']
         assert get_unknown_params == expected_results['get_unknown_params']
         if expected_results['get_tenants_called']:
-            get_tenants.assert_called_once()
+            assert get_tenants.call_count == 1
             assert get_tenants.call_args[0] == (context.session,)
             tenant_ids = expected_results['get_tenant_tenant_ids']
             assert(
