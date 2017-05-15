@@ -178,11 +178,21 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
             True,
             mock.ANY)
 
+    @mock.patch.object(ib_objects, 'NetworkView')
+    def test_create_subnet_new_network_view_nwview_preexist(self, mck_nw_view):
+        mck_nw_view.create_check_exists.return_value = mock.Mock(), False
+        self._test_create_subnet_new_network_view()
+
+    @mock.patch.object(ib_objects, 'NetworkView')
+    def test_create_subnet_new_network_view_nwview_created(self, mck_nw_view):
+        mck_nw_view.create_check_exists.return_value = mock.Mock(), True
+        self._test_create_subnet_new_network_view()
+
     @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     @mock.patch('infoblox_client.objects.Tenant')
     @mock.patch('infoblox_client.objects.IPRange')
-    def test_create_subnet_new_network_view(self, ip_range_mock, tenant_mock):
+    def _test_create_subnet_new_network_view(self, ip_range_mock, tenant_mock):
         test_opts = dict()
         self.helper.prepare_test(test_opts)
 
@@ -235,9 +245,21 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.validate_network_creation(self.helper.options['network_view'],
                                        self.helper.subnet)
 
+    @mock.patch.object(ib_objects, 'NetworkView')
+    def test_create_subnet_existing_private_network_nwview_preexist(
+            self, mck_nw_view):
+        mck_nw_view.create_check_exists.return_value = mock.Mock(), False
+        self._test_create_subnet_existing_private_network()
+
+    @mock.patch.object(ib_objects, 'NetworkView')
+    def test_create_subnet_existing_private_network_nwview_created(
+            self, mck_nw_view):
+        mck_nw_view.create_check_exists.return_value = mock.Mock(), True
+        self._test_create_subnet_existing_private_network()
+
     @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
-    def test_create_subnet_existing_private_network(self):
+    def _test_create_subnet_existing_private_network(self):
         test_opts = {'network_exists': True,
                      'external': False,
                      'shared': False}
@@ -253,10 +275,22 @@ class IpamSyncControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                               ipam_controller.create_subnet,
                               [])
 
+    @mock.patch.object(ib_objects, 'NetworkView')
+    def test_create_subnet_existing_external_network_nwview_preexist(
+            self, mck_nw_view):
+        mck_nw_view.create_check_exists.return_value = mock.Mock(), False
+        self._test_create_subnet_existing_external_network()
+
+    @mock.patch.object(ib_objects, 'NetworkView')
+    def test_create_subnet_existing_external_network_nwview_created(
+            self, mck_nw_view):
+        mck_nw_view.create_check_exists.return_value = mock.Mock(), True
+        self._test_create_subnet_existing_external_network()
+
     @mock.patch.object(dbi, 'update_network_view_id', mock.Mock())
     @mock.patch.object(dbi, 'associate_network_view', mock.Mock())
     @mock.patch('infoblox_client.objects.Tenant')
-    def test_create_subnet_existing_external_network(self, tenant_mock):
+    def _test_create_subnet_existing_external_network(self, tenant_mock):
         test_opts = {'network_name': 'extnet',
                      'subnet_name': 'extsub',
                      'cidr': '172.192.1.0/24',
