@@ -78,8 +78,9 @@ class IpamSyncController(object):
 
         # create a network view if it does not exist
         if not network_view_exists:
-            ib_network_view = self._create_ib_network_view()
-            rollback_list.append(ib_network_view)
+            ib_network_view, obj_created = self._create_ib_network_view()
+            if ib_network_view and obj_created:
+                rollback_list.append(ib_network_view)
 
         ib_network, created = self._create_ib_network()
         if ib_network:
@@ -111,10 +112,11 @@ class IpamSyncController(object):
             self.ib_cxt.tenant_id,
             self.ib_cxt.tenant_name,
             self.grid_id)
-
-        ib_network_view = self.ib_cxt.ibom.create_network_view(
-            self.ib_cxt.mapping.network_view,
-            ea_network_view)
+        ib_network_view, obj_created = (
+            ib_objects.NetworkView.create_check_exists(
+                self.ib_cxt.connector,
+                name=self.ib_cxt.mapping.network_view,
+                extattrs=ea_network_view))
 
         network_view_id = utils.get_network_view_id(self.grid_id,
                                                     ib_network_view._ref)
@@ -124,7 +126,7 @@ class IpamSyncController(object):
         self.ib_cxt.mapping.network_view_id = network_view_id
 
         LOG.info(_LI("Created a network view: %s"), ib_network_view)
-        return ib_network_view
+        return ib_network_view, obj_created
 
     def _create_ib_network(self):
         network_view = self.ib_cxt.mapping.network_view
