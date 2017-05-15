@@ -14,6 +14,7 @@
 #    under the License.
 
 from infoblox_client import exceptions as ibc_exc
+from infoblox_client import objects as obj
 from neutron_lib import constants as n_const
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -72,41 +73,51 @@ class DnsController(object):
         if ns_group:
             # create Forward zone
             if self.need_forward:
-                ib_zone = self.ib_cxt.ibom.create_dns_zone(
-                    dns_view,
-                    self.dns_zone,
+                ib_zone, obj_created = obj.DNSZone.create_check_exists(
+                    self.ib_cxt.connector,
+                    view=dns_view,
                     ns_group=ns_group,
+                    fqdn=self.dns_zone,
                     extattrs=self.forward_zone_eas)
-                rollback_list.append(ib_zone)
+                if ib_zone and obj_created:
+                    rollback_list.append(ib_zone)
+
             # create Reverse zone
             if self.need_reverse:
-                ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
-                    dns_view,
-                    cidr,
+                ib_zone_cidr, obj_created = obj.DNSZone.create_check_exists(
+                    self.ib_cxt.connector,
+                    view=dns_view,
+                    fqdn=cidr,
                     prefix=prefix,
                     zone_format=zone_format,
                     extattrs=self.reverse_zone_eas)
-                rollback_list.append(ib_zone_cidr)
+                if ib_zone_cidr and obj_created:
+                    rollback_list.append(ib_zone_cidr)
         else:
             # create Forward zone
             if self.need_forward:
-                ib_zone = self.ib_cxt.ibom.create_dns_zone(
-                    dns_view,
-                    self.dns_zone,
+                ib_zone, obj_created = obj.DNSZone.create_check_exists(
+                    self.ib_cxt.connector,
+                    view=dns_view,
+                    fqdn=self.dns_zone,
                     grid_primary=grid_primaries,
                     grid_secondaries=grid_secondaries,
                     extattrs=self.forward_zone_eas)
-                rollback_list.append(ib_zone)
+                if ib_zone and obj_created:
+                    rollback_list.append(ib_zone)
+
             # create Reverse zone
             if self.need_reverse:
-                ib_zone_cidr = self.ib_cxt.ibom.create_dns_zone(
-                    dns_view,
-                    cidr,
+                ib_zone_cidr, obj_created = obj.DNSZone.create_check_exists(
+                    self.ib_cxt.connector,
+                    view=dns_view,
+                    fqdn=cidr,
                     grid_primary=grid_primaries,
                     prefix=prefix,
                     zone_format=zone_format,
                     extattrs=self.reverse_zone_eas)
-                rollback_list.append(ib_zone_cidr)
+                if ib_zone_cidr and obj_created:
+                    rollback_list.append(ib_zone_cidr)
 
     def update_dns_zones(self):
         if self.grid_config.dns_support is False:
