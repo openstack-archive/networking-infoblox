@@ -219,17 +219,19 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
             network_id=network_id,
             subnet_id=subnet_id)
         if db_mapped_netview:
-            LOG.info("Mapping found for network (%s), subnet (%s)",
-                     network_name, subnet_name)
             if len(db_mapped_netview) > 1:
                 LOG.warning("More that one db_mapped_netview returned")
-            if delete_unknown_ips:
-                ib_network = ib_objects.Network.search(
-                    ib_cxt.connector,
-                    network_view=db_mapped_netview[0].network_view,
-                    cidr=subnet.get('cidr'))
-                ib_networks.append(ib_network)
-            continue
+
+            ib_network = ib_objects.Network.search(
+                ib_cxt.connector,
+                network_view=db_mapped_netview[0].network_view,
+                cidr=subnet.get('cidr'))
+            if ib_network:
+                LOG.info("Mapping found for network (%s), subnet (%s)",
+                         network_name, subnet_name)
+                if delete_unknown_ips:
+                    ib_networks.append(ib_network)
+                continue
 
         ipam_controller = ipam.IpamSyncController(ib_cxt)
         dns_controller = dns.DnsController(ib_cxt)
