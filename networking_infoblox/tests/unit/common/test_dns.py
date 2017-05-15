@@ -70,107 +70,142 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ib_cxt.grid_config.allow_static_zone_deletion = False
         return ib_cxt
 
-    def test_create_dns_zones_without_ns_group_both_zones(self):
+    @mock.patch.object(ib_objects, 'DNSZone')
+    def test_create_dns_zones_without_ns_group_zone_preexist(self,
+                                                             mock_zone_obj):
+        mock_zone_obj.create_check_exists.return_value = mock.Mock(), False
+        self._test_create_dns_zones_without_ns_group_both_zones(mock_zone_obj)
+
+    @mock.patch.object(ib_objects, 'DNSZone')
+    def test_create_dns_zones_without_ns_group_zone_created(self,
+                                                            mock_zone_obj):
+        mock_zone_obj.create_check_exists.return_value = mock.Mock(), True
+        self._test_create_dns_zones_without_ns_group_both_zones(mock_zone_obj)
+
+    def _test_create_dns_zones_without_ns_group_both_zones(self,
+                                                           mock_zone_obj):
         rollback_list = []
         # default strategy is to create both Forward and Reverse zones
         self.controller.create_dns_zones(rollback_list)
-        assert self.ib_cxt.ibom.method_calls == [
-            mock.call.create_dns_zone(
-                self.ib_cxt.mapping.dns_view,
-                self.test_dns_zone,
+        assert mock_zone_obj.method_calls == [
+            mock.call.create_check_exists(
+                self.ib_cxt.connector,
+                view=self.ib_cxt.mapping.dns_view,
+                fqdn=self.test_dns_zone,
                 grid_primary=[mock.ANY],
                 grid_secondaries=None,
                 extattrs=mock.ANY),
-            mock.call.create_dns_zone(
-                self.ib_cxt.mapping.dns_view,
-                self.ib_cxt.subnet['cidr'],
+            mock.call.create_check_exists(
+                self.ib_cxt.connector,
+                view=self.ib_cxt.mapping.dns_view,
+                fqdn=self.ib_cxt.subnet['cidr'],
                 grid_primary=[mock.ANY],
                 prefix=None,
                 zone_format=self.test_zone_format,
                 extattrs=mock.ANY)
         ]
         self.ib_cxt.ibom.reset_mock()
+        mock_zone_obj.reset_mock()
 
         # check strategy with only Forward zone
         self.ib_cxt.grid_config.zone_creation_strategy = [
             constants.ZONE_CREATION_STRATEGY_FORWARD]
         self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
-        assert self.ib_cxt.ibom.method_calls == [
-            mock.call.create_dns_zone(
-                self.ib_cxt.mapping.dns_view,
-                self.test_dns_zone,
+        assert mock_zone_obj.method_calls == [
+            mock.call.create_check_exists(
+                self.ib_cxt.connector,
+                view=self.ib_cxt.mapping.dns_view,
+                fqdn=self.test_dns_zone,
                 grid_primary=[mock.ANY],
                 grid_secondaries=None,
                 extattrs=mock.ANY),
         ]
         self.ib_cxt.ibom.reset_mock()
+        mock_zone_obj.reset_mock()
 
         # check strategy with only Reverse zone
         self.ib_cxt.grid_config.zone_creation_strategy = [
             constants.ZONE_CREATION_STRATEGY_REVERSE]
         self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
-        assert self.ib_cxt.ibom.method_calls == [
-            mock.call.create_dns_zone(
-                self.ib_cxt.mapping.dns_view,
-                self.ib_cxt.subnet['cidr'],
+        assert mock_zone_obj.method_calls == [
+            mock.call.create_check_exists(
+                self.ib_cxt.connector,
+                view=self.ib_cxt.mapping.dns_view,
+                fqdn=self.ib_cxt.subnet['cidr'],
                 grid_primary=[mock.ANY],
                 prefix=None,
                 zone_format=self.test_zone_format,
                 extattrs=mock.ANY)
         ]
         self.ib_cxt.ibom.reset_mock()
+        mock_zone_obj.reset_mock()
 
         # check empty strategy
         self.ib_cxt.grid_config.zone_creation_strategy = []
         self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
-        assert self.ib_cxt.ibom.method_calls == []
+        assert mock_zone_obj.method_calls == []
 
-    def test_create_dns_zones_with_ns_group(self):
+    @mock.patch.object(ib_objects, 'DNSZone')
+    def test_create_dns_zones_with_ns_group_zone_preexist(self, mock_zone_obj):
+        mock_zone_obj.create_check_exists.return_value = mock.Mock(), False
+        self._test_create_dns_zones_with_ns_group(mock_zone_obj)
+
+    @mock.patch.object(ib_objects, 'DNSZone')
+    def test_create_dns_zones_with_ns_group_zone_created(self, mock_zone_obj):
+        mock_zone_obj.create_check_exists.return_value = mock.Mock(), True
+        self._test_create_dns_zones_with_ns_group(mock_zone_obj)
+
+    def _test_create_dns_zones_with_ns_group(self, mock_zone_obj):
         rollback_list = []
         # default strategy is to create both Forward and Reverse zones
         self.ib_cxt.grid_config.ns_group = 'test-ns-group'
         self.controller.create_dns_zones(rollback_list)
-        assert self.ib_cxt.ibom.method_calls == [
-            mock.call.create_dns_zone(
-                self.ib_cxt.mapping.dns_view,
-                self.test_dns_zone,
+        assert mock_zone_obj.method_calls == [
+            mock.call.create_check_exists(
+                self.ib_cxt.connector,
+                view=self.ib_cxt.mapping.dns_view,
+                fqdn=self.test_dns_zone,
                 ns_group=self.ib_cxt.grid_config.ns_group,
                 extattrs=mock.ANY),
-            mock.call.create_dns_zone(
-                self.ib_cxt.mapping.dns_view,
-                self.ib_cxt.subnet['cidr'],
+            mock.call.create_check_exists(
+                self.ib_cxt.connector,
+                view=self.ib_cxt.mapping.dns_view,
+                fqdn=self.ib_cxt.subnet['cidr'],
                 prefix=None,
                 zone_format=self.test_zone_format,
                 extattrs=mock.ANY)
         ]
         self.ib_cxt.ibom.reset_mock()
-
+        mock_zone_obj.reset_mock()
         # check strategy with only Forward zone
         self.ib_cxt.grid_config.zone_creation_strategy = [
             constants.ZONE_CREATION_STRATEGY_FORWARD]
         self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
-        assert self.ib_cxt.ibom.method_calls == [
-            mock.call.create_dns_zone(
-                self.ib_cxt.mapping.dns_view,
-                self.test_dns_zone,
+        assert mock_zone_obj.method_calls == [
+            mock.call.create_check_exists(
+                self.ib_cxt.connector,
+                view=self.ib_cxt.mapping.dns_view,
+                fqdn=self.test_dns_zone,
                 ns_group=self.ib_cxt.grid_config.ns_group,
                 extattrs=mock.ANY),
         ]
         self.ib_cxt.ibom.reset_mock()
+        mock_zone_obj.reset_mock()
 
         # check strategy with only Reverse zone
         self.ib_cxt.grid_config.zone_creation_strategy = [
             constants.ZONE_CREATION_STRATEGY_REVERSE]
         self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
-        assert self.ib_cxt.ibom.method_calls == [
-            mock.call.create_dns_zone(
-                self.ib_cxt.mapping.dns_view,
-                self.ib_cxt.subnet['cidr'],
+        assert mock_zone_obj.method_calls == [
+            mock.call.create_check_exists(
+                self.ib_cxt.connector,
+                view=self.ib_cxt.mapping.dns_view,
+                fqdn=self.ib_cxt.subnet['cidr'],
                 prefix=None,
                 zone_format=self.test_zone_format,
                 extattrs=mock.ANY)
@@ -178,10 +213,11 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
         # check empty strategy
         self.ib_cxt.ibom.reset_mock()
+        mock_zone_obj.reset_mock()
         self.ib_cxt.grid_config.zone_creation_strategy = []
         self.controller._update_strategy_and_eas()
         self.controller.create_dns_zones(rollback_list)
-        assert self.ib_cxt.ibom.method_calls == []
+        assert mock_zone_obj.method_calls == []
 
     def _create_ib_zone_ea(self):
         zone_ea = {'CMP Type': {'value': 'OpenStack'},
