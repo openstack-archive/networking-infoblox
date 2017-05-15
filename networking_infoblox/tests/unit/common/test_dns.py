@@ -70,7 +70,15 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         ib_cxt.grid_config.allow_static_zone_deletion = False
         return ib_cxt
 
-    def test_create_dns_zones_without_ns_group_both_zones(self):
+    def test_create_dns_zones_without_ns_group_DNSZone_preexist(self):
+        self.ib_cxt.ibom.create_dns_zone.return_value = mock.Mock(), False
+        self._test_create_dns_zones_without_ns_group_both_zones()
+
+    def test_create_dns_zones_without_ns_group_DNSZone_created(self):
+        self.ib_cxt.ibom.create_dns_zone.return_value = mock.Mock(), True
+        self._test_create_dns_zones_without_ns_group_both_zones()
+
+    def _test_create_dns_zones_without_ns_group_both_zones(self):
         rollback_list = []
         # default strategy is to create both Forward and Reverse zones
         self.controller.create_dns_zones(rollback_list)
@@ -128,7 +136,15 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
         self.controller.create_dns_zones(rollback_list)
         assert self.ib_cxt.ibom.method_calls == []
 
-    def test_create_dns_zones_with_ns_group(self):
+    def test_create_dns_zones_with_ns_group_DNSZone_preexist(self):
+        self.ib_cxt.ibom.create_dns_zone.return_value = mock.Mock(), False
+        self._test_create_dns_zones_with_ns_group()
+
+    def test_create_dns_zones_with_ns_group_DNSZone_created(self):
+        self.ib_cxt.ibom.create_dns_zone.return_value = mock.Mock(), True
+        self._test_create_dns_zones_with_ns_group()
+
+    def _test_create_dns_zones_with_ns_group(self):
         rollback_list = []
         # default strategy is to create both Forward and Reverse zones
         self.ib_cxt.grid_config.ns_group = 'test-ns-group'
