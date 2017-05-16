@@ -38,6 +38,8 @@ ipam_opts = [
                help='Admin User domain id'),
     cfg.StrOpt('keystone_admin_project_domain_id',
                help='Admin Project domain id'),
+    cfg.StrOpt('keystone_admin_domain_id',
+               help='Admin Domain id'),
     cfg.StrOpt('keystone_auth_version',
                default='v2.0', help='Auth Version.'),
 

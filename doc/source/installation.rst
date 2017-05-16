@@ -225,9 +225,57 @@ Neutron
 -------
 The grid connectivity and credentials configuration must be added to the
 ``neutron.conf`` file in `infoblox` and `infoblox-dc` stanzas. The `infoblox`
-stanza contains a list of grids, and then each there is an `infoblox-dc`
-containing the appropriate configuration for each grid. Support for multiple
-grids is not yet available.
+stanza contains keystone authentication and a list of grids,
+and then each there is an `infoblox-dc` containing the appropriate configuration
+for each grid. Support for multiple grids is not yet available.
+
+For keystone authentication user need to add entry for following configuration:
+
+.. code-block:: ini
+
+    keystone_auth_uri = <auth_uri>,
+    keystone_admin_username = <username>
+    keystone_admin_password = <password>
+
+if ``keystone_auth_uri`` not includes keystone version then configure
+``keystone_auth_version`` or by default it will take ``v2.0``.
+
+.. code-block:: ini
+
+    keystone_auth_version = <auth_version>
+
+For keystone version ``v2.0`` add:
+
+.. code-block:: ini
+
+    keystone_admin_tenant_name = <tenant_name>
+
+For keystone version ``v3`` add:
+
+.. code-block:: ini
+
+    keystone_admin_user_domain_id = <user_domain_id>
+
+    # if authorization is project-level scope add:
+    keystone_admin_project_name = <project_name>
+    keystone_admin_project_domain_id = <project_domain_id>
+
+    # if authorization is domain-level scope add:
+    keystone_admin_domain_id = <domain_id>
+
+.. note::
+   For keystone ``v3`` version, user can set either of the following
+   scope level authorization:
+   ``project-level`` or ``domain-level``.
+
+Keystone configuration for TLS Support add:
+
+.. code-block:: ini
+
+    cafile = <cafile>
+    insecure = <True/False> # default value: False
+    cert = <cert>
+    key = <key>
 
 .. list-table::
    :header-rows: 1
@@ -235,6 +283,32 @@ grids is not yet available.
 
    * - Option
      - Description
+   * - keystone_auth_uri
+     - Openstack keystone authentication uri.
+   * - keystone_admin_username
+     - Openstack keystone admin username.
+   * - keystone_admin_password
+     - Password of keystone admin user.
+   * - keystone_auth_version
+     - Openstack keystone version.
+   * - keystone_admin_tenant_name
+     - Tenant name of keystone admin user.
+   * - keystone_admin_user_domain_id
+     - User Domain Id of keystone admin user.
+   * - keystone_admin_project_name
+     - Project name of keystone admin user
+   * - keystone_admin_project_domain_id
+     - Project Domain Id of keystone admin user
+   * - keystone_admin_domain_id
+     - Domain Id of keystone admin user
+   * - cafile
+     - CA certificate bundle file for keystone authentication.
+   * - insecure
+     - Disable server certificate verification.
+   * - cert
+     - Client certificate bundle file for keystone authentication.
+   * - key
+     - Client certificate key file for keystone authentication.
    * - cloud_data_center_id
      - An integer ID used for the data center. This is used to form the stanza
        name for the rest of the options. If you have multiple instances of
@@ -244,30 +318,6 @@ grids is not yet available.
        a unique ID for a network view that is cached in neutron database.
        Starting it with a very high number may exceed the max length of a
        network view id.
-   * - keystone_auth_uri
-     - Openstack keystone authentication uri.
-   * - keystone_admin_username
-     - Openstack keystone admin username.
-   * - keystone_admin_password
-     - Password of keystone admin user.
-   * - keystone_admin_tenant_name (Only for keystone v2.0)
-     - Tenant name of keystone admin user.
-   * - keystone_admin_project_name (Only for keystone v3)
-     - Project name of keystone admin user.
-   * - keystone_admin_user_domain_id (Only for keystone v3)
-     - User Domain Id of keystone admin user.
-   * - keystone_admin_project_domain_id (Only for keystone v3)
-     - Project DOmain Id of keystone admin user.
-   * - keystone_auth_version
-     - Openstack keystone version.
-   * - cafile
-     - CA certificate bundle file for keystone authentication.
-   * - insecure
-     - Disable server certificate verification.
-   * - cert
-     - Client certificate bundle file for keystone authentication.
-   * - key
-     - Client certificate key file for keystone authentication.
    * - grid_master_host
      - The IP address, hostname, or FQDN of the Grid Master (GM).
        Proxying is supported so this does not have to be the exact IP or
@@ -316,6 +366,7 @@ installation):
    cloud_data_center_id = 1
    keystone_admin_project_domain_id = default
    keystone_admin_user_domain_id = default
+   keystone_admin_domain_id = default
    keystone_admin_project_name = admin
    keystone_admin_tenant_name = admin
    keystone_admin_username = admin
@@ -430,8 +481,9 @@ For keystone behind TLS:
     export OS_TENANT_NAME=admin
     export OS_PROJECT_NAME=admin
     export OS_REGION_NAME=RegionOne
-    export OS_PROJECT_DOMAIN_NAME=default
-    export OS_USER_DOMAIN_NAME=default
+    export OS_PROJECT_DOMAIN_ID=default
+    export OS_USER_DOMAIN_ID=default
+    export OS_DOMAIN_ID=default
     export SERVICE_ENDPOINT=https://controller:5000/v3
     export OS_IDENTITY_API_VERSION=3
     export OS_CACERT=/etc/ssl/certs/apache-selfsigned.crt

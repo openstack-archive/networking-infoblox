@@ -30,6 +30,7 @@ class DummyInfobloxOpts(object):
         self.keystone_admin_user_domain_id = 'cloud_admin_domain'
         self.keystone_admin_project_domain_id = 'cloud_admin_domain'
         self.keystone_auth_version = 'v2.0'
+        self.keystone_admin_domain_id = ''
 
 
 class TestKeystoneManager(base.TestCase):
@@ -91,7 +92,8 @@ class TestKeystoneManager(base.TestCase):
             project_name=ib_opts.keystone_admin_project_name,
             user_domain_id=ib_opts.keystone_admin_user_domain_id,
             project_domain_id=ib_opts.keystone_admin_project_domain_id,
-            tenant_name=ib_opts.keystone_admin_tenant_name)
+            tenant_name=ib_opts.keystone_admin_tenant_name,
+            domain_id=ib_opts.keystone_admin_domain_id)
         loadSessionMock.assert_called_once_with(ConfMock, 'infoblox',
                                                 auth=auth)
         ClientMock.assert_called_once_with(session=session)
