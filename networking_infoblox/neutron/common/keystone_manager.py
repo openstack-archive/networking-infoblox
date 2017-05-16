@@ -53,7 +53,8 @@ def get_keystone_client():
         project_name=ib_opts.keystone_admin_project_name,
         user_domain_id=ib_opts.keystone_admin_user_domain_id,
         project_domain_id=ib_opts.keystone_admin_project_domain_id,
-        tenant_name=ib_opts.keystone_admin_tenant_name)
+        tenant_name=ib_opts.keystone_admin_tenant_name,
+        domain_id=ib_opts.keystone_admin_domain_id)
 
     session = loading.load_session_from_conf_options(CONF, 'infoblox',
                                                      auth=auth)
