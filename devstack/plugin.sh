@@ -56,6 +56,7 @@ function configure_networking_infoblox {
     iniset $NEUTRON_CONF infoblox keystone_admin_project_name admin
     iniset $NEUTRON_CONF infoblox keystone_admin_user_domain_id default
     iniset $NEUTRON_CONF infoblox keystone_admin_project_domain_id default
+    iniset $NEUTRON_CONF infoblox keystone_admin_domain_id ""
     iniset $NEUTRON_CONF infoblox cafile ${SSL_BUNDLE_FILE:-""}
     iniset $NEUTRON_CONF infoblox insecure False
     iniset $NEUTRON_CONF infoblox cert ""
