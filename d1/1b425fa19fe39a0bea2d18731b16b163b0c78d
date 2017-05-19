@@ -1,0 +1,8 @@
+Code-Review+2: Yue Ko <yko@infoblox.com>
+Workflow+1: Yue Ko <yko@infoblox.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Fri, 19 May 2017 12:00:27 +0000
+Reviewed-on: https://review.openstack.org/466190
+Project: openstack/networking-infoblox
+Branch: refs/heads/stable/ocata
