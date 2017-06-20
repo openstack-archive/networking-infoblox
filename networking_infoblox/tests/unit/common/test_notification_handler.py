@@ -22,6 +22,7 @@ from networking_infoblox.neutron.common import context
 from networking_infoblox.neutron.common import dns
 from networking_infoblox.neutron.common import ipam
 from networking_infoblox.neutron.common import notification_handler as handler
+from networking_infoblox.neutron.common import pattern
 from networking_infoblox.neutron.db import infoblox_db as dbi
 from networking_infoblox.tests import base
 
@@ -118,6 +119,8 @@ class TestIpamEventHandler(base.TestCase):
         self.ipam_handler._resync.assert_called_once_with(True)
 
     @mock.patch('networking_infoblox.neutron.common.context.InfobloxContext')
+    @mock.patch.object(pattern.PatternBuilder,
+                       "_validate_pattern_struct", mock.Mock())
     def test_update_floatingip_sync(self, ib_cxt_mock):
         payload = {'floatingip': {'id': 'floatingip-id',
                                   'tenant_id': 'tenant-id',

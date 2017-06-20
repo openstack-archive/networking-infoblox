@@ -223,3 +223,31 @@ class TestPatternBuilder(base.TestCase):
         self.assertEqual(
             self.pattern_builder.get_zone_name_pattern(is_external=True),
             self.ib_cxt.grid_config.external_domain_name_pattern)
+
+    def test_validate_pattern_struct(self):
+        pattern_dict = {
+            'network_id': 'subnet',
+            'network_name': 'network',
+            'tenant_id': 'tenant_id',
+            'tenant_name': 'tenant_name',
+            'subnet_name': 'subnet_name',
+            'subnet_id': 'subnet_id'
+        }
+        pattern = '{tenant_id}.{tenant_name}.{subnet_name}'
+        self.pattern_builder._validate_pattern_struct(pattern, pattern_dict)
+        self.assertTrue(True)
+
+    def test_validate_incorrect_pattern_struct(self):
+        pattern_dict = {
+            'network_id': 'subnet',
+            'network_name': 'network',
+            'tenant_id': 'tenant_id',
+            'tenant_name': 'tenant_name',
+            'subnet_name': 'subnet_name',
+            'subnet_id': 'subnet_id'
+        }
+        pattern = '{tenant_id}.{tenant_name}.{subnet_name_invalid}'
+        self.assertRaises(KeyError,
+                          self.pattern_builder._validate_pattern_struct,
+                          pattern,
+                          pattern_dict)
