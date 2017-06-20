@@ -124,11 +124,26 @@ class PatternBuilder(object):
             pattern_dict['port_name'] = port_id
 
         try:
+            # Validate grid config pattern with pattern_dict to
+            # restrict user to use only those pattern variable in
+            # grid config pattern which is available in pattern_dict
+            self._validate_pattern_struct(pattern, pattern_dict)
             fqdn = pattern.format(**pattern_dict)
         except (KeyError, IndexError) as e:
             raise ibc_exc.InfobloxConfigException(
                 msg="Invalid pattern %s" % e)
         return fqdn
+
+    @staticmethod
+    def _validate_pattern_struct(pattern, pattern_dict):
+        # This function fetches all variables from grid config
+        # pattern and validate the list with supported pattern
+        # variables, raises a KeyError if validation fails.
+        input_pattern_list = re.findall("\{(.*?)\}", pattern)
+
+        if not (set(input_pattern_list).issubset(set(pattern_dict))):
+            invalid_pattern = set(input_pattern_list) - set(pattern_dict)
+            raise KeyError(list(invalid_pattern))
 
     @staticmethod
     def _validate_pattern(pattern):
