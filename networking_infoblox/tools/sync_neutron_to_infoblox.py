@@ -197,6 +197,16 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
     ib_networks = []
     should_exit = False
 
+    # Maintaining a list of created networks to handle the case where
+    # network is deleted and zone is not deleted from NIOS.
+    # In such cases DNS records for all the ports exists in the NIOS but other
+    # data for port like MAC address, EA's are missing. This causes issues
+    # while deleting/updating the port.
+    #
+    # This list will help in identifying such networks and helps in updating
+    # all ports created by this network
+    created_subnets = []
+
     # sync subnets
     for subnet in subnets:
         subnet_id = subnet['id']
@@ -240,6 +250,7 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
         try:
             ib_network = ipam_controller.create_subnet(rollback_list)
             if ib_network:
+                created_subnets.append(subnet_id)
                 if delete_unknown_ips:
                     ib_networks.append(ib_network)
                 dns_controller.create_dns_zones(rollback_list)
@@ -308,7 +319,8 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
                                               search_fields,
                                               return_fields=['objects'],
                                               force_proxy=True)
-            if ib_address and ib_address[0]['objects']:
+            if ib_address and ib_address[0]['objects'] and (
+                    subnet_id not in created_subnets):
                 LOG.info("%s is found...no need to create", ip_address)
                 continue
 
