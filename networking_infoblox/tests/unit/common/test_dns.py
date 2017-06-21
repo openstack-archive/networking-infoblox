@@ -449,6 +449,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
     @mock.patch.object(dbi, 'get_instance', mock.Mock())
     @mock.patch.object(ea_manager, 'get_ea_for_ip', mock.Mock())
+    @mock.patch.object(dns.DnsController, '_ensure_dns_zone_availability',
+                       mock.Mock())
     def test_bind_names(self):
         ip_address = '11.11.1.2'
         instance_name = 'test-vm'
@@ -537,6 +539,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                 dbi.get_instance.assert_called_once_with(*dbi_call_params)
                 ea_manager.get_ea_for_ip.reset_mock()
 
+    @mock.patch.object(dns.DnsController, '_ensure_dns_zone_availability',
+                       mock.Mock())
     def test_unbind_names(self):
         ip_address = '11.11.1.2'
         instance_name = 'test-vm'
@@ -572,6 +576,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                    None)
         ]
 
+    @mock.patch.object(dns.DnsController, '_ensure_dns_zone_availability',
+                       mock.Mock())
     def test_unbind_names_without_name(self):
         ip_address = '11.11.1.2'
         port_id = 'port-id'
@@ -630,3 +636,52 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
     def test_update_dns_zones_empty(self):
         self._test_update_calls([], [])
+
+    @mock.patch.object(ib_objects, 'DNSZone')
+    @mock.patch.object(ea_manager, 'get_ea_for_forward_zone')
+    def test_ensure_dns_zone_with_ns_group_availability(
+            self, mock_eas_fw_zone, mock_zone_obj):
+        # default strategy is to create both Forward
+        self.ib_cxt.grid_config.ns_group = 'test-ns-group'
+        dns_view = 'test_dns_view'
+        port_tenant_id = 'test_tenant_id'
+        tenant_name = 'test_tenant_name'
+        is_external = 'false'
+        mock_zone_obj.create_check_exists.return_value = (
+            mock.Mock(), True)
+        mock_eas_fw_zone.return_value = 'test_eas_forward_zone'
+        self.controller._ensure_dns_zone_availability(
+            dns_view, port_tenant_id,
+            tenant_name, is_external)
+        assert mock_zone_obj.method_calls == [
+            mock.call.create_check_exists(
+                self.ib_cxt.connector,
+                view=dns_view,
+                fqdn=self.test_dns_zone,
+                ns_group=self.ib_cxt.grid_config.ns_group,
+                extattrs='test_eas_forward_zone')
+        ]
+
+    @mock.patch.object(ib_objects, 'DNSZone')
+    @mock.patch.object(ea_manager, 'get_ea_for_forward_zone')
+    def test_ensure_dns_zone_without_ns_group_availability(
+            self, mock_eas_fw_zone, mock_zone_obj):
+        dns_view = 'test_dns_view'
+        port_tenant_id = 'test_tenant_id'
+        tenant_name = 'test_tenant_name'
+        is_external = 'false'
+        mock_zone_obj.create_check_exists.return_value = (
+            mock.Mock(), True)
+        mock_eas_fw_zone.return_value = 'test_eas_forward_zone'
+        self.controller._ensure_dns_zone_availability(
+            dns_view, port_tenant_id,
+            tenant_name, is_external)
+        assert mock_zone_obj.method_calls == [
+            mock.call.create_check_exists(
+                self.ib_cxt.connector,
+                view=dns_view,
+                fqdn=self.test_dns_zone,
+                grid_primary=[mock.ANY],
+                grid_secondaries=None,
+                extattrs='test_eas_forward_zone')
+        ]
