@@ -111,9 +111,8 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
 
         ipam_controller = ipam.IpamSyncController(ib_cxt)
         ib_network = ipam_controller.get_subnet()
-        if ib_network:
-            return InfobloxSubnet(subnet_request, neutron_subnet, ib_network,
-                                  ib_cxt)
+        return InfobloxSubnet(subnet_request, neutron_subnet, ib_network,
+                              ib_cxt)
 
     @staticmethod
     def _build_request_from_subnet(neutron_subnet):
@@ -354,6 +353,21 @@ class InfobloxSubnet(driver.Subnet):
             raise ValueError("Subnet details should be passed as "
                              "SpecificSubnetRequest")
 
+    def _validate_network_availability(self):
+        ib_network = None
+        try:
+            ib_network = (
+                ib_objects.Network.search(
+                    self._ib_cxt.connector,
+                    network_view=self._ib_network.network_view,
+                    cidr=self._neutron_subnet['cidr']))
+        except Exception as e:
+            LOG.error(_LE("Exception occured: %(error)s while"
+                          "searching network %(network)s"),
+                      {'error': e,
+                       'network': self._neutron_subnet['cidr']})
+        return ib_network
+
     @catch_ib_client_exception
     def allocate(self, address_request):
         """Allocate an IP address based on the request passed in.
@@ -362,6 +376,20 @@ class InfobloxSubnet(driver.Subnet):
         :type address_request: A subclass of AddressRequest
         :returns: A netaddr.IPAddress
         """
+        # Validate if network is available for which port
+        # association request came.
+        # This handle case where subnet is in process of deletion and
+        # port allocation comes for update_port.
+        if not self._ib_network:
+            raise Exception("IB Network: %s not Found in the NIOS" % (
+                            self._neutron_subnet['cidr']))
+
+        if not self._validate_network_availability():
+            raise Exception(
+                "IB Network: %s not Found under Network View: %s" % (
+                    self._neutron_subnet['cidr'],
+                    self._ib_network.network_view))
+
         ipam_controller = ipam.IpamSyncController(self._ib_cxt)
         dns_controller = dns.DnsController(self._ib_cxt)
 
@@ -411,6 +439,9 @@ class InfobloxSubnet(driver.Subnet):
         :type address: A subclass of netaddr.IPAddress or convertible to one.
         :returns: None
         """
+        if not self._ib_network:
+            return
+
         ip_addr = str(address)
         address_request = self._build_address_request_from_ib_address(ip_addr)
         if not address_request:
