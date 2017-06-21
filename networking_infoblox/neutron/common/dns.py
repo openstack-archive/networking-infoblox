@@ -255,6 +255,48 @@ class DnsController(object):
                          instance_name, port_id, port_tenant_id, device_id,
                          device_owner, port_name=port_name, unbind=True)
 
+    def _ensure_dns_zone_availability(self, dns_view, port_tenant_id,
+                                      tenant_name, is_external):
+
+        if self.grid_config.dns_support is False:
+            return
+
+        forward_zone_eas = eam.get_ea_for_forward_zone(
+            self.ib_cxt.user_id, port_tenant_id,
+            tenant_name, self.ib_cxt.network,
+            self.ib_cxt.subnet,
+            self.pattern_builder.get_zone_name(
+                is_external=self.ib_cxt.network_is_external))
+
+        dns_zone_name = self.pattern_builder.get_zone_name(
+            port_tenant_id=port_tenant_id,
+            tenant_name=tenant_name, is_external=is_external)
+
+        ns_group = self.grid_config.ns_group
+
+        if ns_group:
+            ib_zone, obj_created = obj.DNSZone.create_check_exists(
+                self.ib_cxt.connector,
+                view=dns_view,
+                ns_group=ns_group,
+                fqdn=dns_zone_name,
+                extattrs=forward_zone_eas)
+        else:
+            self.ib_cxt.reserve_service_members()
+            grid_primaries, grid_secondaries = self.ib_cxt.get_dns_members()
+            LOG.error("grid_primaries: %s, grid_secondaries: %s" % (
+                      grid_primaries, grid_secondaries))
+            ib_zone, obj_created = obj.DNSZone.create_check_exists(
+                self.ib_cxt.connector,
+                view=dns_view,
+                fqdn=dns_zone_name,
+                grid_primary=grid_primaries,
+                grid_secondaries=grid_secondaries,
+                extattrs=forward_zone_eas)
+
+        if ib_zone and obj_created:
+            LOG.info("DNS Zone created while binding names to the ip")
+
     def _bind_names(self, binding_func, ip_address, instance_name=None,
                     port_id=None, port_tenant_id=None, device_id=None,
                     device_owner=None, ea_ip_address=None, port_name=None,
@@ -262,6 +304,12 @@ class DnsController(object):
         network_view = self.ib_cxt.mapping.network_view
         dns_view = self.ib_cxt.mapping.dns_view
         is_external = self.ib_cxt.network_is_external
+
+        # It ensure if dns zone is available at NIOS, if not
+        # then creates it.
+        if not unbind:
+            self._ensure_dns_zone_availability(dns_view, port_tenant_id,
+                                               tenant_name, is_external)
 
         fqdn = None
         try:
