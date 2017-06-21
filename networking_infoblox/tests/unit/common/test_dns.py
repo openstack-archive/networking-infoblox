@@ -449,6 +449,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
 
     @mock.patch.object(dbi, 'get_instance', mock.Mock())
     @mock.patch.object(ea_manager, 'get_ea_for_ip', mock.Mock())
+    @mock.patch.object(dns.DnsController, '_validate_dns_zone_availability',
+                       mock.Mock())
     def test_bind_names(self):
         ip_address = '11.11.1.2'
         instance_name = 'test-vm'
@@ -537,6 +539,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                 dbi.get_instance.assert_called_once_with(*dbi_call_params)
                 ea_manager.get_ea_for_ip.reset_mock()
 
+    @mock.patch.object(dns.DnsController, '_validate_dns_zone_availability',
+                       mock.Mock())
     def test_unbind_names(self):
         ip_address = '11.11.1.2'
         instance_name = 'test-vm'
@@ -572,6 +576,8 @@ class DnsControllerTestCase(base.TestCase, testlib_api.SqlTestCase):
                                    None)
         ]
 
+    @mock.patch.object(dns.DnsController, '_validate_dns_zone_availability',
+                       mock.Mock())
     def test_unbind_names_without_name(self):
         ip_address = '11.11.1.2'
         port_id = 'port-id'
