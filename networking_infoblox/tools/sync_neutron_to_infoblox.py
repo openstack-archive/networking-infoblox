@@ -105,6 +105,7 @@ def main():
 
     grid_manager = grid.GridManager(context)
     grid_manager.sync(force_sync=True)
+    context.session.expunge_all()
 
     credentials['session'] = session
     for key in ('user_domain_id', 'project_domain_id'):
