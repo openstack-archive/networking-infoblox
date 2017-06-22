@@ -103,8 +103,9 @@ def main():
     context.user_id = client.ec2.client.get_user_id()
     context.tenant_id = client.ec2.client.get_project_id()
 
-    grid_manager = grid.GridManager(context)
-    grid_manager.sync(force_sync=True)
+    grid_syncer = grid.GridSyncer()
+    grid_syncer.sync(True)
+    grid_manager = grid_syncer._grid_manager
 
     credentials['session'] = session
     for key in ('user_domain_id', 'project_domain_id'):
