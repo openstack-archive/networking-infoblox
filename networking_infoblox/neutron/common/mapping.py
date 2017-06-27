@@ -85,6 +85,9 @@ class GridMappingManager(object):
         for dns_view in discovered_dns_views:
             netview_name = dns_view['network_view']
             dnsview_name = dns_view['name']
+            if netview_name in dns_views and (
+                    dns_views[netview_name] != self._grid_config.dns_view):
+                dns_views[netview_name] = self._grid_config.dns_view
             if netview_name not in dns_views:
                 dns_views[netview_name] = dnsview_name
         return dns_views
