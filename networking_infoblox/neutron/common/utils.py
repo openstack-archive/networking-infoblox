@@ -17,7 +17,6 @@ import datetime
 import decimal
 import hashlib
 import netaddr
-import random
 import re
 import six
 import time
@@ -181,21 +180,6 @@ def is_valid_ip(ip):
     except netaddr.core.AddrFormatError:
         return False
     return True
-
-
-def generate_duid(mac):
-    """DUID is consisted of 10 hex numbers.
-
-    0x00 + 3 random hex + mac with 6 hex
-    """
-    valid = mac and isinstance(mac, six.string_types)
-    if not valid:
-        raise ValueError("Invalid argument was passed.")
-    duid = [0x00,
-            random.randint(0x00, 0x7f),
-            random.randint(0x00, 0xff),
-            random.randint(0x00, 0xff)]
-    return ':'.join(map(lambda x: "%02x" % x, duid)) + ':' + mac
 
 
 def get_list_from_string(data_string, delimiter_list):
