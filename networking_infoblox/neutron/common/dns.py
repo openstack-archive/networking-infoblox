@@ -60,7 +60,7 @@ class DnsController(object):
     def create_dns_zones(self, rollback_list):
         if self.grid_config.dns_support is False:
             return
-
+        LOG.debug("Initialized DNS Zone creation")
         cidr = self.ib_cxt.subnet['cidr']
         subnet_name = self.ib_cxt.subnet['name']
         dns_view = self.ib_cxt.mapping.dns_view
@@ -80,6 +80,8 @@ class DnsController(object):
                     fqdn=self.dns_zone,
                     extattrs=self.forward_zone_eas)
                 if ib_zone and obj_created:
+                    LOG.info("Created forward zone: %s with ns_group: %s" % (
+                             self.dns_zone, ns_group))
                     rollback_list.append(ib_zone)
 
             # create Reverse zone
@@ -92,6 +94,8 @@ class DnsController(object):
                     zone_format=zone_format,
                     extattrs=self.reverse_zone_eas)
                 if ib_zone_cidr and obj_created:
+                    LOG.info("Created reverse zone: %s with ns_group: %s" % (
+                             cidr, ns_group))
                     rollback_list.append(ib_zone_cidr)
         else:
             # create Forward zone
@@ -104,6 +108,10 @@ class DnsController(object):
                     grid_secondaries=grid_secondaries,
                     extattrs=self.forward_zone_eas)
                 if ib_zone and obj_created:
+                    LOG.info("Created forward zone: %s with "
+                             "grid_primaries: %s, grid_secondaries: %s" % (
+                                 self.dns_zone, grid_primaries,
+                                 grid_secondaries))
                     rollback_list.append(ib_zone)
 
             # create Reverse zone
@@ -117,6 +125,9 @@ class DnsController(object):
                     zone_format=zone_format,
                     extattrs=self.reverse_zone_eas)
                 if ib_zone_cidr and obj_created:
+                    LOG.info("Created reverse zone: %s with "
+                             "grid_primaries: %s, grid_secondaries: %s" % (
+                                 cidr, grid_primaries, grid_secondaries))
                     rollback_list.append(ib_zone_cidr)
 
     def update_dns_zones(self):
@@ -281,11 +292,13 @@ class DnsController(object):
                 ns_group=ns_group,
                 fqdn=dns_zone_name,
                 extattrs=forward_zone_eas)
+            if ib_zone and obj_created:
+                LOG.info("Created forward zone: %s with ns_group: %s" % (
+                         dns_zone_name, ns_group))
+
         else:
             self.ib_cxt.reserve_service_members()
             grid_primaries, grid_secondaries = self.ib_cxt.get_dns_members()
-            LOG.error("grid_primaries: %s, grid_secondaries: %s" % (
-                      grid_primaries, grid_secondaries))
             ib_zone, obj_created = obj.DNSZone.create_check_exists(
                 self.ib_cxt.connector,
                 view=dns_view,
@@ -293,9 +306,10 @@ class DnsController(object):
                 grid_primary=grid_primaries,
                 grid_secondaries=grid_secondaries,
                 extattrs=forward_zone_eas)
-
-        if ib_zone and obj_created:
-            LOG.info("DNS Zone created while binding names to the ip")
+            if ib_zone and obj_created:
+                LOG.info("Created forward zone: %s with "
+                         "grid_primaries: %s, grid_secondaries: %s" % (
+                             dns_zone_name, grid_primaries, grid_secondaries))
 
     def _bind_names(self, binding_func, ip_address, instance_name=None,
                     port_id=None, port_tenant_id=None, device_id=None,
