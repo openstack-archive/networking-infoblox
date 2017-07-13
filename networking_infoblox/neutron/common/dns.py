@@ -284,8 +284,6 @@ class DnsController(object):
         else:
             self.ib_cxt.reserve_service_members()
             grid_primaries, grid_secondaries = self.ib_cxt.get_dns_members()
-            LOG.error("grid_primaries: %s, grid_secondaries: %s" % (
-                      grid_primaries, grid_secondaries))
             ib_zone, obj_created = obj.DNSZone.create_check_exists(
                 self.ib_cxt.connector,
                 view=dns_view,
