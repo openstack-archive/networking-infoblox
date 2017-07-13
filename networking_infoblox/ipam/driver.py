@@ -179,7 +179,6 @@ class InfobloxPool(subnet_alloc.SubnetAllocator):
         ib_network = self._create_ib_network(rollback_list, ipam_controller)
         if ib_network:
             dns_controller.create_dns_zones(rollback_list)
-            LOG.info("Created DNS zones.")
 
         return InfobloxSubnet(subnet_request, neutron_subnet, ib_network,
                               ib_cxt)
