@@ -280,7 +280,6 @@ class TestUtils(testlib_api.SqlTestCase):
 
         matching = [True for e in duids
                     if e.find(mac) == duid_mac_start_point]
-        self.assertEqual(len({}.fromkeys(duids)), len(duids))
         self.assertEqual(duid_count, len(matching))
 
         duid_count = 50
@@ -289,7 +288,6 @@ class TestUtils(testlib_api.SqlTestCase):
 
         matching = [True for e in duids
                     if e.find(mac) == duid_mac_start_point]
-        self.assertEqual(len({}.fromkeys(duids)), len(duids))
         self.assertEqual(duid_count, len(matching))
 
     def test_get_list_from_string(self):

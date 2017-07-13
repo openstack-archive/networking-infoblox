@@ -18,6 +18,7 @@ import netaddr
 import six
 
 from networking_infoblox.neutron.common import constants as const
+from networking_infoblox.neutron.common import utils
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -114,11 +115,12 @@ class HostRecordIPAllocator(IPAllocator):
 
         if reserved_hostname_hr:
             for hr_ip in reserved_ip_hr.ips:
+                ip_mac = hr_ip.mac if hr_ip.ip_version == 4 else hr_ip.duid
                 if hr_ip == ip:
                     reserved_ip_hr.delete()
                     reserved_hostname_hr.extattrs = extattrs
                     self.manager.add_ip_to_record(
-                        reserved_hostname_hr, ip, hr_ip.mac)
+                        reserved_hostname_hr, ip, ip_mac)
                     break
         else:
             self.manager.bind_name_with_host_record(
@@ -175,17 +177,20 @@ class HostRecordIPAllocator(IPAllocator):
         # First search hosts with same MAC and if exists address with
         # same IP - use it instead of creating new one
         # https://bugs.launchpad.net/networking-infoblox/+bug/1628517
+        ip_version = netaddr.IPAddress(ip).version
+        _mac = mac.lower()
+        if ip_version == 6:
+            _mac = utils.generate_duid(_mac)
         hosts = self.manager.find_host_records_by_mac(dns_view,
-                                                      mac.lower(),
+                                                      _mac,
                                                       network_view)
         if hosts:
-            ip_version = netaddr.IPAddress(ip).version
             for host in hosts:
                 if host.ip_version != ip_version:
                     continue
                 for host_ip in host.ips:
-                    ip_mac = host_ip.mac if ip_version == 4 else ip.duid
-                    if ip_mac != mac:
+                    ip_mac = host_ip.mac if ip_version == 4 else host_ip.duid
+                    if ip_mac != _mac:
                         continue
                     if host_ip.ip == ip:
                         self.manager.update_host_record_eas(dns_view,
