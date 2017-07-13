@@ -270,28 +270,6 @@ class TestUtils(testlib_api.SqlTestCase):
         for ip in ips:
             self.assertEqual(False, utils.is_valid_ip(ip))
 
-    def test_generate_duid(self):
-        # DUID mac address starts from position 12
-        duid_mac_start_point = 12
-
-        duid_count = 10
-        mac = 'fa:16:3e:bd:ce:14'
-        duids = [utils.generate_duid(mac) for _ in range(duid_count)]
-
-        matching = [True for e in duids
-                    if e.find(mac) == duid_mac_start_point]
-        self.assertEqual(len({}.fromkeys(duids)), len(duids))
-        self.assertEqual(duid_count, len(matching))
-
-        duid_count = 50
-        mac = 'fa:16:3e:1d:79:d7'
-        duids = [utils.generate_duid(mac) for _ in range(duid_count)]
-
-        matching = [True for e in duids
-                    if e.find(mac) == duid_mac_start_point]
-        self.assertEqual(len({}.fromkeys(duids)), len(duids))
-        self.assertEqual(duid_count, len(matching))
-
     def test_get_list_from_string(self):
         self.assertRaises(ValueError, utils.get_list_from_string, None, None)
         self.assertRaises(ValueError, utils.get_list_from_string, 'key', [])
