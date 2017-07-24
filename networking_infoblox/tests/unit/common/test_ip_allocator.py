@@ -230,7 +230,6 @@ class HostRecordAllocatorTestCase(base.TestCase):
     def test_bind_names_for_non_dns(self):
         netview = 'some-test-net-view'
         dns_view = 'some-dns-view'
-        nondns_view = ' '  # Special name for '.non_DNS_host_root' view
         hostname = 'host1'
         ip = '192.168.1.2'
         extattrs = 'test-extattrs'
@@ -247,17 +246,8 @@ class HostRecordAllocatorTestCase(base.TestCase):
             [dns_view, ip, None],  # expected get_host_record params
             [dns_view, ip, hostname, extattrs, None])  # expected for bind_name
 
-        # Now bind non-dns host in default network view - special dns view
-        # name should be used
         options['configure_for_dns'] = False
-        self._check_bind_names_calls(
-            options,
-            ['default', dns_view, ip, hostname, extattrs],
-            [nondns_view, hostname, ip, None],  # expected find_hostname params
-            [nondns_view, ip, None],  # expected get_host_record params
-            [nondns_view, ip, hostname, extattrs, None])  # bind_name expects
-
-        # Now bind non-dns host in non-default network view - network view
+        # Now bind non-dns host in all network view - network view
         # name should be used, dns view name should be not used
         self._check_bind_names_calls(
             options,

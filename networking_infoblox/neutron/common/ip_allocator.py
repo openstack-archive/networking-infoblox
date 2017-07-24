@@ -87,18 +87,9 @@ class HostRecordIPAllocator(IPAllocator):
         # Don't use network view for DNS hosts
         net_view = None
         if not self.opts['configure_for_dns']:
-            if network_view == 'default':
-                # Non-dns records placed in special dns view
-                # '.non_DNS_host_root' which has special name ' '
-                dns_view = ' '
-            else:
-                # Each network_view has separate non_DNS_host_root dns view
-                # Unfortunatelly all non_DNS_host_root except the 'default'
-                # network view has same display name - '  ' which brakes WAPI
-                # code. So network view should be used instead of dns view for
-                # non-DNS hosts which is belongs to non-default network views
-                dns_view = None
-                net_view = network_view
+            dns_view = None
+            net_view = network_view
+
         # See OPENSTACK-181. In case hostname already exists on NIOS, update
         # host record which contains that hostname with the new IP address
         # rather than creating a separate host record object
