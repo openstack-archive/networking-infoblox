@@ -190,20 +190,17 @@ To install the most recent production release, use the following command::
 
     $ sudo pip install networking-infoblox
 
-Liberty and Mitaka
-------------------
-Version 2.x of the driver supports Liberty and Mitaka. Version 2.0.1 of the
-driver can be installed using the following command::
+.. note::
+  Release 8.0.1 of the IPAM Driver supports the Mitaka release,
+  9.0.1 supports the Newton release, and 10.0.0 supports the Ocata release.
 
-    $ sudo pip install networking-infoblox==2.0.1
+  For example, to install the IPAM Driver for Newton, use the following command:
 
-We strongly recommend to use 2.0.1 instead 2.0.0 because 2.0.1 includes
-critical bug fixes that ensure its stability and has undergone important
-database scheme change to support production usability like GM candidate
-promotion, proxying support and better grid sync.
+    $ sudo pip install networking-Infoblox==9.0.1
 
-We do not support data migration from 2.0.0 to 2.0.1. Please use Version 2.0.1
-or higher.
+.. note::
+  Infoblox strongly recommends using 8.0.1, 9.0.1, 10.0.0 and later versions of the
+  IPAM Driver as they include critical bug fixes.
 
 Creating the Infoblox Neutron Database
 ======================================
@@ -502,6 +499,17 @@ For keystone behind TLS:
     $ networking-infoblox(keystone_admin)]# python networking_infoblox/tools/sync_neutron_to_infoblox.py
 
 You can re-run the migration script as many times as needed.
+
+Upgrading Infoblox IPAM Driver for OpenStack Neutron
+====================================================
+
+To upgrade the Driver from version 8.0.0 to 8.0.1, use the following command::
+
+    $ sudo pip install networking-infoblox==8.0.1
+
+To upgrade the Driver from version 9.0.0 to 9.0.1, use the following command::
+
+    $ sudo pip install networking-infoblox==9.0.1
 
 Known Issues and Limitation
 ===========================
