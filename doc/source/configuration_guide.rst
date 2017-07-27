@@ -163,10 +163,18 @@ only. For example, if the pattern is
 ``host-{ip_address_octet{2}}-{ip_address_octet{3}}``
 and the IP is 10.1.2.3, then the resulting hostname will be ``host-2-3``.
 
+.. note::
+  If the host name pattern is set to {instance_name}.constant_string, then
+  you should not create two instances with the same name in openstack as it
+  will create the same DNS host record for both instances.
+
 `External Host Name Pattern`. This EA controls host names in the same way
 as `Default Host Name Pattern`, but applies only to hosts allocated
 in external network. If `External Host Name Pattern` is not set,
 `Default Host Name Pattern` is used for external networks.
+
+.. note::
+  Per NIOS restriction, the domain label must not be longer than 63 characters.
 
 `Tenant Name Persistence`. Since Neutron does not have direct access to tenant
 names (they are part of Keystone), the Infoblox IPAM agent can cache those
@@ -187,7 +195,7 @@ The dnsmasq-based DHCP can be used instead. The default is False.
 `DNS Support`. When set to False, DNS support will be disabled. Enabling it
 allows DNS record generation and DNS protocol. The default is False.
 
-Currently only the following configurations are supported.
+Currently the following configurations are supported.
 
 IPAM Only
 
@@ -199,10 +207,25 @@ Full DHCP/DNS Support
  * `DHCP Support` = True
  * `DNS Support` = True
 
-.. important::
+Creating multiple network views with specific Default Network View Scope EA:
+ * `DHCP Support` = False/True
+ * `DNS Support` = True
 
-  You cannot set only one option to True. We will support DHCP only and DNS
-  only configurations in coming release.
+If the `DHCP Support` EA is False:
+
+ * When the Default Network View Scope EA is set to `Single`, the Grid Master or Grid member are not assigned to the
+   network and multiple networks are created in the default or custom network view.
+ * When the Default Network View Scope is set to `Tenant`/`Network`/`Subnet`/`Address Scope`, the Grid Master or
+   Grid member are not assigned to the network, and a network view is added in NIOS for each new network.
+
+If the `DHCP Support` EA is True:
+
+ * When the Default Network View Scope is set to `Single`, the Grid Master is assigned to multiple networks in the default
+   or custom network view.
+ * When the Grid is standalone and the Default Network View Scope is set to `Tenant`/`Network`/`Subnet`, we can add
+   only one network with the member assigned.
+ * When the Grid is standalone with a member and the Default Network View Scope is set to
+   `Tenant`/`Network`/`Subnet`, we can add only two networks: one to the Grid Master and another to the Grid member.
 
 IP Allocation and DNS Record Creation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -236,7 +259,7 @@ independently of the Infoblox IPAM Driver. Supported DNS record types are
   address exists. If IPAM only support configuration is used, DNS is disabled
   as well for the host record.
 
-Identify Members to Use
+Identifying Members to Use
 -----------------------
 In order to serve DHCP and DNS, you must pick grid members to be registered to
 Neutron. You should exclude network discovery members and reporting members
