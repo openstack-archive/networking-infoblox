@@ -10,24 +10,6 @@ Contains Neutron drivers for integration with Infoblox grids for IPAM and DNS.
 * Installation: https://github.com/openstack/networking-infoblox/blob/master/doc/source/installation.rst
 * Configuration Guide: https://github.com/openstack/networking-infoblox/blob/master/doc/source/configuration_guide.rst
 
-Changes to Versioning Scheme
-----------------------------
-Starting with this release, Infoblox uses new versioning scheme for the IPAM Driver,
-as follows:
-
-* To better align the IPAM Driver version with the Neutron version, the current release
-is 7.0.0 (which supports Neutron Release 7, Liberty). Note that release 7.0.0 is the
-subsequent release of 2.0.2.
-* The major number in the IPAM Driver version matches the Neutron major number.
-For example, in release 7.0.0, the major number '7' matches the Neutron major number '7.'.
-* The minor number (the second digit in the release version) represents the functionality
-level of the IPAM Driver. In other words, releases that have the same minor number will
-have the same functionality.
-* The patch number (the last digit in the release version) is used for releases that
-contain resolved issues or bug fixes for a particular release version.
-* Release 8.0.0 of the Infoblox IPAM Driver for OpenStack Neutron supports the Neutron
-Mikata version while release 9.0.0 supports the Newton version.
-
 Features
 --------
 
@@ -41,6 +23,17 @@ This release of the driver supports:
 * Support for GM and CP members and Cloud API
 * Flexible mapping of OpenStack entities to network view
 * Set EAs to populate the Cloud tab in the Infoblox UI
+* Support for Neutron Ocata version (release 10.0.0 of the Driver)
+* Authentication:
+
+  - Support for keystone v3 configuration:
+
+    a) Support for Domain scope authentication
+    b) Support for Project scope authentication
+
+  - Support for keystone SSL configuration
+
+* Dropped support for OpenStack Liberty
 
 Overview
 --------
@@ -73,19 +66,23 @@ See the documentation link above for details on Installation and Configuration.
 Known issues
 ------------
 
-1. Subnet deletion when using the ML2 plugin will delete the subnet from Neutron
-but leave the subnet in Infoblox due to Neutron bug 1510653 [#]_. This is fixed
-in the stable/liberty branch of Neutron.
+1. When deploying an instance with a domain label exceeding 63 characters, an unknown
+   host record name appears in the zone on NIOS. This is due to the NIOS restriction
+   of max 63 characters for domain labels.
 
-.. [#] https://pypi.python.org/pypi/infoblox-client
-.. [#] https://launchpad.net/bugs/1510653
+2. If user deletes a DNS zone, they need to delete the corresponding network entry in
+   NIOS, and then run the synchronization tool, otherwise the synchronization fails.
 
-2. Once the IPAM driver create a Network View on Infoblox, the name of the Network
+3. If user deletes a host record from a DNS zone, they need to delete the corresponding
+   port entry in NIOS, and then run the synchronization tool, otherwise the synchronization
+   fails.
+
+4. Once the IPAM driver create a Network View on Infoblox, the name of the Network
    View should not be changed. Changing Network View name on Infoblox would result
    in data synchronization issue. This will be addressed in a future release of the
    IPAM driver.
 
-3. If the ``Default Domain Name Pattern`` includes one of the following patterns:
+5. If the ``Default Domain Name Pattern`` includes one of the following patterns:
    ``{tenant_name}``, ``{network_name}`` or ``{subnet_name}``, the names of
    of the corresponding objects should not be changed in OpenStack once they are
    created. Changing them would result in data synchronization issue. This will be
