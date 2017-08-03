@@ -154,6 +154,9 @@ network views explicitly to use in OpenStack. An associated network view will
 have `Cloud Adapter ID` EAs stored on that network view. The `Cloud Adapter ID`
 is equivalent to `cloud_data_center_id` defined in neutron.conf.
 
+.. note::
+  `cloud_data_center_id` cannot be 0.
+
 Setting EA values to Configure the Integration
 ----------------------------------------------
 You must decide on the configuration you would like to use. For details on the
