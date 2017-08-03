@@ -310,8 +310,8 @@ Keystone configuration for TLS Support add:
      - An integer ID used for the data center. This is used to form the stanza
        name for the rest of the options. If you have multiple instances of
        OpenStack sharing the same Infoblox grid, this ID needs to be unique
-       across the instances. We recommend the ID starting from 1 and increment
-       by 1 as you add another Openstack instance. This ID is used to generate
+       across the instances. The ID should start from 1 and increment by 1 as
+       you add another Openstack instance. This ID is used to generate
        a unique ID for a network view that is cached in neutron database.
        Starting it with a very high number may exceed the max length of a
        network view id.
