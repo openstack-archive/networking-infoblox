@@ -1,35 +1,31 @@
 Release Notes
 -------------
 
-9.0.0 (2017-01-13)
+9.0.1 (2017-08-09)
 __________________
 
 Enhancements
 ~~~~~~~~~~~~
-* Implement IPAM-DHCP only scenario
-* Additional EAs for zones
-* Zone create on netrwork name update
-* Fix IP allocator to reuse IP with same MAC
-* Keystone v3 support in syn_neutron_to_infoblox
+* Authentication
+    - Support for keystone v3 configuration
+      1) Support for Domain scope authentication
+      2) Support for Project scope authentication
+    - Support for keystone SSL configuation
 
 Fixes
 ~~~~~
-* Remove use of neutron_lib.plugins for Newton
-* Use model_base (and other things) from neutron-lib
-* Use member_ip to query for Grid Master
-* Delete DNS Name Server option if empty
-* Fix empty DNS Name Server option
-* Update installation doc
-* Update infoblox-client requirement
-* Use model_base (and other things) from neutron-lib (Newton Only)
-* Fix README
-* Changed the home-page link
-* Don't include openstack/common in flake8 exclude list
-* Drop MANIFEST.in - it's not needed by pbr
-* Update .coveragerc after the removal of openstack directory
-* Fix documentation link
-* TrivialFix: Remove logging import unused
-* Update Installation documentation
-* Use independent session for grid sync
-* Enable DeprecationWarning in test environments
-
+* Fix issue of infoblox client raising exception when dns_support=False.
+* Handled exception in ip allocation for IPV6.
+* Update infoblox-client requirement.
+* Fixed issue related to A record creation failure with tenant_info in DNS pattern.
+* Added validation for incorrect Domain Patterns.
+* Fixed issue related to syncing of port information in NIOS using sync tool.
+* Fixed issue of Zones not adding in specified DNS View.
+* Fixed issue in the rollback mechanism causes DNS zone delete in NIOS.
+* Fixed sync tool failure after deleting a network from NIOS.
+* Enabled domain-level authorization scope.
+* Fixed DuplicateKey error when inserting to infoblox_tenants table.
+* Fixed tox.ini to use upper-contraints.txt for dependency packages.
+* Switch topic to topics and Fixed import UT's failure.
+* Describe new versioning scheme in README.
+* Specify branch name in tox_install.sh.
