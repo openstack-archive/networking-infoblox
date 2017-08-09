@@ -329,8 +329,8 @@ Keystone configuration for TLS Support add:
    * - admin_password
      - The password to use for the WAPI.
    * - wapi_version
-     - The WAPI version to use. Version 2.2.2 or later is recommended, if your
-       grid supports it (WAPI version 2.3 is supported in NIOS 7.3)
+     - The WAPI version is supported from 2.3 onwards and NIOS version is supported
+       from 7.3.x onwards.
    * - wapi_max_results
      - The maximum number of objects to be returned by WAPI. If this is set to
        a negative number, WAPI will return an error when the number of returned
