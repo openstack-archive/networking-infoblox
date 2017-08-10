@@ -1,0 +1,9 @@
+Code-Review+2: Yue Ko <yko@infoblox.com>
+Code-Review+2: Ishant Tyagi <ityagi@infoblox.com>
+Workflow+1: Ishant Tyagi <ityagi@infoblox.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Thu, 10 Aug 2017 07:40:39 +0000
+Reviewed-on: https://review.openstack.org/492196
+Project: openstack/networking-infoblox
+Branch: refs/heads/stable/newton
