@@ -530,3 +530,13 @@ The following grid configurations are needed to reproduce the issue:
 
  * `IP Allocation Strategy`: Fixed Address
  * `DNS Record Binding Types`: record:a, record:aaaa
+
+Issue #2
+--------
+
+Naming of Openstack resources should not be capital letter if it is used
+in representing NIOS EA's.
+
+Ex: If NIOS Domain Name Pattern EA is as below:
+        `"default_domain_name_pattern": {subnet_name}`
+    then do not create subnet with name including capital letters.
