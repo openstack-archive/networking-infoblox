@@ -490,7 +490,7 @@ For keystone behind TLS:
 
 .. code-block:: console
 
-    $ source keystone_admin
+    $ . keystone_admin
 
     # if you have not run infoblox-ipam-agent yet, then you need to run
     # infoblox_grid_sync.py to register the Infoblox grid members to Neutron.
