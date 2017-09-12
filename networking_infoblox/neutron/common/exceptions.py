@@ -86,10 +86,6 @@ class InfobloxPrivateSubnetAlreadyExist(exceptions.Conflict):
     message = _("Network with the same CIDR already exists on NIOS.")
 
 
-class InfobloxCannotAllocateIp(exceptions.NeutronException):
-    message = _("Cannot allocate IP %(ip_data)s")
-
-
 class InfobloxCannotFindFixedIp(exceptions.NeutronException):
     message = _("Cannot find the fixed IP %(ip)s")
 
