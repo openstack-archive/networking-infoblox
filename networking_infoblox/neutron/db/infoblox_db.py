@@ -18,9 +18,9 @@ import random
 from sqlalchemy import func
 from sqlalchemy.sql.expression import true
 
-from neutron.db import external_net_db
-from neutron.db import l3_db
 from neutron.db.models import address_scope as address_scope_db
+from neutron.db.models import external_net as external_net_db
+from neutron.db.models import l3 as l3_db
 from neutron.db import models_v2
 
 from networking_infoblox.neutron.common import constants as const

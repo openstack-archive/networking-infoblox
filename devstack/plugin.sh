@@ -8,7 +8,7 @@ function install_networking_infoblox {
 
 function init_networking_infoblox {
     echo "init_networking_infoblox"
-    screen_it networking-infoblox "/usr/local/bin/infoblox-ipam-agent --config-file=$NEUTRON_CONF --config-file=/$Q_PLUGIN_CONF_FILE"
+    run_process networking-infoblox "/usr/local/bin/infoblox-ipam-agent --config-file=$NEUTRON_CONF --config-file=/$Q_PLUGIN_CONF_FILE"
 }
 
 function run_db_migration_for_networking_infoblox {
