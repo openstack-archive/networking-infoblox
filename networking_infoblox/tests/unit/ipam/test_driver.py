@@ -17,8 +17,8 @@ import mock
 import netaddr
 
 from infoblox_client import exceptions as ib_exc
+from neutron.conf.plugins.ml2 import config as ml2_config
 from neutron.ipam import utils as ipam_utils
-from neutron.plugins.ml2 import config as ml2_config
 from neutron.tests.unit import testlib_api
 from neutron_lib import context
 from oslo_config import cfg
@@ -49,8 +49,9 @@ class TestDriver(base.TestCase, testlib_api.SqlTestCase):
         self.grid_mgr.get_config = mock.Mock()
 
     def _setup_config(self):
+        ml2_config.register_ml2_plugin_opts(cfg.CONF)
         cfg.CONF.set_override('core_plugin',
-                              'neutron.plugins.ml2.plugin.Ml2Plugin')
+                              'neutron.conf.plugins.ml2.plugin.Ml2Plugin')
         ml2_config.cfg.CONF.set_override('type_drivers', 'local', group='ml2')
 
     def _mock_subnet(self, subnet_pool, requested_pools, cidr, gateway):
