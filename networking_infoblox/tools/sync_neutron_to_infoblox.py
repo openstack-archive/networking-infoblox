@@ -28,7 +28,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 
 from neutron.common import config as common_config
-from neutron import context as neutron_context
+from neutron_lib import context as neutron_context
 
 from neutronclient.v2_0 import client as neutron_client
 from novaclient import client as nova_client
