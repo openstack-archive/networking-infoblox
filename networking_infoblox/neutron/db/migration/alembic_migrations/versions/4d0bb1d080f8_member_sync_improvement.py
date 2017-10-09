@@ -28,7 +28,8 @@ down_revision = '422e067b7d36'
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import update
-
+from oslo_db.sqlalchemy import utils as osldbutils
+from oslo_db.sqlalchemy import ndb
 from networking_infoblox.neutron.common import utils
 
 
@@ -53,15 +54,30 @@ infoblox_grid_members = sa.Table(
 
 
 def upgrade():
+    bind = op.get_bind()
+    engine = bind.engine
+
     op.add_column(
         'infoblox_grids',
         sa.Column('gm_id', sa.String(length=32), nullable=False,
                   default=utils.get_hash()))
-
-    op.drop_constraint(
-        constraint_name='uniq_infoblox_grid_members_grid_id_member_name',
-        table_name='infoblox_grid_members',
-        type_='unique')
+    if (not ndb.ndb_status(engine)):
+        op.drop_constraint(
+              constraint_name='uniq_infoblox_grid_members_grid_id_member_name',
+              table_name='infoblox_grid_members',
+              type_='unique')
+    else:
+        fk_name = osldbutils.get_foreign_key_constraint_name(
+                                                    engine,
+                                                    "infoblox_grid_members",
+                                                    "grid_id")
+        op.drop_constraint(fk_name, 'infoblox_grid_members', type_='foreignkey')
+        op.drop_constraint(
+              constraint_name='uniq_infoblox_grid_members_grid_id_member_name',
+              table_name='infoblox_grid_members',
+              type_='unique')
+        op.create_foreign_key(fk_name, 'infoblox_grid_members', 'infoblox_grids',
+                              ["grid_id"], ["grid_id"], ondelete='CASCADE')
 
     op.add_column(
         'infoblox_grid_members',
