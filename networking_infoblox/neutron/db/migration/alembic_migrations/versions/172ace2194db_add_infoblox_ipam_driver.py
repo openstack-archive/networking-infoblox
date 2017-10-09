@@ -141,7 +141,7 @@ def upgrade():
     op.create_table(
         'infoblox_service_members',
         sa.Column('network_view_id', sa.String(length=36), nullable=False),
-        sa.Column('member_id', sa.String(length=48), nullable=False),
+        sa.Column('member_id', sa.String(length=32), nullable=False),
         sa.Column('service', sa.String(length=12), nullable=False),
         sa.ForeignKeyConstraint(['network_view_id'],
                                 ['infoblox_network_views.id'],
