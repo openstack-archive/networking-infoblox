@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 from datetime import datetime
 from datetime import timedelta
 from oslo_log import log as logging
@@ -258,7 +259,10 @@ class GridConfiguration(object):
         discovered_config = self._discover_config(self.get_gm_member())
         if discovered_config:
             self._update_fields(discovered_config)
-            LOG.debug(_LI("grid config synced: %s"), self.__dict__)
+            dict_copy = copy.copy(self.__dict__)
+            del dict_copy['admin_password']
+            LOG.debug(_LI("grid config synced: %s"), dict_copy)
+            del dict_copy
 
     def get_grid_connection(self):
         grid_connection = {
