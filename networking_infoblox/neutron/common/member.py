@@ -194,7 +194,8 @@ class GridMemberManager(object):
                                   'mgmt_port_setting'])
 
         members = self._connector.get_object('member',
-                                             return_fields=return_fields)
+                                             return_fields=return_fields,
+                                             force_proxy=True)
         return members
 
     def _discover_dns_settings(self):
