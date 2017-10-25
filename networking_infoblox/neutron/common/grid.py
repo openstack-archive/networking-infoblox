@@ -16,6 +16,7 @@
 from datetime import datetime
 from datetime import timedelta
 from oslo_log import log as logging
+from oslo_utils import strutils
 import six
 import socket
 
@@ -258,7 +259,9 @@ class GridConfiguration(object):
         discovered_config = self._discover_config(self.get_gm_member())
         if discovered_config:
             self._update_fields(discovered_config)
-            LOG.debug(_LI("grid config synced: %s"), self.__dict__)
+            LOG.debug(_LI(
+                "grid config synced: %s"), strutils.mask_password(
+                self.__dict__, secret="********"))
 
     def get_grid_connection(self):
         grid_connection = {
