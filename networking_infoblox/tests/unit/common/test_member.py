@@ -343,7 +343,7 @@ class GridMemberTestCase(base.TestCase, testlib_api.SqlTestCase):
         member_mgr._discover_members()
 
         member_mgr._connector.get_object.assert_called_with(
-            'member', return_fields=return_fields)
+            'member', return_fields=return_fields, force_proxy=True)
 
     def test__discover_members_all_fields(self):
         wapi_version = '2.2'
