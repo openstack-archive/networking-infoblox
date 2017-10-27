@@ -41,6 +41,8 @@ corresponding variables:
      - NETWORKING_INFOBLOX_DC_HTTP_REQUEST_TIMEOUT
    * - wapi_max_results
      - NETWORKING_INFOBLOX_DC_WAPI_MAX_RESULTS
+   * - wapi_paging
+     - NETWORKING_INFOBLOX_DC_WAPI_PAGING
    * - n/a (DevStack only)
      - NETWORKING_INFOBLOX_SUPERUSER_USERNAME
    * - n/a (DevStack only)
