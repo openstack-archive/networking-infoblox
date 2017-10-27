@@ -86,7 +86,13 @@ data_center_opts = [
                       "negative number the appliance will return an error "
                       "when the number of returned objects would exceed the "
                       "setting. If this is set to a positive number, the "
-                      "results will be truncated when necessary."))
+                      "results will be truncated when necessary.")),
+    cfg.BoolOpt('wapi_paging',
+                default=False,
+                help=_("Enables paging to wapi calls by configuring"
+                       "wapi_paging = True,it uses wapi_max_results to set"
+                       "paging size of the wapi calls.If wapi_max_results is"
+                       "negative it will take paging size as 1000."))
 ]
 
 CONF = cfg.CONF
