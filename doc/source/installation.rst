@@ -337,6 +337,11 @@ Keystone configuration for TLS Support add:
        objects would exceed the setting. If this is set to a positive number,
        the results will be truncated when necessary. The default is -1000.
        If you experience "Result set too large" error, increase this value.
+   * - wapi_paging
+     - Enables paging to wapi calls by configuring wapi_paging = True,
+       it uses `wapi_max_results` to set paging size of the wapi calls.
+       If `wapi_max_results` is negative it will take paging size as 1000.
+       The default is `False`
    * - ssl_verify
      - Set to false if you use a self-signed SSL certificate, and true
        if you use a certificate signed by a known certificate authority. You
@@ -382,6 +387,7 @@ installation):
    admin_password = PASSWORD
    wapi_version = 2.3
    wapi_max_results = -50000
+   wapi_paging = True
 
 In addition to these options, you must enable the notifications options
 within Neutron, if they are not already enabled.
