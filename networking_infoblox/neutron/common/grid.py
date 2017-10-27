@@ -117,7 +117,7 @@ class GridManager(object):
         grid_conf.http_pool_connections = grid_opts['http_pool_connections']
         grid_conf.http_pool_maxsize = grid_opts['http_pool_maxsize']
         grid_conf.wapi_max_results = grid_opts['wapi_max_results']
-
+        grid_conf.wapi_paging = grid_opts['wapi_paging']
         # cloud user is used as admin, it needs to have proper permissions to
         # deal with non-delegated objects.
         gm_connection_opts = {
@@ -130,7 +130,8 @@ class GridManager(object):
             'http_request_timeout': grid_conf.http_request_timeout,
             'http_pool_connections': grid_conf.http_pool_connections,
             'http_pool_maxsize': grid_conf.http_pool_maxsize,
-            'max_results': grid_conf.wapi_max_results}
+            'max_results': grid_conf.wapi_max_results,
+            'paging': grid_conf.wapi_paging}
         # Silent ssl warnings, if certificate verification is not enabled
         if gm_connection_opts['ssl_verify'] == 'False':
             gm_connection_opts['silent_ssl_warnings'] = True
