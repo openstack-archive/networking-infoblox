@@ -34,10 +34,11 @@ elif [ -x "$ZUUL_CLONER" ]; then
     cd /tmp
     $ZUUL_CLONER --cache-dir \
         /opt/git \
-        --branch $BRANCH_NAME \
+        --branch master \
         git://git.openstack.org \
         openstack/neutron
     cd openstack/neutron
+    git checkout $BRANCH_NAME
     $install_cmd -e .
     cd "$cwd"
 else
