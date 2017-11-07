@@ -14,6 +14,7 @@
 #    under the License.
 
 import oslo_config.types as types
+from oslo_log import log as logging
 
 from networking_infoblox.neutron.common import constants as const
 from networking_infoblox.neutron.common import exceptions as exc
@@ -21,6 +22,7 @@ from networking_infoblox.neutron.common import utils
 from networking_infoblox.neutron.db import infoblox_db as dbi
 
 
+LOG = logging.getLogger(__name__)
 DELIMITER = '^'
 
 
@@ -407,8 +409,10 @@ class GridMappingManager(object):
             dhcp_member = utils.find_in_list_by_value(member_ip,
                                                       self.db_members)
             if not dhcp_member:
-                raise exc.InfobloxCannotFindMember(
-                    member=member_ip)
+                LOG.warning("Member not found with dhcp_ip: %r", member_ip)
+                continue
+                # raise exc.InfobloxCannotFindMember(
+                #     member=member_ip)
             dhcp_members.append(dhcp_member)
         return dhcp_members
 
