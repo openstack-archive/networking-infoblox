@@ -202,7 +202,11 @@ class IpamSyncController(object):
                                                  host_name=member_name,
                                                  return_fields=['host_name'])
             if ib_member:
-                self.ib_cxt.ibom.restart_all_services(ib_member)
+                try:
+                    self.ib_cxt.ibom.restart_all_services(ib_member)
+                except Exception as e:
+                    LOG.warning(("Restart all services for member: %r " +
+                                 "fails with error: %r") % (ib_member, e))
 
     def _register_mapping_member(self):
         session = self.ib_cxt.context.session
