@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # Many of neutron's repos suffer from the problem of depending on neutron,
 # but it not existing on pypi.
@@ -14,38 +14,52 @@
 # pip install {opts} {packages}
 
 ZUUL_CLONER=/usr/zuul-env/bin/zuul-cloner
-UPPER_CONSTRAINTS_FILE=${UPPER_CONSTRAINTS_FILE:-unconstrained}
+BRANCH_NAME=master
+GIT_BASE=${GIT_BASE:-https://git.openstack.org/}
 
-neutron_installed=$(echo "import neutron" | python 2>/dev/null ; echo $?)
-install_cmd="pip install"
+install_project() {
+    local project=$1
+    local branch=${2:-$BRANCH_NAME}
+    local module_name=${project//-/_}
 
-if [ "$UPPER_CONSTRAINTS_FILE" != "unconstrained" ]; then
-    install_cmd="$install_cmd -c$UPPER_CONSTRAINTS_FILE"
-fi
+    set +e
+    project_installed=$(echo "import $module_name" | python 2>/dev/null ; echo $?)
+    set -e
 
-set -ex
+    if [ $project_installed -eq 0 ]; then
+        echo "ALREADY INSTALLED" > /tmp/tox_install.txt
+        echo "$project already installed; using existing package"
+    elif [ -x "$ZUUL_CLONER" ]; then
+        echo "ZUUL CLONER" > /tmp/tox_install.txt
+        # Make this relative to current working directory so that
+        # git clean can remove it. We cannot remove the directory directly
+        # since it is referenced after $install_cmd -e
+        mkdir -p .tmp
+        PROJECT_DIR=$(/bin/mktemp -d -p $(pwd)/.tmp)
+        pushd $PROJECT_DIR
+        $ZUUL_CLONER --cache-dir \
+            /opt/git \
+            --branch $branch \
+            http://git.openstack.org \
+            openstack/$project
+        cd openstack/$project
+        $install_cmd -e .
+        popd
+    else
+        echo "PIP HARDCODE" > /tmp/tox_install.txt
+        local GIT_REPO="$GIT_BASE/openstack/$project"
+        SRC_DIR="$VIRTUAL_ENV/src/$project"
+        git clone --depth 1 --branch $branch $GIT_REPO $SRC_DIR
+        $install_cmd -U -e $SRC_DIR
+    fi
+}
 
-cwd=$(/bin/pwd)
+set -e
 
-if [ $neutron_installed -eq 0 ]; then
-    echo "ALREADY INSTALLED" > /tmp/tox_install.txt
-    echo "Neutron already installed; using existing package"
-elif [ -x "$ZUUL_CLONER" ]; then
-    echo "ZUUL CLONER" > /tmp/tox_install.txt
-    cd /tmp
-    $ZUUL_CLONER --cache-dir \
-        /opt/git \
-        --branch $BRANCH_NAME \
-        git://git.openstack.org \
-        openstack/neutron
-    cd openstack/neutron
-    $install_cmd -e .
-    cd "$cwd"
-else
-    echo "PIP HARDCODE" > /tmp/tox_install.txt
-    $install_cmd -U -egit+https://git.openstack.org/openstack/neutron@$BRANCH_NAME#egg=neutron
-    $install_cmd -U -e $VIRTUAL_ENV/src/neutron
-fi
+install_cmd="pip install -c$1"
+shift
+
+install_project neutron
 
 $install_cmd -U $*
 exit $?
