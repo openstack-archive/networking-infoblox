@@ -23,6 +23,7 @@ import socket
 from neutron import context as neutron_context
 
 from infoblox_client import connector
+from infoblox_client import exceptions as ib_ex
 from infoblox_client import objects as ib_objects
 
 from networking_infoblox._i18n import _LI
@@ -36,6 +37,15 @@ from networking_infoblox.neutron.db import infoblox_db as dbi
 
 
 LOG = logging.getLogger(__name__)
+
+
+def handle_gm_disconnection_exc(func):
+    def _nested_func(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except ib_ex.InfobloxGridTemporaryUnavailable as e:
+            LOG.error("Call failed with error: %s", e)
+    return _nested_func
 
 
 class GridSyncer(object):
@@ -139,6 +149,7 @@ class GridManager(object):
         grid_conf.gm_connector = connector.Connector(gm_connection_opts)
         return grid_conf
 
+    @handle_gm_disconnection_exc
     def _report_sync_time(self):
         if self.grid_config.report_grid_sync_time is False:
             return
