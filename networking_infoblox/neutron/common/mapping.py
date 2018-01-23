@@ -57,19 +57,18 @@ class GridMappingManager(object):
         """
         session = self._context.session
         self.db_members = dbi.get_members(session, grid_id=self._grid_id)
-
-        discovered_network_views = self._discover_network_views()
-        if not discovered_network_views:
+        associated_network_views = self._discover_network_views()
+        if not associated_network_views:
             return
-
-        discovered_dns_views = self._discover_dns_views()
-        dns_views = self.get_dns_views(discovered_dns_views)
+        associated_dns_views = self._discover_dns_views(
+            associated_network_views)
+        dns_views = self.get_dns_views(associated_dns_views)
 
         discovered_delegations = self._sync_network_views(
-            discovered_network_views, dns_views)
+            associated_network_views, dns_views)
 
-        discovered_networks = self._discover_networks()
-        self._sync_network_mapping(discovered_networks, discovered_delegations)
+        associated_networks = self._discover_networks(associated_network_views)
+        self._sync_network_mapping(associated_networks, discovered_delegations)
 
     def _load_persisted_mappings(self):
         session = self._context.session
@@ -94,7 +93,7 @@ class GridMappingManager(object):
                 dns_views[netview_name] = dnsview_name
         return dns_views
 
-    def _sync_network_views(self, discovered_netviews, dns_views):
+    def _sync_network_views(self, associated_netviews, dns_views):
         """Discover network views and sync with db.
 
         The discovered network view json contains the following data:
@@ -116,23 +115,13 @@ class GridMappingManager(object):
             'id', self.db_network_views)
         discovered_netview_ids = []
 
-        for netview in discovered_netviews:
+        for netview in associated_netviews:
+            # participated flag is True for all associated network view
+            participated = True
             netview_name = netview['name']
             is_default = netview[const.IS_DEFAULT]
             netview_id = utils.get_network_view_id(self._grid_id,
                                                    netview['_ref'])
-
-            cloud_adapter_id_vals = utils.get_ea_value(
-                const.EA_CLOUD_ADAPTER_ID, netview, True)
-            if cloud_adapter_id_vals is None:
-                participated = False
-            else:
-                cloud_adapter_ids = [gid for gid in cloud_adapter_id_vals
-                                     if int(gid) == self._grid_id]
-                participated = True if cloud_adapter_ids else False
-
-            if not participated:
-                continue
 
             shared_val = utils.get_ea_value(const.EA_IS_SHARED, netview)
             is_shared = types.Boolean()(shared_val) if shared_val else False
@@ -268,36 +257,48 @@ class GridMappingManager(object):
         if self._grid_config.is_cloud_wapi:
             return_fields.append('cloud_info')
 
-        netviews = self._connector.get_object('networkview',
-                                              return_fields=return_fields)
+        # Fetch network_view associated to this cloud adapter.
+        netviews = self._connector.get_object(
+            'networkview', return_fields=return_fields,
+            extattrs={const.EA_CLOUD_ADAPTER_ID: {'value': [self._grid_id]}})
+
         if not netviews:
             return []
         return netviews
 
-    def _discover_networks(self):
+    def _discover_networks(self, associated_network_views):
         return_fields = ['members', 'network_view', 'network', 'options']
         if self._grid_config.is_cloud_wapi:
             return_fields.append('cloud_info')
-
-        # TODO(pbondar): Consider using NetworkV4 and NetworkV6 objects
-        #                from infoblox-client to interact with NIOS
-        ipv4networks = self._connector.get_object('network',
-                                                  return_fields=return_fields)
-        ipv6networks = self._connector.get_object('ipv6network',
-                                                  return_fields=return_fields)
-        # get_object returns None if nothing was found, so convert results
-        if not ipv4networks:
-            ipv4networks = []
-        if not ipv6networks:
-            ipv6networks = []
+        ipv4networks = []
+        ipv6networks = []
+        for network_view in associated_network_views:
+            payload = {'network_view': network_view['name']}
+            # TODO(pbondar): Consider using NetworkV4 and NetworkV6 objects
+            #                from infoblox-client to interact with NIOS
+            _ipv4networks = self._connector.get_object(
+                'network', return_fields=return_fields, payload=payload)
+            _ipv6networks = self._connector.get_object(
+                'ipv6network', return_fields=return_fields, payload=payload)
+            # get_object returns None if nothing was found, so convert results
+            if not _ipv4networks:
+                _ipv4networks = []
+            if not _ipv6networks:
+                _ipv6networks = []
+            ipv4networks.extend(_ipv4networks)
+            ipv6networks.extend(_ipv6networks)
         return ipv4networks + ipv6networks
 
-    def _discover_dns_views(self):
+    def _discover_dns_views(self, associated_network_views):
         return_fields = ['name', 'network_view']
-        dns_views = self._connector.get_object('view',
-                                               return_fields=return_fields)
-        if not dns_views:
-            return []
+        dns_views = []
+        for network_view in associated_network_views:
+            payload = {'network_view': network_view['name']}
+            _dns_views = self._connector.get_object(
+                'view', return_fields=return_fields, payload=payload)
+            if not _dns_views:
+                _dns_views = []
+            dns_views.extend(_dns_views)
         return dns_views
 
     def _get_member_mapping(self, discovered_networks, discovered_delegations):
