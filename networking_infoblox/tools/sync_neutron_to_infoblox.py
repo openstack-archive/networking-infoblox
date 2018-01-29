@@ -80,8 +80,8 @@ def main():
     except KeyError:
         print("\nYou must provide an admin user credentials in the shell "
               "environment.\nPlease export variables such as env[OS_USERNAME],"
-              " env[OS_PASSWORD], env[OS_AUTH_URL], env[OS_TENANT_NAME], and "
-              "env[OS_REGION_NAME]\n")
+              " env[OS_PASSWORD], env[OS_AUTH_URL], env[OS_TENANT_NAME] or "
+              "env[OS_PROJECT_NAME]\n")
         return
     password_creds = credentials.copy()
     password_creds.pop('region_name', None)
@@ -131,7 +131,8 @@ def get_credentials():
     d['username'] = os.environ['OS_USERNAME']
     d['password'] = os.environ['OS_PASSWORD']
     d['auth_url'] = os.environ['OS_AUTH_URL']
-    d['region_name'] = os.environ['OS_REGION_NAME']
+    if 'OS_REGION_NAME' in os.environ:
+        d['region_name'] = os.environ['OS_REGION_NAME']
 
     return d, version
 
