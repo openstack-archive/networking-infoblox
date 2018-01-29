@@ -274,12 +274,16 @@ class GridMappingManager(object):
         ipv6networks = []
         for network_view in associated_network_views:
             payload = {'network_view': network_view['name']}
+            extattrs = {const.EA_CMP_TYPE: {
+                        'value': [const.CLOUD_PLATFORM_NAME]}}
             # TODO(pbondar): Consider using NetworkV4 and NetworkV6 objects
             #                from infoblox-client to interact with NIOS
             _ipv4networks = self._connector.get_object(
-                'network', return_fields=return_fields, payload=payload)
+                'network', return_fields=return_fields, payload=payload,
+                extattrs=extattrs)
             _ipv6networks = self._connector.get_object(
-                'ipv6network', return_fields=return_fields, payload=payload)
+                'ipv6network', return_fields=return_fields, payload=payload,
+                extattrs=extattrs)
             # get_object returns None if nothing was found, so convert results
             if not _ipv4networks:
                 _ipv4networks = []
