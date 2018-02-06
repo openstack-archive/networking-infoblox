@@ -598,14 +598,14 @@ class IpamSyncController(object):
                     ea_ip_address)
                 if allocated_ip:
                     break
-            except ib_exc.InfobloxCannotAllocateIp:
-                LOG.info("Failed to allocate IP from range (%s-%s)." %
-                         (first_ip, last_ip))
+            except ib_exc.InfobloxCannotAllocateIp as err:
+                LOG.info("Failed to allocate IP from range (%s-%s)"
+                         "with error: %r." % (first_ip, last_ip, err))
                 continue
 
-            except ib_exc.InfobloxCannotCreateObject:
-                LOG.info("Failed to create IP from range (%s-%s)." %
-                         (first_ip, last_ip))
+            except ib_exc.InfobloxCannotCreateObject as err:
+                LOG.info("Failed to create IP from range (%s-%s)"
+                         "with error: %r." % (first_ip, last_ip, err))
                 continue
 
         if allocated_ip:
