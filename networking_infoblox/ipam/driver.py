@@ -426,7 +426,9 @@ class InfobloxSubnet(driver.Subnet):
                                           port_name=port_name)
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    ipam_controller.deallocate_ip(allocated_ip)
+                    ipam_controller.deallocate_ip(
+                        allocated_ip,
+                        address_request.device_owner)
 
         return allocated_ip
 
@@ -449,7 +451,7 @@ class InfobloxSubnet(driver.Subnet):
         ipam_controller = ipam.IpamSyncController(self._ib_cxt)
         dns_controller = dns.DnsController(self._ib_cxt)
 
-        ipam_controller.deallocate_ip(ip_addr)
+        ipam_controller.deallocate_ip(ip_addr, address_request.device_owner)
         port_name = (address_request.port_name
                      if hasattr(address_request, 'port_name')
                      else None)

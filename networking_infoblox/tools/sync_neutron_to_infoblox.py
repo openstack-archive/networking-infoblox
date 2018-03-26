@@ -367,7 +367,7 @@ def sync_neutron_to_infoblox(context, credentials, grid_manager):
                 except Exception as e:
                     should_exit = True
                     LOG.error("Unable to allocate ip (%s): %s", ip_address, e)
-                    ipam_controller.deallocate_ip(allocated_ip)
+                    ipam_controller.deallocate_ip(allocated_ip, device_owner)
                     break
 
             LOG.info("Allocated %s", ip_address)
