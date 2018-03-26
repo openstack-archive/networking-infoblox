@@ -19,7 +19,7 @@ from oslo_service import loopingcall
 from oslo_service import service
 
 from neutron.agent import rpc as agent_rpc
-from neutron.common import topics
+from neutron_lib.agent import topics
 from neutron_lib import context
 
 from networking_infoblox._i18n import _LE

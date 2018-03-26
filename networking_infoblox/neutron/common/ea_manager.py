@@ -17,7 +17,6 @@ from infoblox_client import objects as ib_objects
 from neutron_lib.api.definitions import provider_net as providernet
 from neutron_lib import constants as n_const
 
-from neutron.api.v2 import attributes
 from neutron_lib.api.definitions import external_net
 
 from networking_infoblox.neutron.common import constants as const
@@ -190,7 +189,7 @@ def reset_ea_for_zone(ib_zone):
 def get_common_ea(network, user_id, tenant_id, tenant_name, for_network=False):
     if network:
         is_external = network.get(external_net.EXTERNAL, False)
-        is_shared = network.get(attributes.SHARED)
+        is_shared = network.get(n_const.SHARED)
     else:
         is_external = False
         is_shared = False
