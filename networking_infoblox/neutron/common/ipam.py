@@ -620,11 +620,15 @@ class IpamSyncController(object):
 
         return allocated_ip
 
-    def deallocate_ip(self, ip_address):
+    def deallocate_ip(self, ip_address, device_owner=None):
         dns_view = self.ib_cxt.mapping.dns_view
-        self.ib_cxt.ip_alloc.deallocate_ip(self.ib_cxt.mapping.network_view,
-                                           dns_view,
-                                           ip_address)
+        ip_alloc = (self.ib_cxt.dhcp_port_ip_alloc
+                    if device_owner == n_const.DEVICE_OWNER_DHCP
+                    else self.ib_cxt.ip_alloc)
+
+        ip_alloc.deallocate_ip(self.ib_cxt.mapping.network_view,
+                               dns_view,
+                               ip_address)
 
     @staticmethod
     def _range_is_managed(ib_range):
