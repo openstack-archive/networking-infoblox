@@ -23,7 +23,7 @@ This release of the driver supports:
 * Support for GM and CP members and Cloud API
 * Flexible mapping of OpenStack entities to network view
 * Set EAs to populate the Cloud tab in the Infoblox UI
-* Support for Neutron Ocata release (release 10.0.0 of the Driver)
+* Support for Neutron Queens release (release 12.0.0 of the Driver)
 * Authentication:
 
   - Support for keystone v3 configuration:
@@ -33,7 +33,7 @@ This release of the driver supports:
 
   - Support for keystone SSL configuration
 
-* Dropped support for OpenStack Liberty
+* Dropped support for OpenStack Newtons
 
 Overview
 --------
