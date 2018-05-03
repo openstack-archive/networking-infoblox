@@ -1,31 +1,25 @@
 Release Notes
 -------------
 
-10.0.0 (2017-08-09)
+10.0.1 (2018-03-05)
 __________________
 
 Enhancements
 ~~~~~~~~~~~~
-* Authentication
-    - Support for keystone v3 configuration
-      1) Support for Domain scope authentication
-      2) Support for Project scope authentication
-    - Support for keystone SSL configuation
+* Support CP Member
+* Support for pagination
 
 Fixes
 ~~~~~
-* Fix issue of infoblox client raising exception when dns_support=False.
-* Handled exception in ip allocation for IPV6.
-* Update infoblox-client requirement
-* Fixed issue related to A record creation failure with tenant_info in DNS pattern
-* Added validation for incorrect Domain Patterns
-* Fixed issue related to syncing of port information in NIOS using sync tool.
-* Fixed issue of Zones not adding in specified DNS View
-* Fix issue in the rollback mechanism causes DNS zone delete in NIOS
-* Fix for sync tool failure after deleting a network from NIOS.
-* Enabled domain-level authorization scope
-* Fix for DuplicateKey error when inserting to infoblox_tenants table.
-* Fix tox.ini to use upper-contraints.txt for dependency packages
-* Switch topic to topics and Fixed import UT's failure
-* Describe new versioning scheme in README
-* Specify branch name in tox_install.sh
+* Fixed issue of stale entry for dhcp ip if ip allocation strategy is fixed address.
+* Fixed issue where IPAllocation fails and log trace not show reason of failure.
+* Removed OS_REGION_NAME dependency from sync tools.
+* Added filter of CMP Type on GET network
+* Fix exception while grid sync when GM is disconnected
+* Handled exception while restarting member services when cp member disconnected
+* Added support for pagination and optimized mapping.sync() call
+* Added force_proxy=True for member_object wapi call to support cp_member.
+* Fixed issue where NIOS password was visible in infoblox plugin & agent logs.
+* Fixed flags in GRID_CONFIGURATION EA'S for CP Member Support
+* Fixed exceptions when uppercase name used for creating resources in openstack
+* Fixed exception handling for case of conflict while creation of the ip object.
