@@ -41,7 +41,8 @@ def main():
     register_options()
     service.launch(config.CONF,
                    notification.NotificationService(),
-                   config.CONF.infoblox.ipam_agent_workers).wait()
+                   config.CONF.infoblox.ipam_agent_workers,
+                   restart_method='mutate').wait()
 
 
 if __name__ == "__main__":
