@@ -35,7 +35,7 @@ elif [ -x "$ZUUL_CLONER" ]; then
     $ZUUL_CLONER --cache-dir \
         /opt/git \
         --branch master \
-        git://git.openstack.org \
+        https://git.openstack.org \
         openstack/neutron
     cd openstack/neutron
     git checkout $BRANCH_NAME
