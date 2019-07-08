@@ -24,6 +24,10 @@ This release of the driver supports:
 * Flexible mapping of OpenStack entities to network view
 * Set EAs to populate the Cloud tab in the Infoblox UI
 * Support for Neutron Queens release (release 12.0.0 of the Driver)
+<<<<<<< Updated upstream
+=======
+* Bug fixes
+>>>>>>> Stashed changes
 * Authentication:
 
   - Support for keystone v3 configuration:
@@ -87,3 +91,5 @@ Known issues
    of the corresponding objects should not be changed in OpenStack once they are
    created. Changing them would result in data synchronization issue. This will be
    addressed in a future release of the IPAM driver.
+
+.. [#] https://pypi.python.org/pypi/infoblox-client
