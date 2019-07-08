@@ -1,11 +1,9 @@
 Release Notes
 -------------
 
-12.0.0 (2018-03-05)
+12.0.1 (2019-07-07)
 __________________
 
 Enhancements
 ~~~~~~~~~~~~
-* Support for Openstack stable/queens release
-* Support CP Member
-* Support for pagination
+* following the same router naming pattern for HA routers as well

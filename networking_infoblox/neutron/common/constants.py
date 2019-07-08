@@ -160,6 +160,8 @@ IS_DEFAULT = 'is_default'
 NEUTRON_DEVICE_OWNER_TO_PATTERN_MAP = {
     n_const.DEVICE_OWNER_DHCP: 'dhcp-port-{ip_address}',
     n_const.DEVICE_OWNER_ROUTER_INTF: 'router-iface-{ip_address}',
+    n_const.DEVICE_OWNER_ROUTER_HA_INTF: 'router-ha-iface-{ip_address}',
+    n_const.DEVICE_OWNER_HA_REPLICATED_INT: 'router-ha-iface-{ip_address}',
     n_const.DEVICE_OWNER_ROUTER_GW: 'router-gw-{ip_address}',
     n_const.DEVICE_OWNER_FLOATINGIP: 'floating-ip-{ip_address}',
     'neutron:' + p_const.LOADBALANCER: 'lb-vip-{ip_address}'
@@ -168,6 +170,8 @@ NEUTRON_DEVICE_OWNER_TO_PATTERN_MAP = {
 NEUTRON_INTERNAL_SERVICE_DEVICE_OWNERS = [
     n_const.DEVICE_OWNER_DHCP,
     n_const.DEVICE_OWNER_ROUTER_INTF,
+    n_const.DEVICE_OWNER_ROUTER_HA_INTF,
+    n_const.DEVICE_OWNER_HA_REPLICATED_INT,
     n_const.DEVICE_OWNER_ROUTER_GW,
     'neutron:' + p_const.LOADBALANCER
 ]
